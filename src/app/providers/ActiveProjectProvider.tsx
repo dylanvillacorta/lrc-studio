@@ -24,6 +24,7 @@ import { useRestoreHydration } from '@/app/providers/useRestoreHydration';
 import {
   buildSessionState,
   useAutosave,
+  createAudioObjectUrl,
   useSessionRestore,
   type AutosaveSnapshot,
   type RestorePlan,
@@ -62,8 +63,31 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     ? manualAudioUrl
     : restore.audioUrl;
 
+  // Auto-reparación (T26): equivale a «Continuar»: relee bytes, Blob con mime canónico
+  // y nueva ObjectURL (la anterior se revoca al reemplazarla).
+  const reloadAudioSource = useCallback(async (): Promise<string | null> => {
+    const current = projectRef.current;
+    if (!current) {
+      return null;
+    }
+    const stored = await adapter.getAudioBinary(current.id);
+    if (!stored || projectRef.current?.id !== current.id) {
+      return null;
+    }
+    const url = createAudioObjectUrl(stored.blob, stored.fileName);
+    if (!url) {
+      return null;
+    }
+    clearRestoreAudioUrl();
+    setHasManualOverride(true);
+    replaceManualAudioUrl(url);
+    return url;
+  }, [adapter, clearRestoreAudioUrl, replaceManualAudioUrl]);
+
   const player = useAudioPlayer({
     src: effectiveAudioUrl,
+    projectId: project?.id ?? null,
+    reloadAudioSource,
     initialDurationMs: project?.durationMs ?? 0,
     initialPlaybackRate: project?.settings.playbackRate ?? 1,
   });
@@ -393,9 +417,58 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     ],
   );
 
+  const repairStatus = player.repairStatus ?? 'idle';
+  const retryRepair = player.retryRepair;
+
+  // El botón de reproducir (fuera de este módulo) refleja la preparación con aria-busy.
+  useEffect(() => {
+    if (repairStatus !== 'repairing' || typeof document === 'undefined') {
+      return;
+    }
+    const buttons = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        'button[aria-label="Reproducir"], button[aria-label="Pausar"]',
+      ),
+    );
+    buttons.forEach((button) => button.setAttribute('aria-busy', 'true'));
+    return () => {
+      buttons.forEach((button) => button.removeAttribute('aria-busy'));
+    };
+  }, [repairStatus]);
+
   return (
     <ActiveProjectContext.Provider value={value}>
       {children}
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex flex-col items-center gap-2 px-4"
+        data-testid="audio-repair-status"
+      >
+        {repairStatus === 'repairing' ? (
+          <div
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            className="rounded-full bg-black/80 px-4 py-2 text-sm text-white"
+          >
+            Preparando audio…
+          </div>
+        ) : null}
+        {repairStatus === 'failed' ? (
+          <div
+            role="alert"
+            className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-black/85 px-4 py-2 text-sm text-white"
+          >
+            <span>No se pudo preparar el audio. Revisa el archivo e inténtalo de nuevo.</span>
+            <button
+              type="button"
+              className="min-h-11 rounded-full bg-white px-4 font-semibold text-black"
+              onClick={() => retryRepair?.()}
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : null}
+      </div>
     </ActiveProjectContext.Provider>
   );
 }
