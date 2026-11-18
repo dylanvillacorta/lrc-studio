@@ -39,6 +39,7 @@ export function trackErrors(page: Page): () => void {
 export async function createProjectWithLyricsAndWav(
   page: Page,
   isMobile: boolean,
+  audioSeconds = 28,
 ): Promise<void> {
   await openLyrics(page, isMobile);
   await page.getByLabel('Título de la canción').fill('Noches de Verano');
@@ -51,13 +52,13 @@ export async function createProjectWithLyricsAndWav(
   await openSyncEditor(page, isMobile);
   await page
     .locator('input[aria-label="Seleccionar archivo de audio"]')
-    .setInputFiles(makeFilePayload('noches-de-verano.wav', 'audio/wav', createTinyWavBytes(28)));
+    .setInputFiles(makeFilePayload('noches-de-verano.wav', 'audio/wav', createTinyWavBytes(audioSeconds)));
 
   await expect(page.getByRole('button', { name: /MARCAR LÍNEA/i })).toBeVisible();
   const slider = page.getByRole('slider', { name: 'Posición en la forma de onda' });
   await expect
     .poll(async () => Number(await slider.getAttribute('aria-valuemax')))
-    .toBeGreaterThan(20_000);
+    .toBeGreaterThan(Math.min(20_000, (audioSeconds - 4) * 1000));
 }
 
 export async function tapOrPointerDown(
