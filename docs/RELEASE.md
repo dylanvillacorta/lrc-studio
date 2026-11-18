@@ -20,7 +20,7 @@
 ## 3. Docker y GHCR
 
 - **Dockerfile multi-stage:**
-  1. `node:alpine`: `npm ci` y `npm run build` (`vite build`).
+  1. `node:24-alpine`: activa `corepack`, ejecuta `pnpm install --frozen-lockfile` y `pnpm build` (`vite build`).
   2. `nginxinc/nginx-unprivileged:alpine`: copia únicamente `dist/` y `nginx.conf`, usuario no-root, puerto `8080`.
 - **Etiquetas OCI:** `org.opencontainers.image.version`, `revision`, `source`, `created`.
 - **`nginx.conf`:**
@@ -42,10 +42,10 @@
 La app es una herramienta cliente (sin SSR). `index.html` y archivos estáticos deben incluir:
 - `<html lang="es">`
 - `<title>` y `<meta name="description">` únicos.
-- `<link rel="canonical">` usando la variable de build `VITE_SITE_URL` *(supuesto: dominio final por confirmar con el usuario; usar placeholder configurable en `VITE_SITE_URL`)*.
+- `<link rel="canonical">` y URLs de Open Graph usando `VITE_SITE_URL=https://lrc.dirtykeras.com`.
 - Open Graph y Twitter Card con imagen `1200x630`.
 - `theme-color`, `viewport`, favicons, `apple-touch-icon` y `manifest.webmanifest`.
-- `robots.txt` y `sitemap.xml`.
+- `robots.txt` (apuntando a `https://lrc.dirtykeras.com/sitemap.xml`) y `sitemap.xml` (con `https://lrc.dirtykeras.com`).
 - Datos estructurados JSON-LD (`SoftwareApplication`).
 - HTML semántico (un único `<h1>`, landmarks `<main>`, `<nav>`, `<header>`).
 - `<noscript>` con descripción del producto.

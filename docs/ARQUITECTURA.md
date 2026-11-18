@@ -9,24 +9,41 @@
 
 ## 2. Estructura de carpetas
 
+Toda la aplicación corre en el navegador (sin backend), organizada por responsabilidad para mantenibilidad. Se compila como una sola SPA (un bundle servido por nginx), sin carga perezosa salvo decisión posterior.
+
 ```text
+e2e/                              # Pruebas E2E con Playwright
 src/
+  app/
+    main.tsx
+    App.tsx
+    layouts/                      # Layouts de móvil y escritorio
+    providers/                    # Providers de storage y sesión (solo componen, sin lógica de negocio)
+  features/                       # sync, lyrics, catalog, loupe, export, session
+    <tema>/
+      components/
+      hooks/
+      model/                      # Lógica pura sin React (temporización, Pre-Roll, Francotirador, progreso, exportadores LRC/ELRC/JSON); se prueba con Vitest
+      index.ts                    # API pública de la feature
   storage/
     IStorageAdapter.ts
     WebIndexedDBAdapter.ts
-    TauriRustSqliteAdapter.ts   # Stub documentado para Tauri v2
-    index.ts                    # Selector por window.__TAURI_INTERNALS__
-  features/
-    sync/                       # Lógica de sincronización, Pre-Roll, Francotirador, ráfaga, 60 FPS
-    catalog/                    # Catálogo «Mis Transcripciones»
-    loupe/                      # Lupa de onda con bordes arrastrables e inspector 10/50 ms
-    export/                     # Exportadores LRC, ELRC y JSON
-  ui/                           # Librería de componentes neumórficos
-  hooks/                        # Hooks reutilizables (autoguardado, audio, atajos)
-  types/                        # Tipos compartidos (ProjectSummary, ProjectFullData, SessionState, etc.)
+    TauriRustSqliteAdapter.ts     # Stub documentado para Tauri v2
+    index.ts                      # Selector por window.__TAURI_INTERNALS__
+  ui/                             # Librería neumórfica reutilizable, sin conocimiento de negocio
+  lib/                            # Utilidades puras (formato de tiempo, picos de onda, ids, fechas)
+  types/                          # Tipos compartidos
+  styles/                         # Tokens y estilos globales de Tailwind
 ```
 
-**Regla de oro:** ningún componente ni hook de negocio llama directamente a `localStorage` ni a `IndexedDB`. Todo acceso a persistencia pasa por `storageService` (patrón *Strategy / Adapter*).
+**Reglas obligatorias de organización:**
+- **Dirección de dependencias:** `app` → `features` → (`ui`, `storage`, `lib`, `types`), nunca al revés.
+- **Encapsulación de features:** una feature no importa archivos internos de otra, solo su `index.ts`.
+- **Persistencia:** ningún componente toca `localStorage` ni `IndexedDB`; todo acceso pasa por `storage` vía provider.
+- **Pruebas unitarias:** junto al código (`archivo.test.ts`); pruebas E2E en `e2e/` en la raíz.
+- **Alias de importación:** `@/` para `src/`.
+- **Tamaño y granularidad:** límite orientativo de 300 líneas por archivo y 200 por componente (el `.tsx` base de 2835 líneas debe dividirse, no copiarse); un componente por archivo.
+- **Idioma:** nombres en inglés para código y en español para textos de interfaz.
 
 ## 3. Contratos y tipos (`src/types/`)
 
