@@ -8,3 +8,7 @@ export {
   type ParseProjectJsonResult,
   type ParsedProjectJson,
 } from '@/features/export/model/exporters';
+export {
+  ExportScreen,
+  type ExportScreenProps,
+} from '@/features/export/components/ExportScreen';
