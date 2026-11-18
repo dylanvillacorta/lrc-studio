@@ -9,6 +9,11 @@
 import { formatLrcTimestamp } from '@/lib/time';
 import type { JsonTimeUnit, LyricLine, SongMetadata, WordTiming } from '@/types';
 
+/**
+ * Versión de esquema usada al exportar e importar proyectos JSON individuales.
+ */
+export const PROJECT_JSON_SCHEMA_VERSION = '2.0-musixmatch-richsync' as const;
+
 export interface ExportJsonOptions {
   audioFileName?: string;
   durationMs?: number;
@@ -112,7 +117,7 @@ export function exportJson(
   const durationSeconds = Number(((options.durationMs ?? 0) / 1000).toFixed(3));
 
   const payload = {
-    schemaVersion: '2.0-musixmatch-richsync',
+    schemaVersion: PROJECT_JSON_SCHEMA_VERSION,
     metadata: {
       title: metadata.title,
       artist: metadata.artist,
@@ -179,6 +184,16 @@ export function parseProjectJson(rawJson: string): ParseProjectJsonResult {
 
   if (!isRecord(parsed)) {
     return { ok: false, error: 'El JSON del proyecto debe ser un objeto.' };
+  }
+
+  if (
+    parsed.schemaVersion !== undefined &&
+    parsed.schemaVersion !== PROJECT_JSON_SCHEMA_VERSION
+  ) {
+    return {
+      ok: false,
+      error: `Versión de proyecto JSON no compatible: se esperaba "${PROJECT_JSON_SCHEMA_VERSION}".`,
+    };
   }
 
   if (!Array.isArray(parsed.lines)) {

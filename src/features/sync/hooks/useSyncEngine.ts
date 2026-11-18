@@ -54,13 +54,13 @@ export interface UseSyncEngineReturn {
     subMode: WordSyncSubMode;
     sniperHoldDuration?: boolean;
     sniperAutoAdvancePreRoll?: boolean;
-  }) => { shouldPause: boolean; completedLine: boolean };
+  }) => { shouldPause: boolean; shouldRewindPreRoll: boolean; completedLine: boolean };
   stampWordEnd: (params: {
     nowMs: number;
     subMode: WordSyncSubMode;
     sniperHoldDuration?: boolean;
     sniperAutoAdvancePreRoll?: boolean;
-  }) => { shouldPause: boolean; completedLine: boolean };
+  }) => { shouldPause: boolean; shouldRewindPreRoll: boolean; completedLine: boolean };
   distributeWordsInLine: (lineIndex: number, fallbackStartMs?: number) => void;
   nudgeWord: (
     lineIndex: number,
@@ -163,6 +163,7 @@ export function useSyncEngine(
       commitLines(result.lines, result.nextLineIndex, result.nextWordIndex);
       return {
         shouldPause: result.shouldPause,
+        shouldRewindPreRoll: result.shouldRewindPreRoll,
         completedLine: result.completedLine,
       };
     },
@@ -184,6 +185,7 @@ export function useSyncEngine(
       commitLines(result.lines, result.nextLineIndex, result.nextWordIndex);
       return {
         shouldPause: result.shouldPause,
+        shouldRewindPreRoll: result.shouldRewindPreRoll,
         completedLine: result.completedLine,
       };
     },

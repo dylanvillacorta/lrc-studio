@@ -22,6 +22,7 @@ export interface WordSyncResult {
   nextLineIndex: number;
   nextWordIndex: number;
   shouldPause: boolean;
+  shouldRewindPreRoll: boolean;
   completedLine: boolean;
 }
 
@@ -52,6 +53,7 @@ export function stampWordStart(
       nextLineIndex: lineIndex,
       nextWordIndex: wordIndex,
       shouldPause: false,
+      shouldRewindPreRoll: false,
       completedLine: false,
     };
   }
@@ -114,6 +116,7 @@ export function stampWordStart(
           nextLineIndex: lineIndex,
           nextWordIndex: nextWordIdx,
           shouldPause: !sniperAutoAdvancePreRoll,
+          shouldRewindPreRoll: sniperAutoAdvancePreRoll,
           completedLine: false,
         };
       }
@@ -122,6 +125,7 @@ export function stampWordStart(
         nextLineIndex: lineIndex,
         nextWordIndex: wordIndex,
         shouldPause: true,
+        shouldRewindPreRoll: false,
         completedLine: true,
       };
     }
@@ -130,6 +134,7 @@ export function stampWordStart(
       nextLineIndex: lineIndex,
       nextWordIndex: wordIndex,
       shouldPause: false,
+      shouldRewindPreRoll: false,
       completedLine: false,
     };
   }
@@ -141,6 +146,7 @@ export function stampWordStart(
         nextLineIndex: lineIndex,
         nextWordIndex: wordIndex + 1,
         shouldPause: false,
+        shouldRewindPreRoll: false,
         completedLine: false,
       };
     }
@@ -149,6 +155,7 @@ export function stampWordStart(
       nextLineIndex: lineIndex,
       nextWordIndex: wordIndex,
       shouldPause: false,
+      shouldRewindPreRoll: false,
       completedLine: true,
     };
   }
@@ -160,6 +167,7 @@ export function stampWordStart(
         nextLineIndex: lineIndex,
         nextWordIndex: wordIndex + 1,
         shouldPause: false,
+        shouldRewindPreRoll: false,
         completedLine: false,
       };
     }
@@ -169,6 +177,7 @@ export function stampWordStart(
         nextLineIndex: lineIndex + 1,
         nextWordIndex: 0,
         shouldPause: false,
+        shouldRewindPreRoll: false,
         completedLine: true,
       };
     }
@@ -179,7 +188,8 @@ export function stampWordStart(
     nextLineIndex: lineIndex,
     nextWordIndex: wordIndex,
     shouldPause: false,
-    completedLine: isLastWordInLine,
+    shouldRewindPreRoll: false,
+    completedLine: subMode === 'hold' ? false : isLastWordInLine,
   };
 }
 
@@ -208,6 +218,7 @@ export function stampWordEndOnRelease(
       nextLineIndex: lineIndex,
       nextWordIndex: wordIndex,
       shouldPause: false,
+      shouldRewindPreRoll: false,
       completedLine: false,
     };
   }
@@ -237,6 +248,7 @@ export function stampWordEndOnRelease(
         nextLineIndex: lineIndex,
         nextWordIndex: nextWordIdx,
         shouldPause: !sniperAutoAdvancePreRoll,
+        shouldRewindPreRoll: sniperAutoAdvancePreRoll,
         completedLine: false,
       };
     }
@@ -245,6 +257,7 @@ export function stampWordEndOnRelease(
       nextLineIndex: lineIndex,
       nextWordIndex: wordIndex,
       shouldPause: true,
+      shouldRewindPreRoll: false,
       completedLine: true,
     };
   }
@@ -255,6 +268,7 @@ export function stampWordEndOnRelease(
       nextLineIndex: lineIndex,
       nextWordIndex: wordIndex + 1,
       shouldPause: false,
+      shouldRewindPreRoll: false,
       completedLine: false,
     };
   }
@@ -265,6 +279,7 @@ export function stampWordEndOnRelease(
       nextLineIndex: lineIndex + 1,
       nextWordIndex: 0,
       shouldPause: false,
+      shouldRewindPreRoll: false,
       completedLine: true,
     };
   }
@@ -274,6 +289,7 @@ export function stampWordEndOnRelease(
     nextLineIndex: lineIndex,
     nextWordIndex: wordIndex,
     shouldPause: false,
+    shouldRewindPreRoll: false,
     completedLine: isLastWord,
   };
 }

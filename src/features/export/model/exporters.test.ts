@@ -78,7 +78,7 @@ describe('exporters', () => {
     }
   });
 
-  it('devuelve errores en español ante JSON inválido o estructura incompleta', () => {
+  it('devuelve errores en español ante JSON inválido, versión desconocida o estructura incompleta', () => {
     const emptyRes = parseProjectJson('   ');
     expect(emptyRes.ok).toBe(false);
 
@@ -94,10 +94,65 @@ describe('exporters', () => {
       error: 'El JSON del proyecto debe ser un objeto.',
     });
 
+    const unknownVersion = parseProjectJson(
+      JSON.stringify({ schemaVersion: '99.0-desconocida', lines: [] }),
+    );
+    expect(unknownVersion.ok).toBe(false);
+    if (!unknownVersion.ok) {
+      expect(unknownVersion.error).toContain('Versión de proyecto JSON no compatible');
+    }
+
     const noLines = parseProjectJson('{"metadata":{}}');
     expect(noLines).toEqual({
       ok: false,
       error: 'El proyecto JSON no contiene una lista válida de líneas.',
     });
+
+    // JSON mínimo sin schemaVersion sigue siendo compatible con el formato base
+    const minimal = parseProjectJson(
+      JSON.stringify({ lines: [{ text: 'Hola', startTime: 1.5, endTime: 2.0, words: [] }] }),
+    );
+    expect(minimal.ok).toBe(true);
+    if (minimal.ok) {
+      expect(minimal.data.lines[0]?.startMs).toBe(1500);
+    }
+  });
+
+  it('maneja redondeo a centésimas en LRC/ELRC, palabras repetidas, tiempos iguales y líneas vacías', () => {
+    const edgeLines = [
+      {
+        id: 'l1',
+        text: 'hey hey hey',
+        startMs: 1239,
+        endMs: 1239,
+        words: [
+          { id: 'w1', text: 'hey', startMs: 1239, endMs: 1400 },
+          { id: 'w2', text: 'hey', startMs: 59_999, endMs: 60_000 },
+          { id: 'w3', text: 'hey', startMs: 59_999, endMs: 60_500 },
+        ],
+      },
+      {
+        id: 'l2',
+        text: '',
+        startMs: 500,
+        endMs: 500,
+        words: [],
+      },
+    ];
+
+    const lrc = exportLrc(edgeLines, { ...demoMeta, offsetMs: -1000 });
+    expect(lrc).toContain('[00:00.23] hey hey hey');
+    expect(lrc).toContain('[00:00.00] ');
+
+    const elrc = exportElrc(edgeLines, demoMeta);
+    expect(elrc).toContain('[00:01.23] <00:01.23>hey <00:59.99>hey <00:59.99>hey');
+    expect(elrc).toContain('[00:00.50] ');
+
+    const json = JSON.parse(exportJson(edgeLines, demoMeta, { timeUnit: 'ms' })) as {
+      lines: Array<{ duration: number | null }>;
+    };
+    expect(json.lines[0]?.duration).toBe(0);
+
+    expect(exportLrc([], demoMeta).endsWith('\n')).toBe(true);
   });
 });

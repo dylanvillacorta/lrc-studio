@@ -45,6 +45,7 @@ export function useAudioPlayer(
 
   const internalAudioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const playbackRateRef = useRef(initialPlaybackRate);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(initialDurationMs);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -73,7 +74,8 @@ export function useAudioPlayer(
     }
 
     const audio = new Audio(src);
-    audio.playbackRate = playbackRate;
+    audio.playbackRate = playbackRateRef.current;
+    audio.preservesPitch = true;
     internalAudioRef.current = audio;
 
     return () => {
@@ -83,7 +85,7 @@ export function useAudioPlayer(
         internalAudioRef.current = null;
       }
     };
-  }, [externalRef, src, playbackRate]);
+  }, [externalRef, src]);
 
   // Sincroniza eventos del elemento de audio.
   useEffect(() => {
@@ -191,6 +193,7 @@ export function useAudioPlayer(
   const setPlaybackRate = useCallback(
     (rate: number) => {
       const safeRate = Math.max(0.25, Math.min(2.0, rate));
+      playbackRateRef.current = safeRate;
       setPlaybackRateState(safeRate);
       const audio = getAudioElement();
       if (audio) {

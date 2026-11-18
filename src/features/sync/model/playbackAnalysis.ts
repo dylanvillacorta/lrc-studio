@@ -35,7 +35,10 @@ export function findActiveLineIndex(
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i];
     if (line && line.startMs !== null && currentTimeMs >= line.startMs) {
-      if (line.endMs === null || currentTimeMs <= line.endMs + 600) {
+      if (
+        line.endMs === null ||
+        currentTimeMs <= Math.max(line.startMs, line.endMs) + 600
+      ) {
         return i;
       }
     }
@@ -56,7 +59,7 @@ export function findActiveWordIndex(
   for (let i = line.words.length - 1; i >= 0; i--) {
     const word = line.words[i];
     if (word && word.startMs !== null && currentTimeMs >= word.startMs) {
-      if (word.endMs === null || currentTimeMs <= word.endMs) {
+      if (word.endMs === null || currentTimeMs <= Math.max(word.startMs, word.endMs)) {
         return i;
       }
     }
@@ -103,7 +106,7 @@ export function getActiveLineWindow(
     syncedWordEnds.length > 0
       ? Math.max(...syncedWordEnds, lineStartMs + 1800)
       : nextLineStartMs !== null && nextLineStartMs > lineStartMs
-        ? nextLineStartMs - 100
+        ? Math.max(lineStartMs, nextLineStartMs - 100)
         : lineStartMs + 3600;
 
   const lineEndMs =
@@ -134,16 +137,27 @@ export function computePreRollStartMs(
 }
 
 /**
- * Determina el estado del semáforo de Pre-Roll según el tiempo restante hasta el objetivo:
- * - `green`: <= 350 ms (¡ya / listo para marcar!)
- * - `amber`: > 350 ms y <= 1200 ms (prepararse)
- * - `red`: > 1200 ms (esperar)
+ * Determina el estado del semáforo de Pre-Roll según el tiempo restante hasta el objetivo.
+ *
+ * El archivo base (`docs/base/lyricsync_studio_pro_2_00.tsx`, líneas 2080-2130) mostraba una
+ * barra continua sin discretización en tres luces; el wireframe (`docs/wireframe/Palabra.dc.html`,
+ * línea 61) y `docs/DISENO.md` definen el semáforo de 3 luces para la cuenta de 2.5 s:
+ * - `red`: parte alta de la cuenta (`> 66%` del Pre-Roll; con 2500 ms equivale a `> 1650 ms`).
+ * - `amber`: mitad de la cuenta (`> 20%` y `<= 66%`; con 2500 ms cubre `501–1650 ms`, incluido el `−1.4s` del wireframe).
+ * - `green`: tramo final listo para marcar (`<= 20%`; con 2500 ms equivale a `<= 500 ms`).
  */
-export function getPreRollTrafficLight(remainingMs: number): PreRollTrafficLight {
-  if (remainingMs <= 350) {
+export function getPreRollTrafficLight(
+  remainingMs: number,
+  preRollMs = DEFAULT_PRE_ROLL_MS,
+): PreRollTrafficLight {
+  const safePreRollMs = Math.max(1, preRollMs);
+  const greenThresholdMs = Math.round(safePreRollMs * 0.2);
+  const amberThresholdMs = Math.round(safePreRollMs * 0.66);
+
+  if (remainingMs <= greenThresholdMs) {
     return 'green';
   }
-  if (remainingMs <= 1200) {
+  if (remainingMs <= amberThresholdMs) {
     return 'amber';
   }
   return 'red';

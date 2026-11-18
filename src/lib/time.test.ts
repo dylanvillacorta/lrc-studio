@@ -22,9 +22,18 @@ describe('formatLrcTimestamp', () => {
     expect(formatLrcTimestamp(65_432)).toBe('01:05.43');
   });
 
+  it('trunca milisegundos a centésimas sin desbordar segundos en bordes', () => {
+    expect(formatLrcTimestamp(9)).toBe('00:00.00');
+    expect(formatLrcTimestamp(1_234)).toBe('00:01.23');
+    expect(formatLrcTimestamp(1_239)).toBe('00:01.23');
+    expect(formatLrcTimestamp(59_999)).toBe('00:59.99');
+    expect(formatLrcTimestamp(60_000)).toBe('01:00.00');
+  });
+
   it('limita valores negativos o no finitos a 00:00.00', () => {
     expect(formatLrcTimestamp(-100)).toBe('00:00.00');
     expect(formatLrcTimestamp(Number.NaN)).toBe('00:00.00');
+    expect(formatLrcTimestamp(Number.POSITIVE_INFINITY)).toBe('00:00.00');
   });
 });
 

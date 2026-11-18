@@ -45,6 +45,7 @@ describe('wordSync', () => {
     expect(step1.lines[0]?.words[0]?.endMs).toBe(1880);
     expect(step1.nextWordIndex).toBe(1);
     expect(step1.shouldPause).toBe(false);
+    expect(step1.shouldRewindPreRoll).toBe(true);
     expect(step1.completedLine).toBe(false);
 
     const step2 = stampWordStart(step1.lines, {
@@ -120,5 +121,89 @@ describe('wordSync', () => {
     expect(nudged50[0]?.words[2]?.endMs).toBe(
       (distributed[0]?.words[2]?.endMs ?? 0) + 50,
     );
+  });
+
+  it('soporta palabras repetidas, tiempos iguales y fin menor que inicio', () => {
+    const repeatedLines: LyricLine[] = [
+      {
+        id: 'rep',
+        text: 'sí sí sí',
+        startMs: 3000,
+        endMs: 2000, // fin menor que inicio
+        words: [
+          { id: 'w1', text: 'sí', startMs: null, endMs: null },
+          { id: 'w2', text: 'sí', startMs: null, endMs: null },
+          { id: 'w3', text: 'sí', startMs: null, endMs: null },
+        ],
+      },
+    ];
+
+    // Tiempos iguales al marcar palabras repetidas secuencialmente en modo tap
+    const t1 = stampWordStart(repeatedLines, {
+      lineIndex: 0,
+      wordIndex: 0,
+      nowMs: 3000,
+      subMode: 'tap',
+    });
+    const t2 = stampWordStart(t1.lines, {
+      lineIndex: 0,
+      wordIndex: t1.nextWordIndex,
+      nowMs: 3000,
+      subMode: 'tap',
+    });
+    expect(t2.lines[0]?.words[0]?.endMs).toBe(3050);
+    expect(t2.lines[0]?.words[1]?.startMs).toBe(3000);
+    expect(t2.nextWordIndex).toBe(2);
+
+    // En modo hold: presionar última palabra no marca completedLine hasta soltar, y release con fin < inicio aplica +60 ms
+    const holdDown = stampWordStart(t2.lines, {
+      lineIndex: 0,
+      wordIndex: 2,
+      nowMs: 3500,
+      subMode: 'hold',
+    });
+    expect(holdDown.completedLine).toBe(false);
+    const holdUp = stampWordEndOnRelease(holdDown.lines, {
+      lineIndex: 0,
+      wordIndex: 2,
+      nowMs: 3200,
+      subMode: 'hold',
+    });
+    expect(holdUp.lines[0]?.words[2]?.endMs).toBe(3560);
+    expect(holdUp.completedLine).toBe(true);
+
+    // distributeWordsEvenlyInLine con fin menor que inicio garantiza endMs >= startMs
+    const distributed = distributeWordsEvenlyInLine(repeatedLines, 0);
+    expect(distributed[0]?.startMs).toBe(3000);
+    expect(distributed[0]?.endMs).toBe(3500);
+    expect(distributed[0]?.words[2]?.endMs).toBeGreaterThan(3000);
+  });
+
+  it('en Francotirador con sniperHoldDuration marca inicio al presionar y rebobina al soltar', () => {
+    const lines = makeWordLines();
+    const down = stampWordStart(lines, {
+      lineIndex: 0,
+      wordIndex: 0,
+      nowMs: 1600,
+      subMode: 'sniper',
+      sniperHoldDuration: true,
+      sniperAutoAdvancePreRoll: true,
+    });
+    expect(down.lines[0]?.words[0]?.endMs).toBeNull();
+    expect(down.nextWordIndex).toBe(0);
+    expect(down.shouldRewindPreRoll).toBe(false);
+
+    const up = stampWordEndOnRelease(down.lines, {
+      lineIndex: 0,
+      wordIndex: 0,
+      nowMs: 2050,
+      subMode: 'sniper',
+      sniperHoldDuration: true,
+      sniperAutoAdvancePreRoll: true,
+    });
+    expect(up.lines[0]?.words[0]?.endMs).toBe(2050);
+    expect(up.nextWordIndex).toBe(1);
+    expect(up.shouldPause).toBe(false);
+    expect(up.shouldRewindPreRoll).toBe(true);
   });
 });

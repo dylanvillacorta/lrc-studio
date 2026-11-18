@@ -49,7 +49,7 @@ export function distributeWordsEvenlyInLine(
   updated[lineIndex] = {
     ...line,
     startMs: Math.round(startMs),
-    endMs: Math.round(endMs),
+    endMs: Math.round(Math.max(startMs + totalSpanMs, endMs)),
     words: distributedWords,
   };
   return updated;

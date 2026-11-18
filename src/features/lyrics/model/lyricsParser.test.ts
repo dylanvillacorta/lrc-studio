@@ -71,5 +71,32 @@ describe('lyricsParser', () => {
 
   it('devuelve arreglo vacío si el texto está vacío', () => {
     expect(buildStructuredLinesFromText('   \n  ')).toEqual([]);
+    expect(mergeRawTextWithExistingLines('\n  \r\n ', [])).toEqual([]);
+  });
+
+  it('conserva marcas independientes por posición cuando hay palabras repetidas y líneas vacías intermedias', () => {
+    const existing = buildStructuredLinesFromText('la la la\n\nhoy hoy');
+    existing[0] = {
+      ...existing[0]!,
+      startMs: 1000,
+      endMs: 3000,
+      words: [
+        { id: 'rep-0', text: 'la', startMs: 1000, endMs: 1400 },
+        { id: 'rep-1', text: 'la', startMs: 1500, endMs: 2000 },
+        { id: 'rep-2', text: 'la', startMs: 2100, endMs: 2900 },
+      ],
+    };
+
+    const merged = mergeRawTextWithExistingLines('la la la la\n\nhoy hoy', existing);
+    expect(merged).toHaveLength(2);
+    expect(merged[0]?.words.map((w) => w.id).slice(0, 3)).toEqual([
+      'rep-0',
+      'rep-1',
+      'rep-2',
+    ]);
+    expect(merged[0]?.words[0]?.startMs).toBe(1000);
+    expect(merged[0]?.words[1]?.startMs).toBe(1500);
+    expect(merged[0]?.words[2]?.startMs).toBe(2100);
+    expect(merged[0]?.words[3]?.startMs).toBeNull();
   });
 });

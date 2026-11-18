@@ -1,4 +1,5 @@
 export {
+  PROJECT_JSON_SCHEMA_VERSION,
   exportElrc,
   exportJson,
   exportLrc,

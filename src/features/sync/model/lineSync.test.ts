@@ -61,4 +61,51 @@ describe('lineSync', () => {
     const minus50 = nudgeLineTime(plus10, 0, 'startMs', -50);
     expect(minus50[0]?.startMs).toBe(0);
   });
+
+  it('tolera arreglo de líneas vacío sin fallar', () => {
+    expect(stampLineStart([], 0, 1000)).toEqual({ lines: [], nextLineIndex: 0 });
+    expect(stampLineEnd([], 0, 1000)).toEqual({ lines: [], nextLineIndex: 0 });
+    expect(undoLineSync([], 0, 4000)).toEqual({
+      lines: [],
+      nextLineIndex: 0,
+      rewindTargetMs: 1500,
+    });
+    expect(nudgeLineTime([], 0, 'startMs', 50)).toEqual([]);
+  });
+
+  it('maneja tiempos iguales y fin menor que inicio al marcar líneas', () => {
+    const s1 = stampLineStart(makeLines(), 0, 2000, false);
+    const s2 = stampLineStart(s1.lines, 1, 2000, false);
+    expect(s2.lines[0]?.endMs).toBe(2100);
+    expect(s2.lines[1]?.startMs).toBe(2000);
+
+    // Fin menor que inicio al usar stampLineEnd -> respeta mínimo +150 ms
+    const endedEarly = stampLineEnd(s2.lines, 1, 1500, true);
+    expect(endedEarly.lines[1]?.endMs).toBe(2150);
+
+    // Re-marcar inicio después del fin existente limpia el endMs inválido
+    const reStamped = stampLineStart(endedEarly.lines, 1, 3000, true);
+    expect(reStamped.lines[1]?.startMs).toBe(3000);
+    expect(reStamped.lines[1]?.endMs).toBeNull();
+  });
+
+  it('permite deshacer varias veces seguidas hasta la primera línea', () => {
+    const s1 = stampLineStart(makeLines(), 0, 3000, false);
+    const s2 = stampLineStart(s1.lines, s1.nextLineIndex, 6000, false);
+    expect(s2.nextLineIndex).toBe(2);
+
+    const u1 = undoLineSync(s2.lines, s2.nextLineIndex, 7000);
+    expect(u1.nextLineIndex).toBe(1);
+    expect(u1.lines[1]?.startMs).toBeNull();
+    expect(u1.rewindTargetMs).toBe(4000);
+
+    const u2 = undoLineSync(u1.lines, u1.nextLineIndex, 4000);
+    expect(u2.nextLineIndex).toBe(0);
+    expect(u2.lines[0]?.startMs).toBeNull();
+    expect(u2.rewindTargetMs).toBe(1000);
+
+    const u3 = undoLineSync(u2.lines, u2.nextLineIndex, 1000);
+    expect(u3.nextLineIndex).toBe(0);
+    expect(u3.rewindTargetMs).toBe(0);
+  });
 });

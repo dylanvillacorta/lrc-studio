@@ -66,11 +66,59 @@ describe('playbackAnalysis', () => {
     expect(computePreRollStartMs(null)).toBe(0);
   });
 
-  it('evalúa el semáforo de Pre-Roll en rojo, ámbar y verde', () => {
+  it('evalúa el semáforo de Pre-Roll alineado con el wireframe (rojo alto, ámbar mitad, verde final)', () => {
+    expect(getPreRollTrafficLight(2500)).toBe('red');
     expect(getPreRollTrafficLight(2000)).toBe('red');
+    expect(getPreRollTrafficLight(1651)).toBe('red');
+    expect(getPreRollTrafficLight(1650)).toBe('amber');
+    expect(getPreRollTrafficLight(1400)).toBe('amber'); // caso -1.4s de Palabra.dc.html
     expect(getPreRollTrafficLight(800)).toBe('amber');
+    expect(getPreRollTrafficLight(500)).toBe('green');
     expect(getPreRollTrafficLight(250)).toBe('green');
+    expect(getPreRollTrafficLight(0)).toBe('green');
     expect(getPreRollTrafficLight(-50)).toBe('green');
+
+    // Escala proporcional cuando se usa un Pre-Roll distinto (p. ej. 4000 ms)
+    expect(getPreRollTrafficLight(3000, 4000)).toBe('red');
+    expect(getPreRollTrafficLight(2000, 4000)).toBe('amber');
+    expect(getPreRollTrafficLight(700, 4000)).toBe('green');
+  });
+
+  it('tolera tiempos iguales, fin menor que inicio, líneas vacías y Pre-Roll con inicio < 2.5 s', () => {
+    const edgeLines: LyricLine[] = [
+      {
+        id: 'e1',
+        text: 'Misma marca',
+        startMs: 1200,
+        endMs: 900, // fin menor que inicio
+        words: [
+          { id: 'ew1', text: 'Misma', startMs: 1200, endMs: 1200 },
+          { id: 'ew2', text: 'marca', startMs: 1200, endMs: 1000 },
+        ],
+      },
+      {
+        id: 'e2',
+        text: 'Igual inicio',
+        startMs: 1200,
+        endMs: 2000,
+        words: [],
+      },
+    ];
+
+    expect(findActiveLineIndex(edgeLines, 1200)).toBe(1);
+    expect(findActiveLineIndex(edgeLines.slice(0, 1), 1200)).toBe(0);
+    expect(findActiveWordIndex(edgeLines[0], 1200)).toBe(1);
+    expect(findActiveWordIndex(edgeLines[1], 1200)).toBe(-1);
+    expect(findActiveLineIndex([], 1000)).toBe(-1);
+
+    const winEarly = getActiveLineWindow(edgeLines, 0, { preRollMs: 2500 });
+    expect(winEarly.lineStartMs).toBe(1200);
+    expect(winEarly.lineEndMs).toBe(1700); // clamped >= lineStartMs + 500
+    expect(winEarly.windowStartMs).toBe(0);
+
+    expect(computePreRollStartMs(0, 2500)).toBe(0);
+    expect(computePreRollStartMs(2499, 2500)).toBe(0);
+    expect(computePreRollStartMs(2500, 2500)).toBe(0);
   });
 
   it('calcula el progreso de líneas y palabras sincronizadas', () => {
