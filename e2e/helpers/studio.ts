@@ -58,6 +58,7 @@ export async function selectSyncMode(
 ): Promise<void> {
   await page
     .getByRole('group', { name: 'Modo de sincronización' })
+    .first()
     .getByRole('button', { name: modeLabel, exact: true })
     .click();
 }

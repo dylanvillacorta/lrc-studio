@@ -24,7 +24,6 @@ export interface KaraokePreviewProps {
   lines: readonly LyricLine[];
   syncMode: SyncSegmentedMode;
   pausedTimeMs: number;
-  hideModeSegmented?: boolean;
   getCurrentTimeMs: () => number;
   onSelectMode: (mode: SyncSegmentedMode) => void;
   onTogglePlay: () => void;
@@ -52,7 +51,6 @@ export const KaraokePreview = memo(function KaraokePreview({
   lines,
   syncMode,
   pausedTimeMs,
-  hideModeSegmented = false,
   getCurrentTimeMs,
   onSelectMode,
   onTogglePlay,
@@ -171,15 +169,13 @@ export const KaraokePreview = memo(function KaraokePreview({
   if (!hasAudio) {
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-3">
-        {!hideModeSegmented ? (
-          <Segmented
-            options={SYNC_MODE_OPTIONS}
-            value={syncMode}
-            onChange={onSelectMode}
-            aria-label="Modo de sincronización"
-            className={SYNC_SEGMENTED_CLASS}
-          />
-        ) : null}
+        <Segmented
+          options={SYNC_MODE_OPTIONS}
+          value={syncMode}
+          onChange={onSelectMode}
+          aria-label="Modo de sincronización"
+          className={SYNC_SEGMENTED_CLASS}
+        />
         <NoAudioCard onUploadAudio={onUploadAudio} onUseDemo={onUseDemo} />
       </div>
     );
@@ -190,15 +186,13 @@ export const KaraokePreview = memo(function KaraokePreview({
       aria-label="Vista previa Karaoke"
       className="flex-1 min-h-0 flex flex-col gap-2.5 [@media(max-height:720px)]:gap-1.5"
     >
-      {!hideModeSegmented ? (
-        <Segmented
-          options={SYNC_MODE_OPTIONS}
-          value={syncMode}
-          onChange={onSelectMode}
-          aria-label="Modo de sincronización"
-          className={SYNC_SEGMENTED_CLASS}
-        />
-      ) : null}
+      <Segmented
+        options={SYNC_MODE_OPTIONS}
+        value={syncMode}
+        onChange={onSelectMode}
+        aria-label="Modo de sincronización"
+        className={SYNC_SEGMENTED_CLASS}
+      />
 
       <div className="boton rounded-[20px] px-3 py-2 flex items-center justify-between gap-2 flex-none [@media(max-height:720px)]:py-1.5">
         <div className="flex items-center gap-2 min-w-0">

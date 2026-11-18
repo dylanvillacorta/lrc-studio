@@ -70,7 +70,8 @@ export function DesktopLayout() {
     flush: flushPendingSave,
   });
 
-  const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
+  const [burstActive, setBurstActive] = useState(false);
+  const [karaokeActive, setKaraokeActive] = useState(false);
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
   const [liveNotice, setLiveNotice] = useState('');
@@ -79,8 +80,6 @@ export function DesktopLayout() {
   useEffect(() => {
     playerTimeRef.current = player.currentTime;
   }, [player.currentTime]);
-
-  const getCurrentTimeMs = useCallback(() => playerTimeRef.current, []);
 
   const durationMs =
     player.duration > 0
@@ -92,7 +91,6 @@ export function DesktopLayout() {
       : DEFAULT_PRE_ROLL_MS;
   const sniperMode = project?.settings.sniperMode ?? true;
   const subMode: WordSyncSubMode = sniperMode ? 'sniper' : holdMode ? 'hold' : 'tap';
-  const burstActive = syncSubView === 'burst';
 
   const centerView: DesktopCenterView =
     activeTab === 'lyrics' ||
@@ -102,10 +100,10 @@ export function DesktopLayout() {
       ? activeTab
       : 'editor';
 
-  const syncMode: DesktopSyncMode = syncSubView === 'burst'
-    ? 'burst'
-    : syncSubView === 'karaoke'
-      ? 'karaoke'
+  const syncMode: DesktopSyncMode = karaokeActive
+    ? 'karaoke'
+    : burstActive
+      ? 'burst'
       : activeTab === 'word'
         ? 'word'
         : 'line';
@@ -142,20 +140,24 @@ export function DesktopLayout() {
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
       if (mode === 'line') {
-        setSyncSubView('default');
+        setKaraokeActive(false);
+        setBurstActive(false);
         setActiveTab('sync');
       } else if (mode === 'word') {
-        setSyncSubView('default');
+        setKaraokeActive(false);
+        setBurstActive(false);
         setActiveTab('word');
-      } else if (mode === 'karaoke') {
-        setSyncSubView('karaoke');
-        setActiveTab('sync');
       } else if (mode === 'burst' && sync.lines.length > 0) {
         const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
-        setSyncSubView('burst');
+        setKaraokeActive(false);
+        setBurstActive(true);
         setActiveTab('sync');
         player.seekTo(win.windowStartMs);
         void player.play();
+      } else if (mode === 'karaoke') {
+        setBurstActive(false);
+        setKaraokeActive(true);
+        setActiveTab('sync');
       }
     },
     [durationMs, player, preRollMs, setActiveTab, sync.activeLineIndex, sync.lines],
@@ -299,7 +301,8 @@ export function DesktopLayout() {
 
   const handleOpenLoupe = () => {
     if (!activeLine) return;
-    setSyncSubView('default');
+    setBurstActive(false);
+    setKaraokeActive(false);
     setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
     setActiveTab('loupe');
   };
@@ -375,24 +378,6 @@ export function DesktopLayout() {
             />
           ) : !audioUrl ? (
             <NoAudioCard onUploadAudio={handleUploadAudio} onUseDemo={handleUseDemo} />
-          ) : syncSubView === 'karaoke' ? (
-            <div className="relieve rounded-[26px] p-5 flex-1 min-h-0 flex flex-col">
-              <KaraokePreview
-                hasAudio={Boolean(audioUrl)}
-                durationMs={durationMs}
-                isPlaying={player.isPlaying}
-                lines={sync.lines}
-                syncMode="karaoke"
-                pausedTimeMs={player.isPlaying ? -1 : player.currentTime}
-                hideModeSegmented
-                getCurrentTimeMs={getCurrentTimeMs}
-                onSelectMode={handleSelectMode}
-                onTogglePlay={player.togglePlay}
-                onSeek={player.seekTo}
-                onUploadAudio={handleUploadAudio}
-                onUseDemo={handleUseDemo}
-              />
-            </div>
           ) : (
             <>
               <DesktopWaveformCard
@@ -424,7 +409,7 @@ export function DesktopLayout() {
                   <RaisedButton
                     size="sm"
                     onClick={() => {
-                      setSyncSubView('default');
+                      setBurstActive(false);
                       player.pause();
                     }}
                     className="min-h-12 px-3 text-xs font-extrabold"
@@ -433,42 +418,61 @@ export function DesktopLayout() {
                   </RaisedButton>
                 </div>
               ) : null}
-              {syncMode === 'word' ? (
-                <DesktopWordStage
-                  activeLine={activeLine}
-                  activeWordIndex={sync.activeWordIndex}
-                  currentTimeMs={player.currentTime}
-                  preRollMs={preRollMs}
-                  sniperMode={sniperMode}
-                  holdMode={holdMode}
-                  onToggleSniper={() => {
-                    if (project) updateProjectMetadata({ settings: { ...project.settings, sniperMode: !sniperMode } });
-                  }}
-                  onToggleHold={() => setHoldMode((prev) => !prev)}
-                  onRepeatPreRoll={handleRepeatPreRoll}
-                  onStampWordStart={handleStampStart}
-                  onStampWordEnd={handleStampEnd}
+              {syncMode === 'karaoke' ? (
+                <KaraokePreview
+                  hasAudio={Boolean(audioUrl)}
+                  durationMs={durationMs}
+                  isPlaying={player.isPlaying}
+                  lines={sync.lines}
+                  syncMode="karaoke"
+                  pausedTimeMs={player.currentTime}
+                  getCurrentTimeMs={() => playerTimeRef.current}
+                  onSelectMode={handleSelectMode}
+                  onTogglePlay={player.togglePlay}
+                  onSeek={player.seekTo}
+                  onUploadAudio={handleUploadAudio}
+                  onUseDemo={handleUseDemo}
                 />
-              ) : null}
-              <DesktopLineList
-                lines={sync.lines}
-                activeLineIndex={sync.activeLineIndex}
-                onSelectLine={(index) => {
-                  sync.setActiveLineIndex(index);
-                  sync.setActiveWordIndex(0);
-                }}
-              />
-              {syncMode !== 'word' ? (
-                <SyncButton
-                  title={sync.lines.length > 0 ? `MARCAR LÍNEA ${sync.activeLineIndex + 1}` : 'SIN LETRA PARA MARCAR'}
-                  hint="Toca o pulsa Espacio al empezar a cantarla"
-                  disabled={sync.lines.length === 0}
-                  onPointerDown={handleStampStart}
-                  onContextMenu={(e) => e.preventDefault()}
-                  className="min-h-[84px]"
-                  style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none' }}
-                />
-              ) : null}
+              ) : (
+                <>
+                  {syncMode === 'word' ? (
+                    <DesktopWordStage
+                      activeLine={activeLine}
+                      activeWordIndex={sync.activeWordIndex}
+                      currentTimeMs={player.currentTime}
+                      preRollMs={preRollMs}
+                      sniperMode={sniperMode}
+                      holdMode={holdMode}
+                      onToggleSniper={() => {
+                        if (project) updateProjectMetadata({ settings: { ...project.settings, sniperMode: !sniperMode } });
+                      }}
+                      onToggleHold={() => setHoldMode((prev) => !prev)}
+                      onRepeatPreRoll={handleRepeatPreRoll}
+                      onStampWordStart={handleStampStart}
+                      onStampWordEnd={handleStampEnd}
+                    />
+                  ) : null}
+                  <DesktopLineList
+                    lines={sync.lines}
+                    activeLineIndex={sync.activeLineIndex}
+                    onSelectLine={(index) => {
+                      sync.setActiveLineIndex(index);
+                      sync.setActiveWordIndex(0);
+                    }}
+                  />
+                  {syncMode !== 'word' ? (
+                    <SyncButton
+                      title={sync.lines.length > 0 ? `MARCAR LÍNEA ${sync.activeLineIndex + 1}` : 'SIN LETRA PARA MARCAR'}
+                      hint="Toca o pulsa Espacio al empezar a cantarla"
+                      disabled={sync.lines.length === 0}
+                      onPointerDown={handleStampStart}
+                      onContextMenu={(e) => e.preventDefault()}
+                      className="min-h-[84px]"
+                      style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none' }}
+                    />
+                  ) : null}
+                </>
+              )}
             </>
           )}
         </main>

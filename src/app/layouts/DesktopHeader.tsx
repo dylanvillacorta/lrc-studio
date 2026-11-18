@@ -58,7 +58,7 @@ export function DesktopHeader({
         value={syncMode}
         onChange={(mode) => onSelectSyncMode(mode)}
         aria-label="Modo de sincronización"
-        className="w-[320px] sm:w-[360px] max-w-full"
+        className="w-[300px] sm:w-[340px] max-w-full"
       />
 
       <RaisedButton
