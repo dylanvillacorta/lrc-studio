@@ -18,6 +18,11 @@ import {
   type SyncSegmentedMode,
 } from '@/features/sync/components/syncViewHelpers';
 import { WordSyncScreen } from '@/features/sync/components/WordSyncScreen';
+import {
+  UpdateBanner,
+  VersionFooter,
+  useVersionCheck,
+} from '@/features/version';
 import { downloadTextFile } from '@/lib/download';
 import { NavBar, type NavBarItem } from '@/ui';
 
@@ -52,6 +57,9 @@ export function MobileLayout() {
 
   const catalog = useCatalog(storage);
   const { refresh: refreshCatalog } = catalog;
+  const { updateAvailable, applyUpdate } = useVersionCheck({
+    flush: flushPendingSave,
+  });
   const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
@@ -226,6 +234,9 @@ export function MobileLayout() {
   return (
     <div className="min-h-dvh w-full bg-bg text-ink flex justify-center">
       <div className="w-full max-w-[430px] h-dvh flex flex-col overflow-hidden bg-bg">
+        <div className="px-4 pt-2 empty:hidden">
+          <UpdateBanner updateAvailable={updateAvailable} onUpdate={applyUpdate} />
+        </div>
         {showTopHeader ? (
           <MobileHeader
             title={project?.title || 'LyricSync Studio'}
@@ -427,6 +438,7 @@ export function MobileLayout() {
               </div>
             )
           ) : null}
+          <VersionFooter />
         </main>
 
         {showNavBar ? (
