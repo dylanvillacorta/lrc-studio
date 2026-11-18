@@ -349,6 +349,6 @@ Para cambios exclusivos de documentación (`docs/` o `AGENTS.md`) basta con revi
 
 ## 8. Release
 
-- **Preparado sin puerta:** rama `release/vX.Y.Z`, versión en `package.json`, build de producción (`dist/`), imagen Docker construida y probada en local (`docker build` y `docker run`, verificando cabeceras de caché con `curl`), notas de release en español y PR hacia `main` en verde.
-- **Puerta de producción (G1):** hacer merge a `main`, crear el tag `vX.Y.Z`, publicar el GitHub Release y subir la imagen a GHCR (`ghcr.io/dylanvillacorta/lrc-studio`). Requiere el mensaje único de G1 y esperar un sí explícito del usuario.
+- **Preparado sin puerta:** rama `release/vX.Y.Z`, versión en `package.json`, actualizar `docker-compose.yml` con `scripts/bump-compose-tag.sh X.Y.Z` dentro del mismo PR hacia `main` (para que al aprobar G1 `main` quede apuntando al tag exacto de la última release), build de producción (`dist/`), imagen Docker construida y probada en local (`bash scripts/verify-docker.sh`), notas de release en español y PR hacia `main` en verde.
+- **Puerta de producción (G1):** hacer merge a `main`, crear el tag `vX.Y.Z`, publicar el GitHub Release y subir el manifiesto multi-arquitectura (`linux/amd64`, `linux/arm64`) a GHCR (`ghcr.io/dylanvillacorta/lrc-studio`). Requiere el mensaje único de G1 y esperar un sí explícito del usuario.
 - **Tags de imagen Docker en GHCR:** `X.Y.Z`, `X.Y`, `latest` y `<sha-corto>`.
