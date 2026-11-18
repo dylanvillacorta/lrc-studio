@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Escritorio con teclado</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="neo.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>body{margin:0}.row{display:flex;align-items:center;gap:10px}.ci{padding:12px;border-radius:16px;display:flex;flex-direction:column;gap:8px}</style>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</helmet>
+<div class="dsk">
+  <div class="row" style="flex-wrap:wrap;gap:16px">
+    <div class="ibtn round raised-sm" style="width:48px;height:48px;color:var(--acc)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v14M8 7v6M16 6v8M4 10v2M20 9v4"/></svg></div>
+    <div style="font-weight:800;font-size:18px">LyricSync Studio</div>
+    <div style="flex:1;min-width:120px"></div>
+    <div class="seg" style="width:300px"><button>Línea</button><button class="on">Palabra</button><button>Ráfaga</button></div>
+    <div class="saved"><i></i>Guardado · 14:02</div>
+    <button class="btn sm"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 14v6h14v-6"/></svg>Exportar LRC / ELRC / JSON</button>
+  </div>
+
+  <div class="dsk-row">
+    <aside class="panel" style="flex:0 0 280px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:800;font-size:15px">Mis transcripciones</div>
+      <div class="well ci" style="border-radius:16px"><div style="font-weight:800">Noches de Verano</div><div class="sub">Luna Alba</div><div class="bar"><b style="width:75%"></b></div><div class="bar w"><b style="width:62%"></b></div></div>
+      <div class="ci raised-sm"><div style="font-weight:800">Cenizas</div><div class="sub">Río Sur</div><div class="bar"><b style="width:100%"></b></div><div class="bar w"><b style="width:41%"></b></div></div>
+      <div class="ci raised-sm"><div style="font-weight:800">Costa Norte</div><div class="sub">Faro</div><div class="bar"><b style="width:0%"></b></div><div class="bar w"><b style="width:0%"></b></div></div>
+      <button class="btn acc" style="margin-top:auto"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva transcripción</button>
+    </aside>
+
+    <main style="flex:1 1 480px;min-width:0;display:flex;flex-direction:column;gap:20px">
+      <div class="well" style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+        <div class="wv" style="height:110px">
+          <svg viewBox="0 0 304 100" preserveAspectRatio="none" aria-hidden="true"><path class="base" stroke-width="3" stroke-linecap="round" fill="none" d="M5 42V58M11 36V64M17 28V72M23 20V80M29 32V68M35 24V76M41 12V88M47 6V94M53 20V80M59 30V70M65 16V84M71 4V96M77 10V90M83 22V78M89 34V66M95 26V74M101 14V86M107 2V98M113 8V92M119 20V80M125 28V72M131 32V68M137 22V78M143 10V90M149 4V96M155 16V84M161 26V74M167 36V64M173 30V70M179 18V82M185 8V92M191 12V88M197 24V76M203 32V68M209 20V80M215 6V94M221 14V86M227 28V72M233 38V62M239 32V68M245 22V78M251 16V84M257 24V76M263 34V66M269 40V60M275 36V64M281 30V70M287 38V62M293 42V58M299 44V56"/></svg>
+          <div class="pl"><svg viewBox="0 0 304 100" preserveAspectRatio="none" aria-hidden="true"><path stroke-width="3" stroke-linecap="round" fill="none" d="M5 42V58M11 36V64M17 28V72M23 20V80M29 32V68M35 24V76M41 12V88M47 6V94M53 20V80M59 30V70M65 16V84M71 4V96M77 10V90M83 22V78M89 34V66M95 26V74M101 14V86M107 2V98M113 8V92M119 20V80M125 28V72M131 32V68M137 22V78M143 10V90M149 4V96M155 16V84M161 26V74M167 36V64M173 30V70M179 18V82M185 8V92M191 12V88M197 24V76M203 32V68M209 20V80M215 6V94M221 14V86M227 28V72M233 38V62M239 32V68M245 22V78M251 16V84M257 24V76M263 34V66M269 40V60M275 36V64M281 30V70M287 38V62M293 42V58M299 44V56"/></svg></div>
+          <div class="head" style="left:42%"></div>
+        </div>
+        <div class="row" style="justify-content:space-between">
+          <div class="tl mono" style="gap:14px"><span>01:12.340</span></div>
+          <div class="row"><button class="ibtn round" aria-label="Retroceder"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7M20 5l-7 7 7 7"/></svg></button><button class="ibtn round xl" aria-label="Reproducir"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button><button class="ibtn round" aria-label="Adelantar"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5l7 7-7 7M4 5l7 7-7 7"/></svg></button></div>
+          <div class="tl mono"><span>03:45.600</span></div>
+        </div>
+      </div>
+
+      <div class="well" style="padding:24px;display:flex;flex-direction:column;align-items:center;gap:14px;flex:1">
+        <div style="font-size:18px;font-weight:600;color:var(--mute)"><span style="color:var(--ok);font-weight:800">corazón</span> <span style="color:var(--ink);font-weight:800;text-decoration:underline;text-decoration-color:var(--acc);text-underline-offset:6px">de</span> sal y fuego</div>
+        <div class="sub" style="letter-spacing:.12em;font-weight:800;font-size:12px">PALABRA OBJETIVO</div>
+        <div style="font-size:96px;font-weight:800;line-height:1;color:var(--acc)">de</div>
+        <div class="row" style="gap:20px">
+          <div class="lamps" aria-hidden="true"><span class="lamp r"></span><span class="lamp a on"></span><span class="lamp g"></span></div>
+          <div class="mono" style="font-size:22px;font-weight:700">−1.4s</div>
+          <div style="font-weight:800">PREPÁRATE</div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button class="btn" style="color:var(--acc)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v5h5"/></svg>Repetir Pre-Roll</button>
+          <button class="sync" style="height:56px;width:260px;border-radius:20px;flex-direction:row;gap:10px"><span class="big" style="font-size:16px">MARCAR PALABRA</span></button>
+        </div>
+      </div>
+    </main>
+
+    <aside style="flex:0 0 320px;display:flex;flex-direction:column;gap:20px">
+      <div class="panel">
+        <div style="font-weight:800;font-size:15px;margin-bottom:12px">Inspector</div>
+        <div class="pl-lbl"><span>INICIO · «de»</span><span style="font-size:15px">01:12.340</span></div>
+        <div class="row" style="gap:8px;margin-bottom:12px"><button class="btn sm" style="flex:1;padding:0" >−50</button><button class="btn sm" style="flex:1;padding:0">−10</button><button class="btn sm" style="flex:1;padding:0">+10</button><button class="btn sm" style="flex:1;padding:0">+50</button></div>
+        <div class="pl-lbl"><span>FIN</span><span style="font-size:15px">01:12.690</span></div>
+        <div class="row" style="gap:8px"><button class="btn sm" style="flex:1;padding:0">−50</button><button class="btn sm" style="flex:1;padding:0">−10</button><button class="btn sm" style="flex:1;padding:0">+10</button><button class="btn sm" style="flex:1;padding:0">+50</button></div>
+      </div>
+      <div class="panel" style="flex:1;display:flex;flex-direction:column;gap:12px">
+        <div style="font-weight:800;font-size:15px">Atajos de teclado</div>
+        <div class="row"><span class="key">Espacio</span><span style="font-weight:600">Marcar línea / palabra</span></div>
+        <div class="row"><span class="key">R</span><span style="font-weight:600">Repetir Pre-Roll</span></div>
+        <div class="row"><span class="key">P</span><span style="font-weight:600">Reproducir / pausar</span></div>
+        <div class="row"><span class="key">←</span><span class="key">→</span><span style="font-weight:600">Ajustar ±50 ms</span></div>
+        <div class="row"><span class="key">[</span><span class="key">]</span><span style="font-weight:600">Ajustar ±10 ms</span></div>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

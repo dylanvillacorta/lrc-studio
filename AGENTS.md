@@ -313,22 +313,40 @@ Reglas de monitoreo:
 
 # Parte II — Este repositorio
 
-Pendiente de definir. Hasta que se complete, aplica solo la Parte I y donde esta remite a la Parte II se elige lo más
-conservador y se anota en *Supuestos*.
+Este repositorio implementa **LyricSync Studio**, una aplicación web local-first (preparada para Tauri v2) para sincronización de letras LRC/ELRC y karaoke a 60 FPS.
 
 ## 5. Fuentes de verdad
 
-Por definir.
+- [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md): contratos, estrategia de almacenamiento, autoguardado, catálogo y entrada táctil/teclado.
+- [docs/DISENO.md](docs/DISENO.md) y [docs/wireframe/](docs/wireframe/): sistema visual «Estudio táctil», tokens, componentes UI y pantallas.
+- [docs/base/lyricsync_studio_pro_2_00.tsx](docs/base/lyricsync_studio_pro_2_00.tsx): referencia de lógica de sincronización a conservar (modo línea, palabra por palabra con Pre-Roll y Francotirador, ráfaga de línea aislada, lupa de onda con bordes arrastrables, inspector 10 y 50 ms, karaoke 60 FPS, exportación JSON, ELRC y LRC).
+- [docs/RELEASE.md](docs/RELEASE.md): versionado, cache busting, Docker, GHCR y SEO.
+- [docs/BACKLOG.md](docs/BACKLOG.md): backlog planificado del sprint, dependencias y paralelismo.
+
+Jerarquía ante conflicto: `AGENTS.md` > `docs/`.
 
 ## 6. Concreciones de la Parte I
 
-Por definir (manifiesto de dependencias para G3, archivos compartidos que obligan a secuenciar worktrees, servicios
-locales, scripts de producción).
+- **Manifiesto de dependencias (G3):** `package.json` (`dependencies` y `devDependencies`) y `package-lock.json`. `Dockerfile` y `nginx.conf` no son dependencias. Las dependencias iniciales serán aprobadas por el usuario tras ser listadas por el coordinador en la tarea `T1`; cualquier dependencia nueva o actualización mayor posterior requiere G3.
+- **Archivos compartidos que obligan a secuenciar worktrees:** `src/storage/**`, `src/ui/**`, `src/types/**`, `tailwind.config.*`, `package.json`, `index.html`, `nginx.conf`, `Dockerfile`.
+- **Pruebas con puertos fijos:** las pruebas E2E con Playwright usan puertos fijos; ejecutar E2E en **un worktree a la vez**.
+- **Servicios locales:** `vite dev server` (puerto `5173`) y `vite preview` (puerto `4173`). Vaciar `IndexedDB` del navegador de prueba es autónomo.
+- **Scripts que escriben en producción:** ninguno hoy. Publicar la imagen en GHCR es puerta **G1**.
 
 ## 7. Verificación obligatoria
 
-Por definir.
+En orden, todo en verde antes de integrar a `develop`:
+
+1. `npm run typecheck` (`tsc --noEmit`)
+2. `npm run lint`
+3. `npm run test` (Vitest, incluye `fake-indexeddb` para el adaptador, lógica de sincronización y exportadores LRC, ELRC y JSON)
+4. `npm run build` (`vite build`)
+5. `npm run test:e2e` (Playwright en viewport móvil `390x844` y escritorio `1280x800`: restaurar sesión tras recarga, autoguardado, catálogo, botón de sincronización con `pointerdown`, atajos de teclado y meta etiquetas SEO)
+
+Para cambios exclusivos de documentación (`docs/` o `AGENTS.md`) basta con revisar el `git diff`.
 
 ## 8. Release
 
-Por definir (artefactos y dónde se publican).
+- **Preparado sin puerta:** rama `release/vX.Y.Z`, versión en `package.json`, build de producción (`dist/`), imagen Docker construida y probada en local (`docker build` y `docker run`, verificando cabeceras de caché con `curl`), notas de release en español y PR hacia `main` en verde.
+- **Puerta de producción (G1):** hacer merge a `main`, crear el tag `vX.Y.Z`, publicar el GitHub Release y subir la imagen a GHCR (`ghcr.io/dylanvillacorta/lrc-studio`). Requiere el mensaje único de G1 y esperar un sí explícito del usuario.
+- **Tags de imagen Docker en GHCR:** `X.Y.Z`, `X.Y`, `latest` y `<sha-corto>`.

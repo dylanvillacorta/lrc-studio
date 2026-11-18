@@ -1,0 +1,24 @@
+# Backlog del Sprint — LyricSync Studio
+
+Modelos sugeridos según `AGENTS.md` §4:
+- **low:** `gemini-4-hydrogen-low` (scaffolding, maquetado, tipos, docs).
+- **medium:** `gemini-4-hydrogen-medium` (lógica de negocio, transacciones, refactor).
+- **high:** `gemini-4-hydrogen-high` (QA, tests, casos borde).
+
+| ID | Tarea | Depende de | Modelo | Paralelo | Criterio de aceptación |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `T1` | Scaffolding Vite + React + TS + Tailwind, scripts (`typecheck`, `lint`, `test`, `build`, `test:e2e`) y lista de dependencias iniciales para aprobación G3 | — | `low` | No | `npm run typecheck`, `lint`, `test` y `build` pasan en vacío y la lista de dependencias queda documentada. |
+| `T2` | Tipos compartidos (`src/types/`) y contrato `IStorageAdapter` | `T1` | `low` | No | Tipos compilados en TS estricto sin `any` y contrato `IStorageAdapter` completo. |
+| `T3` | `WebIndexedDBAdapter` + stub `TauriRustSqliteAdapter` + selector + pruebas con `fake-indexeddb` | `T2` | `medium` | No | Pruebas unitarias con `fake-indexeddb` en verde para proyectos, blobs, sesión y respaldo JSON. |
+| `T4` | Librería `src/ui/` y tokens Tailwind («Estudio táctil») | `T1` | `low` | Sí (con `T2`/`T3` si no toca `src/types/`) | Los 10 componentes de `src/ui/` renderizan con tokens exactos de `neo.css` y fuentes autoalojadas. |
+| `T5` | Migración de la lógica de sincronización desde `docs/base/lyricsync_studio_pro_2_00.tsx` a `src/features/sync/` y `src/features/export/` sin llamadas directas a storage | `T2`, `T3` | `medium` | No | Modo línea, palabra (Pre-Roll y Francotirador), ráfaga, 60 FPS y exportadores LRC/ELRC/JSON cubiertos por Vitest. |
+| `T6` | Autoguardado (`debounce` 300 ms, `visibilitychange`, `pagehide`, `flush`) y restauración de sesión | `T3`, `T5` | `medium` | No | Al recargar se restaura canción, `ObjectURL`, `waveformPeaks` y posición exacta de línea y palabra. |
+| `T7` | Catálogo «Mis Transcripciones» (`src/features/catalog/`) | `T3`, `T4` | `medium` | Sí (con `T6` si no comparten archivos) | Lista tarjetas con progreso y ejecuta Abrir, Nueva, Duplicar, Exportar `.json` y Eliminar. |
+| `T8` | Pantallas móviles (Sincronizar linea, Palabra con Pre-Roll y botón gigante `onPointerDown`/`onPointerUp`) | `T4`, `T5`, `T6` | `medium` | No | Flujo móvil completo en `390x844` con objetivos táctiles ≥ 48 px y palabra objetivo a 72 px. |
+| `T9` | Lupa de onda con bordes arrastrables e inspector `10 ms` / `50 ms` (`src/features/loupe/`) | `T4`, `T5` | `medium` | Sí (con `T8` si no tocan `src/ui/`) | Bordes arrastrables ajustan `startMs`/`endMs` y botones de inspector ajustan `±10 ms` y `±50 ms`. |
+| `T10` | Vista de escritorio (`1280x800`) y atajos de teclado (`Espacio`, `R`, `P`, flechas, `[` / `]`) | `T4`, `T5`, `T9` | `medium` | No | Diseño multipanel funcional en escritorio con todos los atajos operativos y `Keycap` visibles. |
+| `T11` | Pantallas Letra y Exportar siguiendo «Estudio táctil» | `T4`, `T5` | `low` | Sí (con `T10` si no tocan `src/ui/`) | Edición de letra y exportación LRC/ELRC/JSON operativas en móvil y escritorio. |
+| `T12` | Versionado (`version.json`, `APP_VERSION`, `APP_COMMIT`, aviso con `flush`) y SEO (`index.html`, `robots.txt`, `sitemap.xml`, `manifest.webmanifest`) | `T1`, `T6` | `low` | Sí (con `T11` salvo `index.html`) | Aviso de nueva versión hace `flush` antes de recargar y SEO cumple `docs/RELEASE.md`. |
+| `T13` | `Dockerfile` multi-stage, `nginx.conf` (caché + CSP) y workflow GHCR | `T12` | `low` | No | `docker build` y `docker run` sirven la app en `8080` con cabeceras de caché y seguridad verificadas por `curl`. |
+| `T14` | Suite E2E Playwright (`390x844` y `1280x800`, sesión, autoguardado, catálogo, `pointerdown`, teclado, SEO) | `T7`–`T13` | `high` | No (puerto fijo) | `npm run test:e2e` pasa al 100% en ambos viewports. |
+| `T15` | Preparar release `v0.1.0` (`release/v0.1.0`, build, Docker local, notas, PR a `main`) | `T14` | `high` | No | PR a `main` en verde y listo para presentar en la puerta G1. |
