@@ -80,7 +80,28 @@ describe('LyricsScreen', () => {
     expect(html).toContain('Luces de neón');
     expect(html).toContain('2 líneas · 4 palabras');
     expect(html).toContain('Letra aplicada');
-    expect(html).toContain('Cargar letra de ejemplo');
+    expect(html).not.toContain('Cargar letra de ejemplo');
+    expect(html).toContain('placeholder="Nombre de la canción"');
+    expect(html).toContain('placeholder="Artista"');
+    expect(html).toContain('aria-required="true"');
     expect(html).toContain('Aplicar letra');
+  });
+
+  it('arranca vacía por defecto con placeholder de ejemplo en el textarea', () => {
+    const html = renderToString(
+      <LyricsScreen
+        title=""
+        artist=""
+        rawText=""
+        existingLines={[]}
+        onTitleChange={() => {}}
+        onArtistChange={() => {}}
+        onApply={() => {}}
+      />,
+    );
+
+    expect(html).toContain('0 líneas · 0 palabras');
+    expect(html).toContain('Escribe o pega la letra aquí...');
+    expect(html).not.toContain('Cargar letra de ejemplo');
   });
 });
