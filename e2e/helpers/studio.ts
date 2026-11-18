@@ -41,10 +41,10 @@ export async function createProjectWithLyricsAndWav(
   isMobile: boolean,
 ): Promise<void> {
   await openLyrics(page, isMobile);
-  await page.getByPlaceholder('Ej. Luces de neón').fill('Noches de Verano');
-  await page.getByPlaceholder('Ej. Estudio Nocturno').fill('Luna Alba');
+  await page.getByLabel('Título de la canción').fill('Noches de Verano');
+  await page.getByLabel('Artista').fill('Luna Alba');
   await page
-    .getByPlaceholder('Pega o escribe aquí la letra, una línea por verso...')
+    .getByLabel('Letra de la canción, una línea por verso')
     .fill(SAMPLE_E2E_LYRICS);
   await page.getByRole('button', { name: 'Aplicar letra' }).click();
 

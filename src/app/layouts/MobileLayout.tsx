@@ -5,8 +5,6 @@ import { CatalogPanel, useCatalog } from '@/features/catalog';
 import { ExportScreen, type ParsedProjectJson } from '@/features/export';
 import { LoupeScreen, type LineBounds } from '@/features/loupe';
 import {
-  buildStructuredLinesFromText,
-  INITIAL_DEMO_LYRICS,
   LyricsScreen,
   mergeRawTextWithExistingLines,
 } from '@/features/lyrics';
@@ -19,10 +17,7 @@ import {
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { LineSyncScreen } from '@/features/sync/components/LineSyncScreen';
-import {
-  createDemoAudioFile,
-  type SyncSegmentedMode,
-} from '@/features/sync/components/syncViewHelpers';
+import { type SyncSegmentedMode } from '@/features/sync/components/syncViewHelpers';
 import { WordSyncScreen } from '@/features/sync/components/WordSyncScreen';
 import {
   usePlaybackTime,
@@ -30,13 +25,13 @@ import {
 } from '@/features/sync/hooks/playbackTimeStore';
 import { usePlaybackLineTracking } from '@/features/sync/hooks/usePlaybackLineTracking';
 import {
+  InfoDialog,
   UpdateBanner,
-  VersionFooter,
   useVersionCheck,
 } from '@/features/version';
 import { downloadTextFile } from '@/lib/download';
 import type { LyricLine } from '@/types';
-import { NavBar, type NavBarItem } from '@/ui';
+import { NavBar, ScrollShadow, type NavBarItem } from '@/ui';
 
 const NAV_ITEMS: readonly NavBarItem<'catalog' | 'lyrics' | 'sync' | 'export'>[] = [
   { id: 'catalog', label: 'Catálogo', icon: 'library' },
@@ -115,9 +110,17 @@ export function MobileLayout() {
 
   const catalog = useCatalog(storage);
   const { refresh: refreshCatalog } = catalog;
-  const { updateAvailable, applyUpdate } = useVersionCheck({
+  const {
+    updateAvailable,
+    checking,
+    builtAt,
+    checkMessage,
+    checkNow,
+    applyUpdate,
+  } = useVersionCheck({
     flush: flushPendingSave,
   });
+  const [infoOpen, setInfoOpen] = useState(false);
   const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
@@ -210,7 +213,6 @@ export function MobileLayout() {
     activeLineIndex: syncActiveLineIndex,
     setActiveLineIndex: setSyncActiveLineIndex,
     setActiveWordIndex: setSyncActiveWordIndex,
-    replaceLines,
   } = sync;
 
   const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
@@ -285,17 +287,6 @@ export function MobileLayout() {
     },
     [attachAudio, createProject, project],
   );
-
-  const handleUseDemo = useCallback(async () => {
-    if (!project) {
-      await createProject({ title: 'Noches de Verano', artist: 'Luna Alba' });
-    }
-    const demo = createDemoAudioFile(28);
-    await attachAudio(demo.file);
-    if (syncLines.length === 0) {
-      replaceLines(buildStructuredLinesFromText(INITIAL_DEMO_LYRICS, true), false);
-    }
-  }, [attachAudio, createProject, project, replaceLines, syncLines.length]);
 
   const handleOpenLoupe = useCallback(() => {
     if (!sync.lines[sync.activeLineIndex]) {
@@ -450,14 +441,18 @@ export function MobileLayout() {
             saveStatus={saveStatus}
             onOpenCatalog={handleOpenCatalogFromHeader}
             onRetrySave={handleRetrySave}
+            onOpenInfo={() => setInfoOpen(true)}
           />
         ) : null}
 
-        <main
-          className={`flex-1 min-h-0 px-4 flex flex-col ${
+        <ScrollShadow
+          as="main"
+          className="flex-1 min-h-0"
+          disabled={activeTab === 'sync' || activeTab === 'word' || activeTab === 'loupe' || activeTab === 'catalog'}
+          contentClassName={`px-4 flex flex-col ${
             activeTab === 'sync' || activeTab === 'word' || activeTab === 'loupe'
-              ? 'pb-1.5 [@media(max-height:720px)]:pb-1 overflow-hidden'
-              : 'pb-3 [@media(max-height:720px)]:pb-1.5 overflow-y-auto'
+              ? 'pb-1.5 [@media(max-height:720px)]:pb-1'
+              : 'pb-3 [@media(max-height:720px)]:pb-1.5'
           }`}
         >
           {activeTab === 'catalog' ? (
@@ -525,7 +520,6 @@ export function MobileLayout() {
                 const merged = mergeRawTextWithExistingLines(rawText, sync.lines);
                 sync.replaceLines(merged);
               }}
-              onLoadDemo={handleUseDemo}
             />
           ) : null}
 
@@ -637,10 +631,7 @@ export function MobileLayout() {
               </div>
             )
           ) : null}
-          {activeTab === 'catalog' || activeTab === 'lyrics' || activeTab === 'export' ? (
-            <VersionFooter />
-          ) : null}
-        </main>
+        </ScrollShadow>
 
         {showNavBar ? (
           <NavBar
@@ -650,6 +641,16 @@ export function MobileLayout() {
             className="pt-1.5 pb-2.5 [&>button]:min-h-[48px] [@media(max-height:720px)]:pt-1 [@media(max-height:720px)]:pb-1.5 [@media(max-height:720px)]:[&>button]:min-h-[44px]"
           />
         ) : null}
+        <InfoDialog
+          open={infoOpen}
+          onClose={() => setInfoOpen(false)}
+          builtAt={builtAt}
+          updateAvailable={updateAvailable}
+          checking={checking}
+          checkMessage={checkMessage}
+          onCheckUpdates={checkNow}
+          onApplyUpdate={applyUpdate}
+        />
       </div>
     </div>
   );

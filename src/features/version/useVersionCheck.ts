@@ -18,6 +18,10 @@ export interface UseVersionCheckOptions {
 
 export interface UseVersionCheckResult {
   updateAvailable: boolean;
+  checking: boolean;
+  builtAt: string | null;
+  checkMessage: string | null;
+  checkNow: () => Promise<boolean>;
   applyUpdate: () => Promise<void>;
 }
 
@@ -28,26 +32,32 @@ function getDefaultLocalVersion(): VersionInfo {
   };
 }
 
-export async function checkVersionOnce(
-  localVersion: VersionInfo,
+export async function fetchVersionInfo(
   fetchImpl: typeof fetch,
-): Promise<boolean> {
+): Promise<VersionInfo | null> {
   try {
     const response = await fetchImpl(`/version.json?t=${Date.now()}`, {
       cache: 'no-store',
     });
     if (!response.ok) {
-      return false;
+      return null;
     }
     const json: unknown = await response.json();
-    const remote = parseVersionResponse(json);
-    if (!remote) {
-      return false;
-    }
-    return isNewVersionAvailable(localVersion, remote);
+    return parseVersionResponse(json);
   } catch {
+    return null;
+  }
+}
+
+export async function checkVersionOnce(
+  localVersion: VersionInfo,
+  fetchImpl: typeof fetch,
+): Promise<boolean> {
+  const remote = await fetchVersionInfo(fetchImpl);
+  if (!remote) {
     return false;
   }
+  return isNewVersionAvailable(localVersion, remote);
 }
 
 export function useVersionCheck(
@@ -70,16 +80,25 @@ export function useVersionCheck(
   );
 
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [builtAt, setBuiltAt] = useState<string | null>(null);
+  const [checkMessage, setCheckMessage] = useState<string | null>(null);
   const checkingRef = useRef(false);
 
-  const runCheck = useCallback(async () => {
+  const runBackgroundCheck = useCallback(async () => {
     if (checkingRef.current || typeof fetchImpl !== 'function') {
       return;
     }
     checkingRef.current = true;
     try {
-      const hasUpdate = await checkVersionOnce(stableLocalVersion, fetchImpl);
-      if (hasUpdate) {
+      const remote = await fetchVersionInfo(fetchImpl);
+      if (!remote) {
+        return;
+      }
+      if (remote.builtAt) {
+        setBuiltAt(remote.builtAt);
+      }
+      if (isNewVersionAvailable(stableLocalVersion, remote)) {
         setUpdateAvailable(true);
       }
     } finally {
@@ -87,25 +106,55 @@ export function useVersionCheck(
     }
   }, [fetchImpl, stableLocalVersion]);
 
+  const checkNow = useCallback(async (): Promise<boolean> => {
+    if (checkingRef.current || typeof fetchImpl !== 'function') {
+      return false;
+    }
+    checkingRef.current = true;
+    setChecking(true);
+    setCheckMessage(null);
+    try {
+      const remote = await fetchVersionInfo(fetchImpl);
+      if (!remote) {
+        setCheckMessage('No se pudo comprobar en este momento.');
+        return false;
+      }
+      if (remote.builtAt) {
+        setBuiltAt(remote.builtAt);
+      }
+      const hasUpdate = isNewVersionAvailable(stableLocalVersion, remote);
+      if (hasUpdate) {
+        setUpdateAvailable(true);
+        setCheckMessage(`Nueva versión disponible: v${remote.version}`);
+      } else {
+        setCheckMessage('Estás en la última versión.');
+      }
+      return hasUpdate;
+    } finally {
+      checkingRef.current = false;
+      setChecking(false);
+    }
+  }, [fetchImpl, stableLocalVersion]);
+
   useEffect(() => {
-    void runCheck();
+    void runBackgroundCheck();
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        void runCheck();
+        void runBackgroundCheck();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     const timerId = window.setInterval(() => {
-      void runCheck();
+      void runBackgroundCheck();
     }, intervalMs);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.clearInterval(timerId);
     };
-  }, [intervalMs, runCheck]);
+  }, [intervalMs, runBackgroundCheck]);
 
   const applyUpdate = useCallback(async () => {
     try {
@@ -115,5 +164,12 @@ export function useVersionCheck(
     }
   }, [flush, reload]);
 
-  return { updateAvailable, applyUpdate };
+  return {
+    updateAvailable,
+    checking,
+    builtAt,
+    checkMessage,
+    checkNow,
+    applyUpdate,
+  };
 }

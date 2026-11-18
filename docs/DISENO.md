@@ -72,6 +72,7 @@ boxShadow: {
 - `ProgressBar`: barra hundida con relleno `--ok` o `--acc`.
 - `NavBar`: navegación inferior móvil fija en la zona del pulgar.
 - `Pill`: insignia hundida para tiempos, estados y etiquetas.
+- `ScrollShadow`: contenedor con degradados superior e inferior que indican contenido oculto al hacer scroll vertical sin capturar puntero ni provocar re-renders; pendiente en T19 aplicarlo a la lista de líneas de Sincronizar.
 
 ## 5. Pantallas
 

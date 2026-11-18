@@ -18,7 +18,9 @@ export type IconName =
   | 'search'
   | 'check'
   | 'back'
-  | 'menu';
+  | 'menu'
+  | 'info'
+  | 'close';
 
 export interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -44,6 +46,8 @@ const PATHS: Record<IconName, string> = {
   check: 'M20 6 9 17l-5-5',
   back: 'M15 18l-6-6 6-6',
   menu: 'M4 6h16M4 12h16M4 18h16',
+  info: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14v-4m0-4h.01',
+  close: 'M18 6 6 18M6 6l12 12',
 };
 
 /**

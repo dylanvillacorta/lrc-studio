@@ -15,5 +15,7 @@ describe('MobileLayout y App', () => {
     expect(html).toContain('Exportar');
     expect(html).toContain('Subir audio');
     expect(html).not.toContain('Usar demo');
+    expect(html).toContain('aria-label="Información de la aplicación"');
+    expect(html).not.toContain('<footer');
   });
 });

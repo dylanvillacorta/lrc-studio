@@ -15,10 +15,6 @@ import { useCatalog } from '@/features/catalog';
 import { type ParsedProjectJson } from '@/features/export';
 import { type LineBounds } from '@/features/loupe';
 import {
-  buildStructuredLinesFromText,
-  INITIAL_DEMO_LYRICS,
-} from '@/features/lyrics';
-import {
   computeBurstEnterState,
   computeBurstExitState,
   computePreRollStartMs,
@@ -29,15 +25,14 @@ import {
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { NoAudioCard } from '@/features/sync/components/NoAudioCard';
 import {
-  createDemoAudioFile,
   resolveWordTargetStartMs,
   type SyncSegmentedMode,
 } from '@/features/sync/components/syncViewHelpers';
 import { useKeyboardShortcuts } from '@/features/sync/hooks/useKeyboardShortcuts';
 import { usePlaybackLineTracking } from '@/features/sync/hooks/usePlaybackLineTracking';
 import {
+  InfoDialog,
   UpdateBanner,
-  VersionFooter,
   useVersionCheck,
 } from '@/features/version';
 import { formatDisplayTime } from '@/lib/time';
@@ -70,9 +65,17 @@ export function DesktopLayout() {
 
   const catalog = useCatalog(storage);
   const { refresh: refreshCatalog } = catalog;
-  const { updateAvailable, applyUpdate } = useVersionCheck({
+  const {
+    updateAvailable,
+    checking,
+    builtAt,
+    checkMessage,
+    checkNow,
+    applyUpdate,
+  } = useVersionCheck({
     flush: flushPendingSave,
   });
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const [burstActive, setBurstActive] = useState(false);
   const [karaokeActive, setKaraokeActive] = useState(false);
@@ -235,17 +238,6 @@ export function DesktopLayout() {
     },
     [attachAudio, createProject, project],
   );
-
-  const handleUseDemo = useCallback(async () => {
-    if (!project) {
-      await createProject({ title: 'Noches de Verano', artist: 'Luna Alba' });
-    }
-    const demo = createDemoAudioFile(28);
-    await attachAudio(demo.file);
-    if (sync.lines.length === 0) {
-      sync.replaceLines(buildStructuredLinesFromText(INITIAL_DEMO_LYRICS, true), false);
-    }
-  }, [attachAudio, createProject, project, sync]);
 
   const handleRepeatPreRoll = useCallback(() => {
     const targetStartMs =
@@ -478,6 +470,7 @@ export function DesktopLayout() {
         onToggleLyrics={handleToggleLyrics}
         onToggleExport={handleToggleExport}
         onRetrySave={handleRetrySave}
+        onOpenInfo={() => setInfoOpen(true)}
       />
       <div className="flex-1 min-h-0 flex flex-col min-[1100px]:flex-row gap-5">
         <DesktopCatalogSidebar
@@ -507,7 +500,6 @@ export function DesktopLayout() {
               onDeleteProject={handleDeleteCatalogProject}
               onUpdateMetadata={updateProjectMetadata}
               onReplaceLines={sync.replaceLines}
-              onLoadDemo={handleUseDemo}
               onImportJson={handleImportJson}
               onChangeLoupeBounds={handleInspectorBoundsChange}
               onPlayLoupeBurst={handlePlayLoupeBurst}
@@ -622,7 +614,16 @@ export function DesktopLayout() {
           onOpenLoupe={handleOpenLoupe}
         />
       </div>
-      <VersionFooter />
+      <InfoDialog
+        open={infoOpen}
+        onClose={() => setInfoOpen(false)}
+        builtAt={builtAt}
+        updateAvailable={updateAvailable}
+        checking={checking}
+        checkMessage={checkMessage}
+        onCheckUpdates={checkNow}
+        onApplyUpdate={applyUpdate}
+      />
       <div aria-live="polite" className="sr-only">
         {liveNotice}
       </div>

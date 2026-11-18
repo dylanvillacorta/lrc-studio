@@ -10,9 +10,11 @@ import {
   Pill,
   ProgressBar,
   RaisedButton,
+  ScrollShadow,
   Segmented,
   SyncButton,
   WellPanel,
+  computeScrollShadows,
 } from './index';
 
 describe('src/ui componentes', () => {
@@ -78,6 +80,38 @@ describe('src/ui componentes', () => {
     const html = renderToString(<Lamps lit="green" />);
     expect(html).toContain('role="status"');
     expect(html).toContain('aria-label="Pre-Roll: ¡ahora!"');
+  });
+
+  it('computeScrollShadows detecta contenido oculto arriba y abajo', () => {
+    expect(
+      computeScrollShadows({ scrollTop: 0, scrollHeight: 200, clientHeight: 200 }),
+    ).toEqual({ canScrollUp: false, canScrollDown: false });
+
+    expect(
+      computeScrollShadows({ scrollTop: 0, scrollHeight: 400, clientHeight: 200 }),
+    ).toEqual({ canScrollUp: false, canScrollDown: true });
+
+    expect(
+      computeScrollShadows({ scrollTop: 50, scrollHeight: 400, clientHeight: 200 }),
+    ).toEqual({ canScrollUp: true, canScrollDown: true });
+
+    expect(
+      computeScrollShadows({ scrollTop: 200, scrollHeight: 400, clientHeight: 200 }),
+    ).toEqual({ canScrollUp: true, canScrollDown: false });
+  });
+
+  it('renderiza ScrollShadow con degradados sin eventos de puntero y motion-reduce', () => {
+    const html = renderToString(
+      <ScrollShadow>
+        <p>Contenido largo</p>
+      </ScrollShadow>,
+    );
+
+    expect(html).toContain('data-scroll-up="false"');
+    expect(html).toContain('data-scroll-down="false"');
+    expect(html).toContain('pointer-events-none');
+    expect(html).toContain('motion-reduce:transition-none');
+    expect(html).toContain('Contenido largo');
   });
 
   it('renderiza ProgressBar con role progressbar y aria-valuenow', () => {
