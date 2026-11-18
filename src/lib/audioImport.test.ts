@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   AUDIO_DECODE_FAILED_MESSAGE,
+  AUDIO_READ_FAILED_MESSAGE,
   extractPeaksAndDuration,
   importAudioFile,
   type AudioDecoderContext,
@@ -85,6 +86,46 @@ describe('audioImport', () => {
 
     expect(imported.blob.type).toBe('audio/flac');
     expect(new Uint8Array(await imported.blob.arrayBuffer())).toEqual(flacBytes);
+  });
+
+  it('importAudioFile conserva bytes de FLAC cuando llega con application/octet-stream o tipo vacío', async () => {
+    const flacBytes = new Uint8Array([0x66, 0x4c, 0x61, 0x43, 0x80, 0x00, 0x00, 0x22]);
+    const fakeContext: AudioDecoderContext = {
+      decodeAudioData: vi.fn(async () => ({
+        duration: 1.0,
+        numberOfChannels: 1,
+        getChannelData: () => new Float32Array([0.25, -0.25]),
+      })),
+      close: vi.fn(async () => {}),
+    };
+
+    for (const declaredType of ['', 'application/octet-stream']) {
+      const file = new File([flacBytes], 'drive-master.flac', { type: declaredType });
+      const imported = await importAudioFile(file, {
+        bins: 2,
+        createAudioContext: () => fakeContext,
+      });
+
+      expect(imported.blob.type).toBe('audio/flac');
+      expect(new Uint8Array(await imported.blob.arrayBuffer())).toEqual(flacBytes);
+    }
+  });
+
+  it('importAudioFile traduce errores al leer el archivo (ej. descarga de nube fallida) a español sin abrir AudioContext', async () => {
+    const createCtxSpy = vi.fn();
+    await expect(
+      importAudioFile(
+        {
+          name: 'nube.flac',
+          type: 'application/octet-stream',
+          arrayBuffer: async () => {
+            throw new DOMException('NotReadableError');
+          },
+        },
+        { createAudioContext: createCtxSpy },
+      ),
+    ).rejects.toThrow(AUDIO_READ_FAILED_MESSAGE);
+    expect(createCtxSpy).not.toHaveBeenCalled();
   });
 
   it('importAudioFile rechaza archivos no soportados antes de abrir AudioContext', async () => {

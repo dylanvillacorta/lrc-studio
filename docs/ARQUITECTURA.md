@@ -136,7 +136,7 @@ export interface IStorageAdapter {
 - Usa **IndexedDB nativo** con tres *object stores*:
   - `projects`: metadatos y letras (`ProjectFullData`, sin binario).
   - `audio`: binarios de audio (`Blob` / `ArrayBuffer`), `fileName`, `peaks`, `durationMs`.
-  - Formatos de audio soportados (fuente única en `src/lib/audioFormats.ts`): MP3, WAV, FLAC (`audio/flac`), OGG, OGA, M4A, AAC, OPUS y WEBM.
+  - Formatos de audio soportados (fuente única en `src/lib/audioFormats.ts`): MP3, WAV, FLAC (`audio/flac`), OGG, OGA, M4A, AAC, OPUS y WEBM. El selector de audio omite el filtro `accept` en todas las plataformas (`getAudioInputAccept` devuelve `""`) para que proveedores en la nube (Drive, iCloud, etc.) no atenúen archivos `.flac` por MIME/UTI desconocido; la validación programática recae en `isSupportedAudioFile`.
   - `meta`: estado de sesión y metadatos globales.
 - `localStorage` se reserva únicamente para punteros ligeros de sesión si fuera necesario para lectura síncrona inicial.
 - **Privacidad:** ningún dato ni audio se envía a servidores externos.
