@@ -194,6 +194,110 @@ describe('playbackAnalysis', () => {
     });
   });
 
+  it('reproduce hipótesis (a): no retrocede ni salta dos líneas cuando una línea previa tiene endMs null o solapado', () => {
+    const linesWithOpenFirst: LyricLine[] = [
+      { id: 'a1', text: 'Primera abierta', startMs: 1000, endMs: null, words: [] },
+      { id: 'a2', text: 'Segunda cerrada', startMs: 2000, endMs: 2500, words: [] },
+      { id: 'a3', text: 'Tercera final', startMs: 4000, endMs: 5500, words: [] },
+    ];
+
+    let maxSeenLine = -1;
+    let prevActive = -1;
+    for (let t = 0; t <= 6000; t += 10) {
+      const idx = findActiveLineIndex(linesWithOpenFirst, t);
+      if (idx >= 0) {
+        expect(idx).toBeGreaterThanOrEqual(maxSeenLine);
+        if (prevActive >= 0) {
+          expect(idx - prevActive).toBeLessThanOrEqual(1);
+        }
+        maxSeenLine = Math.max(maxSeenLine, idx);
+        prevActive = idx;
+      }
+    }
+    expect(maxSeenLine).toBe(2);
+
+    // Solapamiento explícito (endMs de l0 > startMs de l1 y > endMs de l1)
+    const overlappingLines: LyricLine[] = [
+      { id: 'o1', text: 'Línea solapada', startMs: 1000, endMs: 5000, words: [] },
+      { id: 'o2', text: 'Línea corta', startMs: 2500, endMs: 3200, words: [] },
+      { id: 'o3', text: 'Línea siguiente', startMs: 4500, endMs: 6000, words: [] },
+    ];
+    expect(findActiveLineIndex(overlappingLines, 3900)).toBe(-1);
+    expect(findActiveLineIndex(overlappingLines, 4500)).toBe(2);
+  });
+
+  it('mantiene línea activa continua entre líneas contiguas y marca pasadas sin desordenar en avance cada 10 ms', () => {
+    const contiguousLines: LyricLine[] = [
+      { id: 'c0', text: 'Uno', startMs: 1000, endMs: 1960, words: [] },
+      { id: 'c1', text: 'Dos', startMs: 2000, endMs: 2960, words: [] },
+      { id: 'c2', text: 'Tres', startMs: 3000, endMs: 3960, words: [] },
+      { id: 'c3', text: 'Cuatro', startMs: 4000, endMs: null, words: [] },
+    ];
+
+    let prevIdx = -1;
+    for (let t = 1000; t <= 5000; t += 10) {
+      const state = computeKaraokeState(contiguousLines, t);
+      expect(state.activeLineIndex).toBeGreaterThanOrEqual(0);
+      if (prevIdx >= 0) {
+        expect(state.activeLineIndex - prevIdx).toBeGreaterThanOrEqual(0);
+        expect(state.activeLineIndex - prevIdx).toBeLessThanOrEqual(1);
+      }
+      prevIdx = state.activeLineIndex;
+    }
+    expect(prevIdx).toBe(3);
+  });
+
+  it('maneja marcas desordenadas, líneas sin sincronizar intermedias y palabras fuera de rango', () => {
+    // Marcas desordenadas: l0 empieza después de l1
+    const unordered: LyricLine[] = [
+      { id: 'u0', text: 'Tardía', startMs: 5000, endMs: 6000, words: [] },
+      { id: 'u1', text: 'Temprana', startMs: 2000, endMs: 3000, words: [] },
+    ];
+    const at2500 = computeKaraokeState(unordered, 2500);
+    expect(at2500.activeLineIndex).toBe(1);
+    expect(at2500.lines[0]?.isPast).toBe(false);
+    expect(at2500.lines[1]?.isActive).toBe(true);
+
+    // Línea sin sincronizar entre líneas sincronizadas
+    const withUnsyncedMiddle: LyricLine[] = [
+      { id: 's0', text: 'Inicio', startMs: 1000, endMs: null, words: [] },
+      { id: 's1', text: 'Sin marca', startMs: null, endMs: null, words: [] },
+      { id: 's2', text: 'Final', startMs: 3000, endMs: 4500, words: [] },
+    ];
+    const at2200 = computeKaraokeState(withUnsyncedMiddle, 2200);
+    expect(at2200.activeLineIndex).toBe(0);
+    expect(at2200.lines[1]?.isActive).toBe(false);
+    expect(at2200.lines[1]?.isPast).toBe(false);
+    const at3200 = computeKaraokeState(withUnsyncedMiddle, 3200);
+    expect(at3200.activeLineIndex).toBe(2);
+    expect(at3200.lines[0]?.isPast).toBe(true);
+    expect(at3200.lines[1]?.isPast).toBe(false);
+
+    // Palabras fuera del rango de una línea futura no se pre-iluminan, y findActiveWordIndex no retrocede
+    const outOfRangeWords: LyricLine[] = [
+      {
+        id: 'wline0',
+        text: 'uno dos',
+        startMs: 1000,
+        endMs: 2500,
+        words: [
+          { id: 'ow1', text: 'uno', startMs: 1000, endMs: null },
+          { id: 'ow2', text: 'dos', startMs: 1500, endMs: 1800 },
+        ],
+      },
+      {
+        id: 'wline1',
+        text: 'futura',
+        startMs: 4000,
+        endMs: 5500,
+        words: [{ id: 'ow3', text: 'futura', startMs: 500, endMs: 1200 }],
+      },
+    ];
+    expect(findActiveWordIndex(outOfRangeWords[0], 1950)).toBe(-1);
+    const at1400 = computeKaraokeState(outOfRangeWords, 1400);
+    expect(at1400.lines[1]?.wordProgressPct).toEqual([0]);
+  });
+
   it('coordina seguimiento automático de reproducción y selección manual en resolvePlaybackTracking', () => {
     // Al avanzar la reproducción a otra línea con marca, acompaña la selección y limpia override
     const step1 = resolvePlaybackTracking({

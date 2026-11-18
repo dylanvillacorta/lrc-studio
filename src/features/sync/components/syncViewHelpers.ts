@@ -165,6 +165,34 @@ export function createDemoAudioFile(durationSeconds = 28): {
   };
 }
 
+export interface ScrollTargetMetrics {
+  containerScrollTop: number;
+  containerClientHeight: number;
+  containerScrollHeight: number;
+  containerTop: number;
+  elementTop: number;
+  elementHeight: number;
+}
+
+/**
+ * Calcula el `scrollTop` exacto del contenedor para centrar verticalmente
+ * la línea activa sin desplazar ancestros ni exceder los límites de scroll.
+ */
+export function computeCenteredScrollTop(metrics: ScrollTargetMetrics): number {
+  const maxScrollTop = Math.max(
+    0,
+    metrics.containerScrollHeight - metrics.containerClientHeight,
+  );
+  if (maxScrollTop <= 0) {
+    return 0;
+  }
+  const elementOffsetTop =
+    metrics.elementTop - metrics.containerTop + metrics.containerScrollTop;
+  const centered =
+    elementOffsetTop - (metrics.containerClientHeight - metrics.elementHeight) / 2;
+  return Math.max(0, Math.min(maxScrollTop, Math.round(centered)));
+}
+
 /**
  * Genera el aviso en español cuando existen líneas sin marca temporal en la vista Karaoke.
  */

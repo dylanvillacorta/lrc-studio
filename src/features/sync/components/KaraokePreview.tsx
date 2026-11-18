@@ -12,6 +12,7 @@ import type { LyricLine } from '@/types';
 import { Icon, IconButton, Pill, Segmented, WellPanel } from '@/ui';
 import { NoAudioCard } from './NoAudioCard';
 import {
+  computeCenteredScrollTop,
   formatUnsyncedLinesNotice,
   SYNC_MODE_OPTIONS,
   SYNC_SEGMENTED_CLASS,
@@ -27,11 +28,14 @@ export interface KaraokePreviewProps {
   timeStore?: PlaybackTimeStore | null;
   pausedTimeMs?: number;
   getCurrentTimeMs: () => number;
+  showModeSelector?: boolean;
   onSelectMode: (mode: SyncSegmentedMode) => void;
   onTogglePlay: () => void;
   onSeek: (targetMs: number) => void;
   onUploadAudio: (file: File) => Promise<void>;
 }
+
+const SCROLL_ANIMATION_MS = 220;
 
 function prefersReducedMotion(): boolean {
   return (
@@ -54,17 +58,82 @@ export const KaraokePreview = memo(function KaraokePreview({
   timeStore = null,
   pausedTimeMs = -1,
   getCurrentTimeMs,
+  showModeSelector = true,
   onSelectMode,
   onTogglePlay,
   onSeek,
   onUploadAudio,
 }: KaraokePreviewProps) {
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const lineRefs = useRef<(HTMLElement | null)[]>([]);
   const wordFillRefs = useRef<(HTMLSpanElement | null)[][]>([]);
   const timeRef = useRef<HTMLSpanElement | null>(null);
   const lastActiveLineRef = useRef<number>(-1);
+  const hasCenteredInitiallyRef = useRef<boolean>(false);
   const lastWordFillRef = useRef<number[][]>([]);
   const rafRef = useRef<number | null>(null);
+  const scrollRafRef = useRef<number | null>(null);
+  const getCurrentTimeMsRef = useRef(getCurrentTimeMs);
+  getCurrentTimeMsRef.current = getCurrentTimeMs;
+
+  const cancelScrollAnimation = useCallback(() => {
+    if (scrollRafRef.current !== null && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(scrollRafRef.current);
+      scrollRafRef.current = null;
+    }
+  }, []);
+
+  const scrollLineIntoCenter = useCallback(
+    (lineIndex: number, instant: boolean) => {
+      const container = scrollContainerRef.current;
+      const activeEl = lineRefs.current[lineIndex];
+      if (!container || !activeEl || typeof container.getBoundingClientRect !== 'function') {
+        return;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      const activeRect = activeEl.getBoundingClientRect();
+      const targetScrollTop = computeCenteredScrollTop({
+        containerScrollTop: container.scrollTop,
+        containerClientHeight: container.clientHeight,
+        containerScrollHeight: container.scrollHeight,
+        containerTop: containerRect.top,
+        elementTop: activeRect.top,
+        elementHeight: activeRect.height,
+      });
+
+      cancelScrollAnimation();
+
+      if (
+        instant ||
+        prefersReducedMotion() ||
+        typeof requestAnimationFrame !== 'function' ||
+        Math.abs(targetScrollTop - container.scrollTop) < 1
+      ) {
+        container.scrollTop = targetScrollTop;
+        return;
+      }
+
+      const startScrollTop = container.scrollTop;
+      const distance = targetScrollTop - startScrollTop;
+      const startTime = performance.now();
+
+      const step = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / SCROLL_ANIMATION_MS);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        container.scrollTop = startScrollTop + distance * eased;
+        if (progress < 1) {
+          scrollRafRef.current = requestAnimationFrame(step);
+        } else {
+          scrollRafRef.current = null;
+        }
+      };
+
+      scrollRafRef.current = requestAnimationFrame(step);
+    },
+    [cancelScrollAnimation],
+  );
 
   const initialTimeMs = timeStore
     ? timeStore.getTimeMs()
@@ -127,29 +196,36 @@ export const KaraokePreview = memo(function KaraokePreview({
       if (frame.activeLineIndex !== lastActiveLineRef.current) {
         lastActiveLineRef.current = frame.activeLineIndex;
         if (frame.activeLineIndex >= 0) {
-          const activeEl = lineRefs.current[frame.activeLineIndex];
-          if (activeEl && typeof activeEl.scrollIntoView === 'function') {
-            activeEl.scrollIntoView({
-              behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-              block: 'center',
-            });
-          }
+          const isInitial = !hasCenteredInitiallyRef.current;
+          hasCenteredInitiallyRef.current = true;
+          scrollLineIntoCenter(frame.activeLineIndex, isInitial);
         }
       }
     },
-    [lines],
+    [lines, scrollLineIntoCenter],
   );
+
+  // Limpia refs obsoletos cuando cambia la estructura de líneas.
+  useEffect(() => {
+    lineRefs.current.length = lines.length;
+    wordFillRefs.current.length = lines.length;
+    lastWordFillRef.current = [];
+    lastActiveLineRef.current = -1;
+    hasCenteredInitiallyRef.current = false;
+  }, [lines]);
 
   // Sincronización inicial o cuando cambia el tiempo estando en pausa (sin re-renderizar React).
   useEffect(() => {
-    lastWordFillRef.current = [];
+    if (isPlaying) {
+      return;
+    }
     const targetMs = timeStore
       ? timeStore.getTimeMs()
       : pausedTimeMs >= 0
         ? pausedTimeMs
-        : getCurrentTimeMs();
+        : getCurrentTimeMsRef.current();
     applyFrame(targetMs);
-  }, [applyFrame, getCurrentTimeMs, pausedTimeMs, timeStore]);
+  }, [applyFrame, isPlaying, pausedTimeMs, timeStore]);
 
   useEffect(() => {
     if (!hasAudio || isPlaying || !timeStore) {
@@ -170,8 +246,10 @@ export const KaraokePreview = memo(function KaraokePreview({
       return;
     }
 
+    applyFrame(getCurrentTimeMsRef.current());
+
     const tick = () => {
-      applyFrame(getCurrentTimeMs());
+      applyFrame(getCurrentTimeMsRef.current());
       rafRef.current = requestAnimationFrame(tick);
     };
 
@@ -182,18 +260,37 @@ export const KaraokePreview = memo(function KaraokePreview({
         rafRef.current = null;
       }
     };
-  }, [applyFrame, getCurrentTimeMs, hasAudio, isPlaying]);
+  }, [applyFrame, hasAudio, isPlaying]);
+
+  useEffect(() => cancelScrollAnimation, [cancelScrollAnimation]);
+
+  // Re-centra la línea activa si cambia el tamaño del contenedor (rotación o redimensionado).
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || typeof ResizeObserver !== 'function') {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      if (lastActiveLineRef.current >= 0) {
+        scrollLineIntoCenter(lastActiveLineRef.current, true);
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [scrollLineIntoCenter]);
 
   if (!hasAudio) {
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-3">
-        <Segmented
-          options={SYNC_MODE_OPTIONS}
-          value={syncMode}
-          onChange={onSelectMode}
-          aria-label="Modo de sincronización"
-          className={SYNC_SEGMENTED_CLASS}
-        />
+        {showModeSelector ? (
+          <Segmented
+            options={SYNC_MODE_OPTIONS}
+            value={syncMode}
+            onChange={onSelectMode}
+            aria-label="Modo de sincronización"
+            className={SYNC_SEGMENTED_CLASS}
+          />
+        ) : null}
         <NoAudioCard onUploadAudio={onUploadAudio} />
       </div>
     );
@@ -204,13 +301,15 @@ export const KaraokePreview = memo(function KaraokePreview({
       aria-label="Vista previa Karaoke"
       className="flex-1 min-h-0 flex flex-col gap-2.5 [@media(max-height:720px)]:gap-1.5"
     >
-      <Segmented
-        options={SYNC_MODE_OPTIONS}
-        value={syncMode}
-        onChange={onSelectMode}
-        aria-label="Modo de sincronización"
-        className={SYNC_SEGMENTED_CLASS}
-      />
+      {showModeSelector ? (
+        <Segmented
+          options={SYNC_MODE_OPTIONS}
+          value={syncMode}
+          onChange={onSelectMode}
+          aria-label="Modo de sincronización"
+          className={SYNC_SEGMENTED_CLASS}
+        />
+      ) : null}
 
       <div className="boton rounded-[20px] px-3 py-2 flex items-center justify-between gap-2 flex-none [@media(max-height:720px)]:py-1.5">
         <div className="flex items-center gap-2 min-w-0">
@@ -220,6 +319,7 @@ export const KaraokePreview = memo(function KaraokePreview({
           <div className="flex flex-col leading-tight min-w-0 font-mono tabular-nums">
             <span
               ref={timeRef}
+              aria-label="Tiempo actual"
               className="text-xs font-bold text-ink whitespace-nowrap"
             >
               {formatTime(initialTimeMs)}
@@ -234,7 +334,7 @@ export const KaraokePreview = memo(function KaraokePreview({
           <IconButton
             round
             aria-label="Retroceder 5 segundos"
-            onClick={() => onSeek(Math.max(0, getCurrentTimeMs() - 5000))}
+            onClick={() => onSeek(Math.max(0, getCurrentTimeMsRef.current() - 5000))}
           >
             <Icon name="rewind" size={18} />
           </IconButton>
@@ -251,7 +351,7 @@ export const KaraokePreview = memo(function KaraokePreview({
           <IconButton
             round
             aria-label="Adelantar 5 segundos"
-            onClick={() => onSeek(Math.min(durationMs, getCurrentTimeMs() + 5000))}
+            onClick={() => onSeek(Math.min(durationMs, getCurrentTimeMsRef.current() + 5000))}
           >
             <Icon name="forward" size={18} />
           </IconButton>
@@ -273,92 +373,105 @@ export const KaraokePreview = memo(function KaraokePreview({
         </div>
       ) : null}
 
-      <WellPanel className="flex-1 min-h-0 px-4 py-4 overflow-y-auto flex flex-col gap-3">
-        {lines.length > 0 ? (
-          lines.map((line, lIdx) => {
-            const lineState = initialState.lines[lIdx];
-            const domState = lineState?.isActive
-              ? 'active'
-              : lineState?.isPast
-                ? 'past'
-                : 'upcoming';
-            const isSynced = line.startMs !== null;
-            const tokens =
-              line.words.length > 0
-                ? line.words
-                : [{ id: `${line.id}-full`, text: line.text, startMs: line.startMs, endMs: line.endMs }];
+      <WellPanel className="flex-1 min-h-0 p-0 overflow-hidden flex flex-col">
+        <div
+          ref={scrollContainerRef}
+          onWheel={cancelScrollAnimation}
+          onTouchStart={cancelScrollAnimation}
+          className="flex-1 min-h-0 px-3 sm:px-5 py-4 overflow-y-auto overscroll-contain flex flex-col gap-2.5 sm:gap-3"
+        >
+          {lines.length > 0 ? (
+            lines.map((line, lIdx) => {
+              const lineState = initialState.lines[lIdx];
+              const domState = lineState?.isActive
+                ? 'active'
+                : lineState?.isPast
+                  ? 'past'
+                  : 'upcoming';
+              const isSynced = line.startMs !== null;
+              const tokens =
+                line.words.length > 0
+                  ? line.words
+                  : [{ id: `${line.id}-full`, text: line.text, startMs: line.startMs, endMs: line.endMs }];
 
-            const sharedClass =
-              'w-full shrink-0 min-h-12 px-3.5 py-3 rounded-[18px] text-center transition-all duration-200 motion-reduce:transition-none data-[state=active]:bg-bg data-[state=active]:shadow-relieve data-[state=active]:ring-1 data-[state=active]:ring-acc/20 data-[state=active]:opacity-100 data-[state=past]:opacity-40 data-[state=upcoming]:opacity-65';
+              if (wordFillRefs.current[lIdx]) {
+                wordFillRefs.current[lIdx].length = tokens.length;
+              }
 
-            const wordSpans = (
-              <span className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-[21px] sm:text-[23px] font-extrabold leading-snug tracking-tight">
-                {tokens.map((word, wIdx) => {
-                  const initialPct = lineState?.wordProgressPct[wIdx] ?? 0;
-                  const fillStyle = {
-                    '--karaoke-fill': `${initialPct}%`,
-                    width: 'var(--karaoke-fill, 0%)',
-                  } as CSSProperties;
+              const sharedClass =
+                'group w-full shrink-0 min-h-12 px-3.5 py-3 rounded-[18px] text-center transition-opacity duration-150 motion-reduce:transition-none data-[state=active]:bg-bg data-[state=active]:shadow-relieve data-[state=active]:ring-1 data-[state=active]:ring-acc/25 data-[state=active]:opacity-100 data-[state=past]:opacity-45 data-[state=upcoming]:opacity-75';
 
-                  return (
-                    <span key={word.id} className="relative inline-block">
-                      <span className="text-mute/55 select-none">{word.text}</span>
-                      <span
-                        ref={(el) => {
-                          if (!wordFillRefs.current[lIdx]) {
-                            wordFillRefs.current[lIdx] = [];
-                          }
-                          wordFillRefs.current[lIdx][wIdx] = el;
-                        }}
-                        aria-hidden="true"
-                        className="absolute left-0 top-0 overflow-hidden text-acc whitespace-nowrap pointer-events-none select-none"
-                        style={fillStyle}
-                      >
-                        {word.text}
+              const wordSpans = (
+                <span className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-[19px] min-[390px]:text-[21px] sm:text-[23px] font-extrabold leading-snug tracking-tight">
+                  {tokens.map((word, wIdx) => {
+                    const initialPct = lineState?.wordProgressPct[wIdx] ?? 0;
+                    const fillStyle = {
+                      '--karaoke-fill': `${initialPct}%`,
+                      clipPath: 'inset(0 calc(100% - var(--karaoke-fill, 0%)) 0 0)',
+                    } as CSSProperties;
+
+                    return (
+                      <span key={`${word.id}-${wIdx}`} className="relative inline-block">
+                        <span className="text-ink/50 group-data-[state=past]:text-ink/75 group-data-[state=upcoming]:text-ink/80 select-none">
+                          {word.text}
+                        </span>
+                        <span
+                          ref={(el) => {
+                            if (!wordFillRefs.current[lIdx]) {
+                              wordFillRefs.current[lIdx] = [];
+                            }
+                            wordFillRefs.current[lIdx][wIdx] = el;
+                          }}
+                          aria-hidden="true"
+                          className="absolute inset-0 text-acc whitespace-nowrap pointer-events-none select-none group-data-[state=past]:hidden group-data-[state=upcoming]:hidden"
+                          style={fillStyle}
+                        >
+                          {word.text}
+                        </span>
                       </span>
-                    </span>
-                  );
-                })}
-              </span>
-            );
+                    );
+                  })}
+                </span>
+              );
 
-            if (isSynced && line.startMs !== null) {
-              const targetMs = line.startMs;
+              if (isSynced && line.startMs !== null) {
+                const targetMs = line.startMs;
+                return (
+                  <button
+                    key={`${line.id}-${lIdx}`}
+                    ref={(el) => {
+                      lineRefs.current[lIdx] = el;
+                    }}
+                    type="button"
+                    data-state={domState}
+                    onClick={() => onSeek(targetMs)}
+                    aria-label={`Ir a línea ${lIdx + 1}: ${line.text}`}
+                    className={`${sharedClass} cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc`}
+                  >
+                    {wordSpans}
+                  </button>
+                );
+              }
+
               return (
-                <button
-                  key={line.id}
+                <div
+                  key={`${line.id}-${lIdx}`}
                   ref={(el) => {
                     lineRefs.current[lIdx] = el;
                   }}
-                  type="button"
                   data-state={domState}
-                  onClick={() => onSeek(targetMs)}
-                  aria-label={`Ir a línea ${lIdx + 1}: ${line.text}`}
-                  className={`${sharedClass} cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc`}
+                  className={sharedClass}
                 >
                   {wordSpans}
-                </button>
+                </div>
               );
-            }
-
-            return (
-              <div
-                key={line.id}
-                ref={(el) => {
-                  lineRefs.current[lIdx] = el;
-                }}
-                data-state={domState}
-                className={sharedClass}
-              >
-                {wordSpans}
-              </div>
-            );
-          })
-        ) : (
-          <div className="flex-1 flex items-center justify-center p-4 text-center text-sm font-semibold text-mute">
-            Aún no hay letra cargada. Agrega líneas en la pestaña Letra.
-          </div>
-        )}
+            })
+          ) : (
+            <div className="flex-1 flex items-center justify-center p-4 text-center text-sm font-semibold text-mute">
+              Aún no hay letra cargada. Agrega líneas en la pestaña Letra.
+            </div>
+          )}
+        </div>
       </WellPanel>
     </section>
   );

@@ -263,6 +263,7 @@ export function DesktopLayout() {
   );
 
   const handleStampStart = useCallback(() => {
+    if (syncMode === 'karaoke') return;
     const nowMs = getCurrentTimeMs();
     if (syncMode === 'word') {
       if (!targetWord) return;
@@ -545,20 +546,23 @@ export function DesktopLayout() {
                 </div>
               ) : null}
               {syncMode === 'karaoke' ? (
-                <KaraokePreview
-                  hasAudio={Boolean(audioUrl)}
-                  durationMs={durationMs}
-                  isPlaying={player.isPlaying}
-                  lines={sync.lines}
-                  syncMode="karaoke"
-                  timeStore={player.timeStore}
-                  pausedTimeMs={player.timeStore ? -1 : player.currentTime}
-                  getCurrentTimeMs={getCurrentTimeMs}
-                  onSelectMode={handleSelectMode}
-                  onTogglePlay={player.togglePlay}
-                  onSeek={player.seekTo}
-                  onUploadAudio={handleUploadAudio}
-                />
+                <div className="h-[415px] min-[1100px]:h-[max(320px,calc(100dvh-385px))] flex flex-col min-h-0">
+                  <KaraokePreview
+                    hasAudio={Boolean(audioUrl)}
+                    durationMs={durationMs}
+                    isPlaying={player.isPlaying}
+                    lines={sync.lines}
+                    syncMode="karaoke"
+                    timeStore={player.timeStore}
+                    pausedTimeMs={player.timeStore ? -1 : player.currentTime}
+                    getCurrentTimeMs={getCurrentTimeMs}
+                    showModeSelector={false}
+                    onSelectMode={handleSelectMode}
+                    onTogglePlay={player.togglePlay}
+                    onSeek={player.seekTo}
+                    onUploadAudio={handleUploadAudio}
+                  />
+                </div>
               ) : (
                 <>
                   {syncMode === 'word' ? (
