@@ -210,8 +210,33 @@ describe('KaraokePreview', () => {
     expect(html).toContain('data-state="active"');
     expect(html).toContain('data-state="upcoming"');
     expect(html).toContain('--karaoke-fill:50%');
+    expect(html).toContain('clip-path:inset(0 calc(100% - var(--karaoke-fill, 0%)) 0 0)');
+    expect(html).not.toContain('width:var(--karaoke-fill');
+    expect(html).not.toContain('transition-all');
     expect(html).toContain('1 línea sin sincronizar');
     expect(html).toContain('motion-reduce:transition-none');
+  });
+
+  it('omite el selector duplicado cuando showModeSelector es false', () => {
+    const html = renderToString(
+      <KaraokePreview
+        hasAudio
+        durationMs={120_000}
+        isPlaying={false}
+        lines={SAMPLE_LINES}
+        syncMode="karaoke"
+        pausedTimeMs={13_075}
+        getCurrentTimeMs={() => 13_075}
+        showModeSelector={false}
+        onSelectMode={vi.fn()}
+        onTogglePlay={vi.fn()}
+        onSeek={vi.fn()}
+        onUploadAudio={vi.fn(async () => {})}
+      />,
+    );
+
+    expect(html).toContain('Vista previa Karaoke');
+    expect(html).not.toContain('Modo de sincronización');
   });
 
   it('muestra la tarjeta de carga cuando no hay audio en KaraokePreview', () => {

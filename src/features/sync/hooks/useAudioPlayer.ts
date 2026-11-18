@@ -31,7 +31,7 @@ export interface UseAudioPlayerOptions {
 export interface UseAudioPlayerReturn {
   currentTime: number;
   timeStore?: PlaybackTimeStore;
-  getCurrentTimeMs?: () => number;
+  getCurrentTimeMs: () => number;
   duration: number;
   isPlaying: boolean;
   isSeeking: boolean;
@@ -284,6 +284,17 @@ export function useAudioPlayer(
     [getAudioElement, timeStore],
   );
 
+  const getCurrentTimeMs = useCallback((): number => {
+    if (pendingSeekMsRef.current !== null) {
+      return Math.round(pendingSeekMsRef.current);
+    }
+    const audio = getAudioElement();
+    if (audio && audio.readyState >= 1 && !isSeekingRef.current && !audio.seeking) {
+      return Math.round(audio.currentTime * 1000);
+    }
+    return timeStore.getTimeMs();
+  }, [getAudioElement, timeStore]);
+
   const setPlaybackRate = useCallback(
     (rate: number) => {
       const safeRate = Math.max(0.25, Math.min(2.0, rate));
@@ -297,8 +308,6 @@ export function useAudioPlayer(
     },
     [getAudioElement],
   );
-
-  const getCurrentTimeMs = useCallback(() => timeStore.getTimeMs(), [timeStore]);
 
   const hasSource = externalRef !== undefined || Boolean(src);
   const effectiveDuration = !hasSource
