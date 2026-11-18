@@ -53,8 +53,9 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     useObjectUrlState();
   const projectRef = useRef<ProjectFullData | null>(null);
   const activeTabRef = useRef<ActiveTab>('sync');
+  const activeLineIndexRef = useRef(0);
+  const activeWordIndexRef = useRef(0);
   const suppressLineChangeRef = useRef(false);
-  const skipNextAutoScheduleRef = useRef(false);
 
   const effectiveAudioUrl = hasManualOverride
     ? manualAudioUrl
@@ -84,7 +85,15 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     activeLineIndex,
     activeWordIndex,
   } = sync;
-  const { pause, seekTo, setPlaybackRate } = player;
+  const { pause, seekTo, setPlaybackRate, timeStore: playerTimeStore } = player;
+
+  useEffect(() => {
+    activeLineIndexRef.current = activeLineIndex;
+  }, [activeLineIndex]);
+
+  useEffect(() => {
+    activeWordIndexRef.current = activeWordIndex;
+  }, [activeWordIndex]);
 
   const getSnapshot = useCallback((): AutosaveSnapshot => {
     const activeProject = projectRef.current;
@@ -93,18 +102,28 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       session: buildSessionState({
         projectId: activeProject?.id ?? null,
         activeTab: activeTabRef.current,
-        currentTime: player.currentTime,
-        activeLineIndex,
-        activeWordIndex,
+        currentTime: playerTimeStore?.getTimeMs() ?? 0,
+        activeLineIndex: activeLineIndexRef.current,
+        activeWordIndex: activeWordIndexRef.current,
       }),
     };
-  }, [activeLineIndex, activeWordIndex, player.currentTime]);
+  }, [playerTimeStore]);
 
   const autosave = useAutosave(adapter, getSnapshot, {
     isPlaying: player.isPlaying,
-    currentTime: player.currentTime,
+    timeStore: playerTimeStore,
   });
-  const { scheduleSave } = autosave;
+  const {
+    autosaveState,
+    cancel: cancelAutosave,
+    flush: flushAutosave,
+    markBaseline,
+    markProjectBaseline,
+    markSessionBaseline,
+    saveStatus,
+    scheduleProjectSave,
+    scheduleSessionSave,
+  } = autosave;
 
   useEffect(() => {
     projectRef.current = project;
@@ -114,20 +133,25 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     activeTabRef.current = activeTab;
   }, [activeTab]);
 
+  // Solo cambios reales en los datos del proyecto activan el autoguardado visible (300 ms).
   useEffect(() => {
     if (!project) {
       return;
     }
-    if (skipNextAutoScheduleRef.current) {
-      skipNextAutoScheduleRef.current = false;
+    scheduleProjectSave();
+  }, [project, scheduleProjectSave]);
+
+  // Cambios de pestaña o índices activos se guardan en silencio sin alterar el indicador.
+  useEffect(() => {
+    if (!projectRef.current) {
       return;
     }
-    scheduleSave();
-  }, [activeLineIndex, activeTab, activeWordIndex, project, scheduleSave]);
+    scheduleSessionSave();
+  }, [activeLineIndex, activeTab, activeWordIndex, project?.id, scheduleSessionSave]);
 
   useEffect(() => {
-    return registerActiveFlushHandler(autosave.flush);
-  }, [autosave.flush]);
+    return registerActiveFlushHandler(flushAutosave);
+  }, [flushAutosave]);
 
   const applyEngineState = useCallback(
     (
@@ -165,8 +189,19 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
 
   const hydrateRestoredPlan = useCallback(
     (plan: RestorePlan) => {
-      skipNextAutoScheduleRef.current = true;
       activeTabRef.current = plan.activeTab;
+      activeLineIndexRef.current = plan.activeLineIndex;
+      activeWordIndexRef.current = plan.activeWordIndex;
+      markBaseline(
+        plan.project,
+        buildSessionState({
+          projectId: plan.project.id,
+          activeTab: plan.activeTab,
+          currentTime: plan.currentTime,
+          activeLineIndex: plan.activeLineIndex,
+          activeWordIndex: plan.activeWordIndex,
+        }),
+      );
       setActiveTabState(plan.activeTab);
       applyEngineState(
         plan.project,
@@ -177,7 +212,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
         plan.currentTime,
       );
     },
-    [applyEngineState],
+    [applyEngineState, markBaseline],
   );
 
   useRestoreHydration({
@@ -202,9 +237,17 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       clearRestoreAudioUrl();
       setHasManualOverride(true);
       replaceManualAudioUrl(nextUrl);
+      markProjectBaseline(nextProject);
+      activeLineIndexRef.current = 0;
+      activeWordIndexRef.current = 0;
       applyEngineState(nextProject, peaks, durationSec, 0, 0, 0);
     },
-    [applyEngineState, clearRestoreAudioUrl, replaceManualAudioUrl],
+    [
+      applyEngineState,
+      clearRestoreAudioUrl,
+      markProjectBaseline,
+      replaceManualAudioUrl,
+    ],
   );
 
   const onAudioAttached = useCallback(
@@ -240,7 +283,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
   const { openProject, createProject, attachAudio } = useProjectLoader({
     adapter,
     project,
-    flushAutosave: autosave.flush,
+    flushAutosave,
     pausePlayback: pause,
     applyLoadedProject,
     onAudioAttached,
@@ -261,7 +304,8 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
   );
 
   const clearActiveProject = useCallback(async () => {
-    autosave.cancel();
+    cancelAutosave();
+    markProjectBaseline(null);
     pause();
     clearRestoreAudioUrl();
     setHasManualOverride(true);
@@ -273,23 +317,27 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     suppressLineChangeRef.current = true;
     replaceLines([], false);
     suppressLineChangeRef.current = false;
+    activeLineIndexRef.current = 0;
+    activeWordIndexRef.current = 0;
     setActiveLineIndex(0);
     setActiveWordIndex(0);
     resetHistory();
     seekTo(0);
-    await adapter.saveSessionState(
-      buildSessionState({
-        projectId: null,
-        activeTab: activeTabRef.current,
-        currentTime: 0,
-        activeLineIndex: 0,
-        activeWordIndex: 0,
-      }),
-    );
+    const clearedSession = buildSessionState({
+      projectId: null,
+      activeTab: activeTabRef.current,
+      currentTime: 0,
+      activeLineIndex: 0,
+      activeWordIndex: 0,
+    });
+    markSessionBaseline(clearedSession);
+    await adapter.saveSessionState(clearedSession);
   }, [
     adapter,
-    autosave,
+    cancelAutosave,
     clearRestoreAudioUrl,
+    markProjectBaseline,
+    markSessionBaseline,
     pause,
     replaceLines,
     replaceManualAudioUrl,
@@ -309,8 +357,8 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       audioUrl: effectiveAudioUrl,
       waveformPeaks,
       audioDuration,
-      saveStatus: autosave.saveStatus,
-      autosaveState: autosave.autosaveState,
+      saveStatus,
+      autosaveState,
       sync,
       player,
       openProject,
@@ -318,13 +366,27 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       attachAudio,
       updateProjectMetadata,
       clearActiveProject,
-      flushPendingSave: autosave.flush,
+      flushPendingSave: flushAutosave,
     }),
     [
-      activeTab, attachAudio, audioDuration, autosave.autosaveState,
-      autosave.flush, autosave.saveStatus, clearActiveProject, createProject, effectiveAudioUrl,
-      openProject, player, project, restore.error, restore.status,
-      setActiveTab, sync, updateProjectMetadata, waveformPeaks,
+      activeTab,
+      attachAudio,
+      audioDuration,
+      autosaveState,
+      clearActiveProject,
+      createProject,
+      effectiveAudioUrl,
+      flushAutosave,
+      openProject,
+      player,
+      project,
+      restore.error,
+      restore.status,
+      saveStatus,
+      setActiveTab,
+      sync,
+      updateProjectMetadata,
+      waveformPeaks,
     ],
   );
 
