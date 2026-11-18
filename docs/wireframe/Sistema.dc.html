@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Sistema visual</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="neo.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>body{margin:0}.sw{width:76px;height:76px;border-radius:20px;display:flex;align-items:flex-end;padding:8px;font:700 10.5px 'JetBrains Mono',monospace}.h{font-weight:800;font-size:12px;letter-spacing:.12em;color:var(--mute);margin:0 0 12px}.el{height:76px;flex:1;border-radius:20px;display:grid;place-items:center;font-weight:800;font-size:13px}</style>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</helmet>
+<div style="width:560px;height:844px;padding:32px;display:flex;flex-direction:column;gap:26px;background:var(--bg);overflow:hidden">
+  <div>
+    <div style="font-size:30px;font-weight:800;line-height:1.1">Estudio táctil</div>
+    <div class="sub" style="margin-top:6px;font-size:14px">Neumorfismo con contraste: relieve para tocar, hundido para leer, color solo para actuar.</div>
+  </div>
+
+  <div>
+    <p class="h">COLOR</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <div class="sw raised-sm" style="color:var(--ink)">#E6E2DC<br>papel</div>
+      <div class="sw" style="background:#25232B;color:#fff">#25232B<br>tinta</div>
+      <div class="sw" style="background:#5C5964;color:#fff">#5C5964<br>apagado</div>
+      <div class="sw" style="background:linear-gradient(145deg,#C8452D,#A93219);color:#fff">#B53A22<br>marca</div>
+      <div class="sw" style="background:#1F7A6D;color:#fff">#1F7A6D<br>listo</div>
+    </div>
+  </div>
+
+  <div>
+    <p class="h">ELEVACIÓN</p>
+    <div style="display:flex;gap:16px">
+      <div class="el raised">Relieve</div>
+      <div class="el raised-sm">Botón</div>
+      <div class="el well" style="border-radius:20px">Hundido</div>
+    </div>
+    <div class="sub" style="margin-top:10px;font-size:12.5px">Relieve = se toca. Hundido = se lee (letra, onda, medidores). Luz arriba-izquierda.</div>
+  </div>
+
+  <div>
+    <p class="h">BOTONES Y ESTADOS</p>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <button class="btn acc" style="height:48px">Primario</button>
+      <button class="btn" style="height:48px">Secundario</button>
+      <button class="ibtn" aria-label="Normal"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
+      <button class="ibtn on" aria-label="Activo"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></button>
+    </div>
+    <div class="sub" style="margin-top:10px;font-size:12.5px">Al presionar, el relieve se hunde (pointerdown, sin retardo). Objetivos de 48 px o más.</div>
+  </div>
+
+  <div>
+    <p class="h">TIPOGRAFÍA</p>
+    <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap">
+      <div style="font-size:56px;font-weight:800;line-height:1;color:var(--acc)">palabra</div>
+      <div><div style="font-weight:800;font-size:17px">Manrope 800 · títulos</div><div class="mono" style="font-size:13px;font-weight:700;color:var(--mute)">JetBrains Mono · 01:12.340</div></div>
+    </div>
+  </div>
+
+  <div>
+    <p class="h">ZONA DEL PULGAR (390 × 844)</p>
+    <div style="display:flex;gap:18px;align-items:stretch">
+      <div style="width:90px;height:170px;border-radius:18px;position:relative;overflow:hidden" class="well">
+        <div style="position:absolute;left:0;right:0;top:0;height:34%;background:rgba(92,89,100,.12)"></div>
+        <div style="position:absolute;left:0;right:0;top:34%;height:30%;background:rgba(227,160,8,.18)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:36%;background:rgba(31,122,109,.28)"></div>
+      </div>
+      <div style="flex:1;font-size:13px;line-height:1.5;font-weight:600">
+        <div><b>Abajo:</b> marcar, repetir Pre-Roll, navegación.</div>
+        <div><b>Medio:</b> visor de palabra y letra.</div>
+        <div><b>Arriba:</b> solo lectura y estado de guardado.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":560,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
