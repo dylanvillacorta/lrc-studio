@@ -1,6 +1,5 @@
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AUDIO_INPUT_ACCEPT } from '@/lib/audioFormats';
 import type { LyricLine } from '@/types';
 import { KaraokePreview } from './KaraokePreview';
 import { LineSyncScreen } from './LineSyncScreen';
@@ -101,8 +100,9 @@ describe('LineSyncScreen', () => {
 
     expect(html).toContain('Subir audio');
     expect(html).toContain('Usar demo');
-    expect(html).toContain(`accept="${AUDIO_INPUT_ACCEPT}"`);
+    expect(html).not.toContain('accept=');
     expect(html).toContain('FLAC');
+    expect(html).toContain('iCloud, Google Drive');
 
     vi.stubGlobal('navigator', undefined);
     const ssrHtml = renderToString(
@@ -130,40 +130,8 @@ describe('LineSyncScreen', () => {
         onUseDemo={vi.fn(async () => {})}
       />,
     );
-    expect(ssrHtml).toContain(`accept="${AUDIO_INPUT_ACCEPT}"`);
-
-    vi.stubGlobal('navigator', {
-      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)',
-      maxTouchPoints: 5,
-    });
-    const iosHtml = renderToString(
-      <LineSyncScreen
-        hasAudio={false}
-        peaks={[]}
-        currentTimeMs={0}
-        durationMs={0}
-        isPlaying={false}
-        playbackRate={1}
-        lines={[]}
-        activeLineIndex={0}
-        canUndo={false}
-        syncMode="line"
-        onSelectMode={vi.fn()}
-        onSeek={vi.fn()}
-        onTogglePlay={vi.fn()}
-        onChangePlaybackRate={vi.fn()}
-        onUndo={vi.fn()}
-        onSelectLine={vi.fn()}
-        onStampLine={vi.fn()}
-        onOpenLoupe={vi.fn()}
-        onStopBurst={vi.fn()}
-        onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
-      />,
-    );
-    expect(iosHtml).toContain('accept=""');
-    expect(iosHtml).toContain('iCloud, Drive');
-    expect(iosHtml).toContain('FLAC');
+    expect(ssrHtml).not.toContain('accept=');
+    expect(ssrHtml).toContain('FLAC');
   });
 });
 

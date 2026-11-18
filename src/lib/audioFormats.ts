@@ -33,8 +33,7 @@ const MIME_ALIASES: Readonly<Record<string, string>> = {
 };
 
 /**
- * Valor general para el atributo `accept` de inputs de audio: combina `audio/*`,
- * MIME explícitos para FLAC y todas las extensiones soportadas.
+ * Lista base de tipos y extensiones de audio (conservada por compatibilidad).
  */
 export const AUDIO_INPUT_ACCEPT = [
   'audio/*',
@@ -48,46 +47,16 @@ export interface AudioInputEnvironment {
   maxTouchPoints?: number;
 }
 
-function resolveEnvironment(env?: AudioInputEnvironment): {
-  userAgent: string;
-  maxTouchPoints: number;
-} {
-  if (env !== undefined) {
-    return {
-      userAgent: env.userAgent ?? '',
-      maxTouchPoints: env.maxTouchPoints ?? 0,
-    };
-  }
-  if (typeof navigator !== 'undefined') {
-    return {
-      userAgent: navigator.userAgent ?? '',
-      maxTouchPoints: navigator.maxTouchPoints ?? 0,
-    };
-  }
-  return { userAgent: '', maxTouchPoints: 0 };
-}
-
 /**
- * Detecta iOS y iPadOS (incluyendo iPadOS que se anuncia como Macintosh con pantalla táctil).
- */
-export function isAppleMobileDevice(env?: AudioInputEnvironment): boolean {
-  const { userAgent, maxTouchPoints } = resolveEnvironment(env);
-  if (/iPhone|iPad|iPod/i.test(userAgent)) {
-    return true;
-  }
-  return /Macintosh/i.test(userAgent) && maxTouchPoints > 1;
-}
-
-/**
- * Calcula el atributo `accept` para inputs de archivo de audio según el entorno.
- * En iOS/iPadOS devuelve cadena vacía para evitar que proveedores en la nube (Drive, iCloud)
- * atenúen archivos FLAC cuyo UTI no coincida con el filtro del selector nativo.
+ * Calcula el atributo `accept` para inputs de archivo de audio.
+ * Devuelve siempre cadena vacía (sin filtro) en todas las plataformas para que
+ * proveedores en la nube (Google Drive, iCloud, etc.) no atenúen archivos `.flac`
+ * con MIME desconocido o genérico; la validación se realiza tras la selección
+ * mediante `isSupportedAudioFile`.
  */
 export function getAudioInputAccept(env?: AudioInputEnvironment): string {
-  if (isAppleMobileDevice(env)) {
-    return '';
-  }
-  return AUDIO_INPUT_ACCEPT;
+  void env;
+  return '';
 }
 
 /**

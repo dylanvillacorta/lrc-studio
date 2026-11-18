@@ -36,7 +36,7 @@ describe('audioFormats', () => {
   });
 
   describe('getAudioInputAccept', () => {
-    it('devuelve cadena vacía en iPhone, iPad, iPod e iPadOS (Macintosh táctil)', () => {
+    it('devuelve cadena vacía en todas las plataformas (iOS, iPadOS, Mac, Android, Windows y sin navigator)', () => {
       expect(
         getAudioInputAccept({
           userAgent:
@@ -68,37 +68,33 @@ describe('audioFormats', () => {
           maxTouchPoints: 5,
         }),
       ).toBe('');
-    });
 
-    it('devuelve audio/*, audio/flac, audio/x-flac y todas las extensiones en Mac de escritorio, Android, Windows y sin navigator', () => {
-      const macDesktop = getAudioInputAccept({
-        userAgent:
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
-        maxTouchPoints: 0,
-      });
-      const android = getAudioInputAccept({
-        userAgent:
-          'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/125.0',
-        maxTouchPoints: 5,
-      });
-      const windows = getAudioInputAccept({
-        userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0',
-        maxTouchPoints: 0,
-      });
+      expect(
+        getAudioInputAccept({
+          userAgent:
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
+          maxTouchPoints: 0,
+        }),
+      ).toBe('');
+
+      expect(
+        getAudioInputAccept({
+          userAgent:
+            'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/125.0',
+          maxTouchPoints: 5,
+        }),
+      ).toBe('');
+
+      expect(
+        getAudioInputAccept({
+          userAgent:
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0',
+          maxTouchPoints: 0,
+        }),
+      ).toBe('');
 
       vi.stubGlobal('navigator', undefined);
-      const noNavigator = getAudioInputAccept();
-
-      for (const accept of [macDesktop, android, windows, noNavigator]) {
-        expect(accept).toBe(AUDIO_INPUT_ACCEPT);
-        expect(accept).toContain('audio/*');
-        expect(accept).toContain('audio/flac');
-        expect(accept).toContain('audio/x-flac');
-        for (const ext of SUPPORTED_AUDIO_EXTENSIONS) {
-          expect(accept).toContain(`.${ext}`);
-        }
-      }
+      expect(getAudioInputAccept()).toBe('');
     });
   });
 
@@ -143,7 +139,9 @@ describe('audioFormats', () => {
       expect(isSupportedAudioFile({ name: 'demo.opus', type: '' })).toBe(true);
     });
 
-    it('rechaza archivos no-audio o sin extensión ni MIME válido', () => {
+    it('rechaza archivos no-audio (como .jpg o .txt) o sin extensión ni MIME válido', () => {
+      expect(isSupportedAudioFile({ name: 'portada.jpg', type: 'image/jpeg' })).toBe(false);
+      expect(isSupportedAudioFile({ name: 'portada.jpg', type: '' })).toBe(false);
       expect(isSupportedAudioFile({ name: 'notas.txt', type: 'text/plain' })).toBe(false);
       expect(isSupportedAudioFile({ name: 'notas.flac.txt', type: '' })).toBe(false);
       expect(isSupportedAudioFile({ name: 'sinextension', type: '' })).toBe(false);

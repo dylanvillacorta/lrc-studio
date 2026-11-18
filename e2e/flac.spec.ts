@@ -23,10 +23,7 @@ test.describe('Soporte de audio FLAC', () => {
     await expect(page.getByRole('region', { name: 'Sin pista de audio' })).toBeVisible();
 
     const fileInput = page.locator('input[aria-label="Seleccionar archivo de audio"]');
-    await expect(fileInput).toHaveAttribute('accept', /\.flac/);
-    if (!isMobile) {
-      await expect(fileInput).toHaveAttribute('accept', /audio\/flac/);
-    }
+    await expect(fileInput).not.toHaveAttribute('accept', /.+/);
     await fileInput.setInputFiles(
       makeFilePayload('master-estudio.flac', 'audio/flac', flacBytes),
     );
@@ -120,11 +117,18 @@ test.describe('Soporte de audio FLAC', () => {
 
     const fileInput = page.locator('input[aria-label="Seleccionar archivo de audio"]');
 
-    // Caso 1: archivo no-audio (.txt)
+    // Caso 1: archivo no-audio (.jpg y .txt)
+    await fileInput.setInputFiles(
+      makeFilePayload('portada.jpg', 'image/jpeg', 'no es audio'),
+    );
+    const alert = page.getByRole('alert');
+    await expect(alert).toBeVisible();
+    await expect(alert).toContainText(/FLAC/);
+    await expect(page.getByRole('region', { name: 'Sin pista de audio' })).toBeVisible();
+
     await fileInput.setInputFiles(
       makeFilePayload('notas.txt', 'text/plain', 'esto no es audio'),
     );
-    const alert = page.getByRole('alert');
     await expect(alert).toBeVisible();
     await expect(alert).toContainText(/FLAC/);
     await expect(page.getByRole('region', { name: 'Sin pista de audio' })).toBeVisible();
@@ -152,9 +156,7 @@ test.describe('Soporte de audio FLAC', () => {
     await expect(page.getByRole('region', { name: 'Sin pista de audio' })).toBeVisible();
 
     const fileInput = page.locator('input[aria-label="Seleccionar archivo de audio"]');
-    if (!isMobile) {
-      await expect(fileInput).toHaveAttribute('accept', /audio\/flac/);
-    }
+    await expect(fileInput).not.toHaveAttribute('accept', /.+/);
 
     await fileInput.setInputFiles(
       makeFilePayload('nube-drive.flac', 'application/octet-stream', flacBytes),

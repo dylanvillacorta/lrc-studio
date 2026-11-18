@@ -3,7 +3,6 @@ import {
   SUPPORTED_AUDIO_FORMATS_LABEL,
   UNSUPPORTED_AUDIO_FORMAT_MESSAGE,
   getAudioInputAccept,
-  isAppleMobileDevice,
   isSupportedAudioFile,
 } from '@/lib/audioFormats';
 import { Icon, Pill, RaisedButton, WellPanel } from '@/ui';
@@ -22,7 +21,6 @@ export function NoAudioCard({ onUploadAudio, onUseDemo }: NoAudioCardProps) {
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const accept = getAudioInputAccept();
-  const isAppleMobile = isAppleMobileDevice();
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -75,16 +73,14 @@ export function NoAudioCard({ onUploadAudio, onUseDemo }: NoAudioCardProps) {
             Carga una pista para sincronizar
           </h2>
           <p className="m-0 text-sm font-semibold text-mute leading-relaxed">
-            {isAppleMobile
-              ? `Elige un audio desde Archivos, iCloud, Drive u otros proveedores (${SUPPORTED_AUDIO_FORMATS_LABEL}) o prueba al instante con la canción de demostración.`
-              : `Sube un archivo de audio (${SUPPORTED_AUDIO_FORMATS_LABEL}) o prueba al instante con la canción de demostración.`}
+            Sube un audio desde tu dispositivo, iCloud, Google Drive u otros proveedores ({SUPPORTED_AUDIO_FORMATS_LABEL}) o prueba al instante con la canción de demostración.
           </p>
         </div>
 
         <input
           ref={inputRef}
           type="file"
-          accept={accept}
+          accept={accept || undefined}
           onChange={handleFileChange}
           aria-label="Seleccionar archivo de audio"
           className="sr-only"
