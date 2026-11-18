@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import type { ProjectSummary } from '@/types';
-import { Icon, IconButton, RaisedButton, WellPanel } from '@/ui';
+import { Icon, IconButton, RaisedButton, ScrollShadow, WellPanel } from '@/ui';
 import { filterProjectsByQuery } from '../model/catalogModel';
 import { ProjectCard } from './ProjectCard';
 
@@ -143,7 +143,10 @@ export function CatalogPanel({
         </WellPanel>
       ) : null}
 
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 p-0.5">
+      <ScrollShadow
+        className="flex-1 min-h-0 -mx-4"
+        contentClassName="px-4 py-3 flex flex-col gap-4"
+      >
         {loading && projects.length === 0 ? (
           <WellPanel className="text-center py-8 px-4 text-sm font-semibold text-mute">
             Cargando transcripciones...
@@ -175,7 +178,7 @@ export function CatalogPanel({
             />
           ))
         )}
-      </div>
+      </ScrollShadow>
     </section>
   );
 }
