@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   selectSyncMode,
   tapOrPointerDown,
   trackErrors,
@@ -15,7 +15,8 @@ test.describe('Flujo de sincronización completo', () => {
     const isMobile = isMobileProject(testInfo);
 
     await page.goto('/');
-    await loadDemoProject(page);
+    await expect(page.getByRole('button', { name: 'Usar demo' })).toHaveCount(0);
+    await createProjectWithLyricsAndWav(page, isMobile);
 
     // Verificar letra de demo cargada (línea 5 sin sincronizar inicialmente)
     const line5Btn = page.getByRole('button', {

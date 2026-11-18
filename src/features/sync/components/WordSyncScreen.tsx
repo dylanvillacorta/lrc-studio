@@ -62,7 +62,6 @@ export interface WordSyncScreenProps {
   }) => WordStampFeedback;
   onOpenLoupe: () => void;
   onUploadAudio: (file: File) => Promise<void>;
-  onUseDemo: () => Promise<void>;
 }
 
 /**
@@ -94,7 +93,6 @@ export function WordSyncScreen({
   onStampWordEnd,
   onOpenLoupe,
   onUploadAudio,
-  onUseDemo,
 }: WordSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
   const [isHolding, setIsHolding] = useState(false);
@@ -109,7 +107,7 @@ export function WordSyncScreen({
           aria-label="Modo de sincronización"
           className={SYNC_SEGMENTED_CLASS}
         />
-        <NoAudioCard onUploadAudio={onUploadAudio} onUseDemo={onUseDemo} />
+        <NoAudioCard onUploadAudio={onUploadAudio} />
       </div>
     );
   }

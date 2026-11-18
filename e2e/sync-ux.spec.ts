@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   selectSyncMode,
+  tapOrPointerDown,
   trackErrors,
 } from './helpers/studio';
 
@@ -20,7 +21,16 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
     const isMobile = isMobileProject(testInfo);
 
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
+
+    // Marcar línea 1 en 00:05.00 para probar salto al seleccionarla después
+    await page.getByRole('button', { name: 'Adelantar 5 segundos' }).click();
+    await tapOrPointerDown(
+      page,
+      page.getByRole('button', { name: /MARCAR LÍNEA 1/i }),
+      isMobile,
+    );
+    await page.getByRole('button', { name: 'Retroceder 5 segundos' }).click();
 
     const slider = page.getByRole('slider', { name: 'Posición en la forma de onda' });
     const box = await slider.boundingBox();
@@ -100,7 +110,7 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
     await syncedLine1.click();
     await expect
       .poll(async () => Number(await slider.getAttribute('aria-valuenow')))
-      .toBe(1500);
+      .toBe(5000);
 
     // 6. Entrar a Ráfaga no inicia reproducción (audio.paused sigue true) y salir detiene
     await selectSyncMode(page, 'Ráfaga');
@@ -128,7 +138,7 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
     const assertNoErrors = trackErrors(page);
 
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, true);
 
     // Verificar 390x844: ≥ 5 líneas visibles en la lista y sin scroll de página
     const metrics390 = await page.evaluate(() => {
@@ -214,7 +224,7 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
     const isMobile = isMobileProject(testInfo);
 
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
 
     const line1 = page.getByRole('button', { name: /Luces de neón brillan en la ciudad/i });
     const line2 = page.getByRole('button', { name: /Caminamos juntos sin mirar atrás/i });
@@ -226,12 +236,18 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
     const hUnsynced = (await line5.boundingBox())!.height;
     expect(Math.abs(hSynced - hUnsynced)).toBeLessThanOrEqual(1);
 
-    // A) Seguimiento durante reproducción: al pasar de 1.5s resalta línea 1, y al pasar de 5.2s pasa a línea 2
+    // Asignar marcas a línea 1 (00:00.00) y línea 2 (00:05.00) para probar seguimiento
+    await line1.click();
+    await tapOrPointerDown(page, page.getByRole('button', { name: /MARCAR LÍNEA 1/i }), isMobile);
+    await page.getByRole('button', { name: 'Adelantar 5 segundos' }).click();
+    await tapOrPointerDown(page, page.getByRole('button', { name: /MARCAR LÍNEA 2/i }), isMobile);
+    await page.getByRole('button', { name: 'Retroceder 5 segundos' }).click();
+
+    // A) Seguimiento durante reproducción: al iniciar en 0s resalta línea 1, y al adelantar 5s pasa a línea 2
     await line1.click();
     await page.getByRole('button', { name: 'Reproducir' }).click();
     await expect(line1).toHaveAttribute('data-playing', 'true', { timeout: 6000 });
 
-    // Adelantar 5s para entrar en el rango de la línea 2 (00:05.20)
     await page.getByRole('button', { name: 'Adelantar 5 segundos' }).click();
     await expect(line2).toHaveAttribute('data-playing', 'true', { timeout: 6000 });
     if (isMobile) {

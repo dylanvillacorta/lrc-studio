@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   openCatalog,
   openExport,
   openLyrics,
@@ -48,7 +48,7 @@ test.describe('Accesibilidad básica', () => {
   }, testInfo) => {
     const isMobile = isMobileProject(testInfo);
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
 
     // Auditar modo Línea, Palabra, Letra, Exportar y Catálogo
     await auditButtons(page, isMobile);

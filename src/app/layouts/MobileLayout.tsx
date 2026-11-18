@@ -418,7 +418,6 @@ export function MobileLayout() {
               onTogglePlay={togglePlay}
               onSeek={seekTo}
               onUploadAudio={handleUploadAudio}
-              onUseDemo={handleUseDemo}
             />
           ) : null}
 
@@ -471,7 +470,6 @@ export function MobileLayout() {
                 player.pause();
               }}
               onUploadAudio={handleUploadAudio}
-              onUseDemo={handleUseDemo}
             />
           ) : null}
 
@@ -507,7 +505,6 @@ export function MobileLayout() {
               onStampWordEnd={sync.stampWordEnd}
               onOpenLoupe={handleOpenLoupe}
               onUploadAudio={handleUploadAudio}
-              onUseDemo={handleUseDemo}
             />
           ) : null}
 

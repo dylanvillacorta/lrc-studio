@@ -55,7 +55,6 @@ describe('LineSyncScreen', () => {
         onOpenLoupe={vi.fn()}
         onStopBurst={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
@@ -97,12 +96,11 @@ describe('LineSyncScreen', () => {
         onOpenLoupe={vi.fn()}
         onStopBurst={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
     expect(html).toContain('Subir audio');
-    expect(html).toContain('Usar demo');
+    expect(html).not.toContain('Usar demo');
     expect(html).toContain('accept="audio/*,.mp3,.wav,.flac,.ogg,.oga,.m4a,.aac,.opus,.webm"');
   });
 });
@@ -141,7 +139,6 @@ describe('WordSyncScreen', () => {
         }))}
         onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
@@ -171,7 +168,6 @@ describe('KaraokePreview', () => {
         onTogglePlay={vi.fn()}
         onSeek={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
@@ -198,12 +194,11 @@ describe('KaraokePreview', () => {
         onTogglePlay={vi.fn()}
         onSeek={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
     expect(html).toContain('Subir audio');
-    expect(html).toContain('Usar demo');
+    expect(html).not.toContain('Usar demo');
   });
 });
 

@@ -47,7 +47,6 @@ export interface LineSyncScreenProps {
   onOpenLoupe: () => void;
   onStopBurst: () => void;
   onUploadAudio: (file: File) => Promise<void>;
-  onUseDemo: () => Promise<void>;
 }
 
 /**
@@ -79,7 +78,6 @@ export function LineSyncScreen({
   onOpenLoupe,
   onStopBurst,
   onUploadAudio,
-  onUseDemo,
 }: LineSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -120,7 +118,7 @@ export function LineSyncScreen({
           aria-label="Modo de sincronización"
           className={SYNC_SEGMENTED_CLASS}
         />
-        <NoAudioCard onUploadAudio={onUploadAudio} onUseDemo={onUseDemo} />
+        <NoAudioCard onUploadAudio={onUploadAudio} />
       </div>
     );
   }

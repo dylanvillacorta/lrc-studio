@@ -441,7 +441,7 @@ export function DesktopLayout() {
               onSetActiveTab={setActiveTab}
             />
           ) : !audioUrl ? (
-            <NoAudioCard onUploadAudio={handleUploadAudio} onUseDemo={handleUseDemo} />
+            <NoAudioCard onUploadAudio={handleUploadAudio} />
           ) : (
             <>
               <DesktopWaveformCard
@@ -497,7 +497,6 @@ export function DesktopLayout() {
                   onTogglePlay={player.togglePlay}
                   onSeek={player.seekTo}
                   onUploadAudio={handleUploadAudio}
-                  onUseDemo={handleUseDemo}
                 />
               ) : (
                 <>

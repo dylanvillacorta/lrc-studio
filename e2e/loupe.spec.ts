@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   openLoupe,
   tapOrPointerDown,
 } from './helpers/studio';
@@ -12,7 +12,7 @@ test.describe('Lupa de onda e inspector ±10 / ±50 ms', () => {
   }, testInfo) => {
     const isMobile = isMobileProject(testInfo);
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
 
     // Marcar línea 5 en 00:05.000 y seleccionarla
     const line5 = page.getByRole('button', {

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   openLyrics,
   selectSyncMode,
 } from './helpers/studio';
@@ -15,7 +15,7 @@ test.describe('Escritorio: atajos de teclado y responsive', () => {
     page,
   }) => {
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, false);
 
     // P alterna reproducción/pausa
     await page.keyboard.press('p');
@@ -82,7 +82,7 @@ test.describe('Escritorio: atajos de teclado y responsive', () => {
     page,
   }) => {
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, false);
 
     for (const width of [768, 1280, 1920]) {
       await page.setViewportSize({ width, height: 800 });

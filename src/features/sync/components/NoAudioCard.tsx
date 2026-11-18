@@ -9,13 +9,12 @@ import { formatAudioDecodeError } from './syncViewHelpers';
 
 export interface NoAudioCardProps {
   onUploadAudio: (file: File) => Promise<void>;
-  onUseDemo: () => Promise<void>;
 }
 
 /**
  * Tarjeta de estado vacío cuando el proyecto activo aún no tiene pista de audio.
  */
-export function NoAudioCard({ onUploadAudio, onUseDemo }: NoAudioCardProps) {
+export function NoAudioCard({ onUploadAudio }: NoAudioCardProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -41,18 +40,6 @@ export function NoAudioCard({ onUploadAudio, onUseDemo }: NoAudioCardProps) {
     }
   };
 
-  const handleDemo = async () => {
-    setBusy(true);
-    setErrorMsg(null);
-    try {
-      await onUseDemo();
-    } catch (err) {
-      setErrorMsg(formatAudioDecodeError(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <section
       aria-label="Sin pista de audio"
@@ -71,7 +58,7 @@ export function NoAudioCard({ onUploadAudio, onUseDemo }: NoAudioCardProps) {
             Carga una pista para sincronizar
           </h2>
           <p className="m-0 text-sm font-semibold text-mute leading-relaxed">
-            Sube un archivo de audio local (MP3, WAV, FLAC, M4A u OGG) o prueba al instante con la canción de demostración.
+            Sube un archivo de audio local (MP3, WAV, FLAC, M4A u OGG) para comenzar a sincronizar.
           </p>
         </div>
 
@@ -93,15 +80,6 @@ export function NoAudioCard({ onUploadAudio, onUseDemo }: NoAudioCardProps) {
           >
             <Icon name="plus" size={20} />
             <span>{busy ? 'Procesando audio…' : 'Subir audio'}</span>
-          </RaisedButton>
-
-          <RaisedButton
-            disabled={busy}
-            onClick={handleDemo}
-            className="w-full min-h-12"
-          >
-            <Icon name="play" size={20} />
-            <span>Usar demo</span>
           </RaisedButton>
         </div>
 
