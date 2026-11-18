@@ -1,3 +1,8 @@
+import {
+  UNSUPPORTED_AUDIO_FORMAT_MESSAGE,
+  inferAudioMime,
+  isSupportedAudioFile,
+} from '@/lib/audioFormats';
 import { computePeaks } from '@/lib/waveform';
 
 /**
@@ -91,6 +96,9 @@ function resolveDefaultAudioContext(): AudioDecoderContext {
   return new Ctor();
 }
 
+export const AUDIO_DECODE_FAILED_MESSAGE =
+  'El navegador no pudo decodificar este formato de audio. Si el archivo está dañado o no es compatible, prueba convertirlo a WAV o MP3.';
+
 /**
  * Decodifica un archivo de audio usando `AudioContext.decodeAudioData`,
  * calcula los picos de onda con `computePeaks` y devuelve el blob y sus metadatos.
@@ -99,23 +107,34 @@ export async function importAudioFile(
   file: AudioFileInput,
   options: ImportAudioOptions = {},
 ): Promise<ImportedAudioResult> {
+  if (!isSupportedAudioFile(file)) {
+    throw new Error(UNSUPPORTED_AUDIO_FORMAT_MESSAGE);
+  }
+
   const { bins = DEFAULT_WAVEFORM_BINS, createAudioContext = resolveDefaultAudioContext } =
     options;
 
+  const fileName = file.name && file.name.length > 0 ? file.name : 'audio';
+  const resolvedMime = inferAudioMime(fileName, file.type);
   const arrayBuffer = await file.arrayBuffer();
   const blob =
-    typeof Blob !== 'undefined' && file instanceof Blob
+    typeof Blob !== 'undefined' && file instanceof Blob && file.type === resolvedMime
       ? file
-      : new Blob([arrayBuffer], { type: file.type || 'audio/mpeg' });
+      : new Blob([arrayBuffer], { type: resolvedMime });
 
   const context = createAudioContext();
   try {
-    const decoded = await context.decodeAudioData(arrayBuffer.slice(0));
+    let decoded: DecodedAudioLike;
+    try {
+      decoded = await context.decodeAudioData(arrayBuffer.slice(0));
+    } catch (err) {
+      throw new Error(AUDIO_DECODE_FAILED_MESSAGE, { cause: err });
+    }
     const { peaks, duration } = extractPeaksAndDuration(decoded, bins);
 
     return {
       blob,
-      fileName: file.name && file.name.length > 0 ? file.name : 'audio',
+      fileName,
       peaks,
       duration,
     };

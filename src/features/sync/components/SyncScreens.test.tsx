@@ -96,7 +96,7 @@ describe('LineSyncScreen', () => {
 
     expect(html).toContain('Subir audio');
     expect(html).toContain('Usar demo');
-    expect(html).toContain('accept="audio/*"');
+    expect(html).toContain('accept="audio/*,.mp3,.wav,.flac,.ogg,.oga,.m4a,.aac,.opus,.webm"');
   });
 });
 

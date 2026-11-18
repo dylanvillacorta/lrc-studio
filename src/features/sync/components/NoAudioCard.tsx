@@ -1,4 +1,9 @@
 import { useRef, useState, type ChangeEvent } from 'react';
+import {
+  AUDIO_INPUT_ACCEPT,
+  UNSUPPORTED_AUDIO_FORMAT_MESSAGE,
+  isSupportedAudioFile,
+} from '@/lib/audioFormats';
 import { Icon, Pill, RaisedButton, WellPanel } from '@/ui';
 import { formatAudioDecodeError } from './syncViewHelpers';
 
@@ -19,6 +24,10 @@ export function NoAudioCard({ onUploadAudio, onUseDemo }: NoAudioCardProps) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) {
+      return;
+    }
+    if (!isSupportedAudioFile(file)) {
+      setErrorMsg(UNSUPPORTED_AUDIO_FORMAT_MESSAGE);
       return;
     }
     setBusy(true);
@@ -62,14 +71,14 @@ export function NoAudioCard({ onUploadAudio, onUseDemo }: NoAudioCardProps) {
             Carga una pista para sincronizar
           </h2>
           <p className="m-0 text-sm font-semibold text-mute leading-relaxed">
-            Sube un archivo de audio local (MP3, WAV, M4A u OGG) o prueba al instante con la canción de demostración.
+            Sube un archivo de audio local (MP3, WAV, FLAC, M4A u OGG) o prueba al instante con la canción de demostración.
           </p>
         </div>
 
         <input
           ref={inputRef}
           type="file"
-          accept="audio/*"
+          accept={AUDIO_INPUT_ACCEPT}
           onChange={handleFileChange}
           aria-label="Seleccionar archivo de audio"
           className="sr-only"
