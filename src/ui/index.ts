@@ -8,4 +8,10 @@ export { Keycap, type KeycapProps } from './Keycap';
 export { ProgressBar, type ProgressBarProps } from './ProgressBar';
 export { NavBar, type NavBarProps, type NavBarItem } from './NavBar';
 export { Pill, type PillProps } from './Pill';
+export {
+  ScrollShadow,
+  computeScrollShadows,
+  type ScrollShadowProps,
+  type ScrollShadowState,
+} from './ScrollShadow';
 export { Icon, type IconProps, type IconName } from './icons';
