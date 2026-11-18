@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushPendingSave } from '@/app/providers';
 import {
   isNewVersionAvailable,
@@ -57,9 +57,17 @@ export function useVersionCheck(
     intervalMs = DEFAULT_INTERVAL_MS,
     fetchImpl = globalThis.fetch,
     flush = flushPendingSave,
-    localVersion = getDefaultLocalVersion(),
+    localVersion,
     reload = () => window.location.reload(),
   } = options;
+
+  const fallbackLocal = getDefaultLocalVersion();
+  const resolvedVersion = localVersion?.version ?? fallbackLocal.version;
+  const resolvedCommit = localVersion?.commit ?? fallbackLocal.commit;
+  const stableLocalVersion = useMemo<VersionInfo>(
+    () => ({ version: resolvedVersion, commit: resolvedCommit }),
+    [resolvedVersion, resolvedCommit],
+  );
 
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const checkingRef = useRef(false);
@@ -70,14 +78,14 @@ export function useVersionCheck(
     }
     checkingRef.current = true;
     try {
-      const hasUpdate = await checkVersionOnce(localVersion, fetchImpl);
+      const hasUpdate = await checkVersionOnce(stableLocalVersion, fetchImpl);
       if (hasUpdate) {
         setUpdateAvailable(true);
       }
     } finally {
       checkingRef.current = false;
     }
-  }, [fetchImpl, localVersion]);
+  }, [fetchImpl, stableLocalVersion]);
 
   useEffect(() => {
     void runCheck();

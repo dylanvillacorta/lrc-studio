@@ -217,7 +217,7 @@ export function WordSyncScreen({
             variant={sniperMode ? 'acc' : 'default'}
             aria-pressed={sniperMode}
             onClick={onToggleSniper}
-            className="flex-1 min-h-[40px] [@media(max-height:720px)]:min-h-[34px] rounded-[14px] py-0 px-2.5 text-xs font-extrabold"
+            className="flex-1 min-h-11 [@media(max-height:720px)]:min-h-[34px] rounded-[14px] py-0 px-2.5 text-xs font-extrabold"
           >
             Francotirador
           </RaisedButton>
@@ -226,7 +226,7 @@ export function WordSyncScreen({
             variant={holdMode ? 'acc' : 'default'}
             aria-pressed={holdMode}
             onClick={onToggleHold}
-            className="flex-1 min-h-[40px] [@media(max-height:720px)]:min-h-[34px] rounded-[14px] py-0 px-2.5 text-xs font-extrabold"
+            className="flex-1 min-h-11 [@media(max-height:720px)]:min-h-[34px] rounded-[14px] py-0 px-2.5 text-xs font-extrabold"
           >
             Mantener
           </RaisedButton>

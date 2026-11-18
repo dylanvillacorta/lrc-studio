@@ -6,6 +6,7 @@ import {
   deleteCatalogProject,
   duplicateCatalogProject,
   exportCatalogProjectBackup,
+  importCatalogBackupFromJson,
   loadCatalogProjects,
   type ProjectBackupExport,
 } from '../model/catalogOperations';
@@ -22,6 +23,7 @@ export interface UseCatalogResult {
   duplicateProject: (projectId: string) => Promise<ProjectFullData | null>;
   deleteProject: (projectId: string) => Promise<boolean>;
   exportProjectBackup: (projectId: string) => Promise<ProjectBackupExport | null>;
+  importBackup: (jsonString: string) => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -165,6 +167,27 @@ export function useCatalog(
     [adapter],
   );
 
+  const importBackup = useCallback(
+    async (jsonString: string): Promise<boolean> => {
+      setError(null);
+      try {
+        await importCatalogBackupFromJson(adapter, jsonString);
+        const list = await loadCatalogProjects(adapter);
+        setProjects(list);
+        return true;
+      } catch (err) {
+        setError(
+          toSpanishErrorMessage(
+            err,
+            'No se pudo importar el respaldo seleccionado.',
+          ),
+        );
+        return false;
+      }
+    },
+    [adapter],
+  );
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -178,6 +201,7 @@ export function useCatalog(
     duplicateProject,
     deleteProject,
     exportProjectBackup,
+    importBackup,
     clearError,
   };
 }

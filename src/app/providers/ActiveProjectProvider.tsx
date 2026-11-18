@@ -87,7 +87,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
   const { pause, seekTo, setPlaybackRate } = player;
 
   const getSnapshot = useCallback((): AutosaveSnapshot => {
-    const activeProject = projectRef.current ?? project;
+    const activeProject = projectRef.current;
     return {
       project: activeProject,
       session: buildSessionState({
@@ -98,7 +98,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
         activeWordIndex,
       }),
     };
-  }, [activeLineIndex, activeWordIndex, player.currentTime, project]);
+  }, [activeLineIndex, activeWordIndex, player.currentTime]);
 
   const autosave = useAutosave(adapter, getSnapshot, {
     isPlaying: player.isPlaying,
@@ -260,6 +260,45 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     [],
   );
 
+  const clearActiveProject = useCallback(async () => {
+    autosave.cancel();
+    pause();
+    clearRestoreAudioUrl();
+    setHasManualOverride(true);
+    replaceManualAudioUrl(null);
+    projectRef.current = null;
+    setProject(null);
+    setWaveformPeaks([]);
+    setAudioDuration(0);
+    suppressLineChangeRef.current = true;
+    replaceLines([], false);
+    suppressLineChangeRef.current = false;
+    setActiveLineIndex(0);
+    setActiveWordIndex(0);
+    resetHistory();
+    seekTo(0);
+    await adapter.saveSessionState(
+      buildSessionState({
+        projectId: null,
+        activeTab: activeTabRef.current,
+        currentTime: 0,
+        activeLineIndex: 0,
+        activeWordIndex: 0,
+      }),
+    );
+  }, [
+    adapter,
+    autosave,
+    clearRestoreAudioUrl,
+    pause,
+    replaceLines,
+    replaceManualAudioUrl,
+    resetHistory,
+    seekTo,
+    setActiveLineIndex,
+    setActiveWordIndex,
+  ]);
+
   const value = useMemo<ActiveProjectContextValue>(
     () => ({
       project,
@@ -278,11 +317,12 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       createProject,
       attachAudio,
       updateProjectMetadata,
+      clearActiveProject,
       flushPendingSave: autosave.flush,
     }),
     [
       activeTab, attachAudio, audioDuration, autosave.autosaveState,
-      autosave.flush, autosave.saveStatus, createProject, effectiveAudioUrl,
+      autosave.flush, autosave.saveStatus, clearActiveProject, createProject, effectiveAudioUrl,
       openProject, player, project, restore.error, restore.status,
       setActiveTab, sync, updateProjectMetadata, waveformPeaks,
     ],

@@ -60,6 +60,7 @@ export function DesktopLayout() {
     createProject,
     attachAudio,
     updateProjectMetadata,
+    clearActiveProject,
     flushPendingSave,
   } = useActiveProject();
 
@@ -122,8 +123,16 @@ export function DesktopLayout() {
   }, [burstActive, burstWindow, player]);
 
   useEffect(() => {
-    void refreshCatalog();
-  }, [refreshCatalog, project?.id, project?.updatedAt]);
+    if (activeTab === 'catalog') {
+      void flushPendingSave().then(() => refreshCatalog());
+    }
+  }, [activeTab, flushPendingSave, refreshCatalog]);
+
+  useEffect(() => {
+    if (saveStatus === 'saved') {
+      void refreshCatalog();
+    }
+  }, [project?.id, refreshCatalog, saveStatus]);
 
   const activeLine = sync.lines[sync.activeLineIndex];
   const targetWord = activeLine?.words[sync.activeWordIndex];
@@ -293,6 +302,7 @@ export function DesktopLayout() {
   const handleOpenLoupe = () => {
     if (!activeLine) return;
     setBurstActive(false);
+    setKaraokeActive(false);
     setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
     setActiveTab('loupe');
   };
@@ -348,6 +358,12 @@ export function DesktopLayout() {
               loupeReturnTab={loupeReturnTab}
               onOpenProject={openProject}
               onCreateProject={createProject}
+              onDeleteProject={async (id) => {
+                if (id === project?.id) {
+                  await clearActiveProject();
+                }
+                await catalog.deleteProject(id);
+              }}
               onUpdateMetadata={updateProjectMetadata}
               onReplaceLines={sync.replaceLines}
               onLoadDemo={handleUseDemo}

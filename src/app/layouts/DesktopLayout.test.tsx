@@ -126,6 +126,7 @@ function createSampleContext(
     createProject: async () => SAMPLE_PROJECT,
     attachAudio: async () => {},
     updateProjectMetadata: () => {},
+    clearActiveProject: async () => {},
     flushPendingSave: async () => {},
     ...overrides,
   };
