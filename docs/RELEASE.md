@@ -34,10 +34,55 @@
     - `Content-Security-Policy` compatible con `blob:` para audio local y sin recursos externos.
   - `HEALTHCHECK` en el contenedor.
 - **Publicación en GHCR (`ghcr.io/dylanvillacorta/lrc-studio`):**
-  - Tags: `X.Y.Z`, `X.Y`, `latest` y `<sha-corto>`.
-  - Workflow de GitHub Actions: en PRs solo construye la imagen sin publicar; **solo publica a GHCR al empujar un tag `vX.Y.Z`** (el tag lo crea el usuario tras aprobar G1).
+  - **Multi-arquitectura:** el workflow `.github/workflows/docker.yml` ejecuta primero un job de verificación (`pnpm install --frozen-lockfile`, `typecheck`, `lint`, `test`, `build` con Node 24 y Corepack) y luego construye el manifiesto multi-arch para `linux/amd64` y `linux/arm64` usando `docker/setup-qemu-action` y `docker/setup-buildx-action` con caché por plataforma en GitHub Actions.
+  - En `pull_request` hacia `develop` o `main` construye ambas plataformas sin publicar.
+  - **Solo publica en GHCR al empujar un tag `vX.Y.Z`** (el tag lo crea el usuario tras aprobar G1).
 
-## 4. SEO
+| Tag | Cuándo se genera | Descripción |
+| :--- | :--- | :--- |
+| `X.Y.Z` | Al empujar tag `vX.Y.Z` | Versión exacta fijada en `docker-compose.yml` |
+| `X.Y` | Al empujar tag `vX.Y.Z` | Último parche de la serie menor |
+| `latest` | Al empujar tag `vX.Y.Z` | Última release estable |
+| `<sha-corto>` | En PRs y tags | Trazabilidad por commit |
+
+- **Actualización de `docker-compose.yml` en cada release:**
+  - Al preparar la rama `release/vX.Y.Z` (sin puerta), ejecutar `bash scripts/bump-compose-tag.sh X.Y.Z` para fijar la línea `image:` de `docker-compose.yml` al tag exacto `X.Y.Z` dentro del mismo PR hacia `main`. Así, al aprobar G1, `main` queda apuntando a la última release publicada. El push del tag `vX.Y.Z` y la publicación de la imagen siguen siendo puerta G1.
+
+## 4. Despliegue en producción y stack local (LAN)
+
+### Producción (`docker-compose.yml`)
+
+- Usa la imagen multi-arch publicada en `ghcr.io/dylanvillacorta/lrc-studio:<TAG>` (sin `platform` forzada para que Docker elija `amd64` o `arm64` automáticamente), `read_only: true` con `tmpfs` en `/tmp`, `/var/cache/nginx` y `/var/run`, `cap_drop: [ALL]`, `no-new-privileges:true`, `healthcheck` y límites de memoria/CPU.
+- Para levantar en producción:
+  ```bash
+  docker compose up -d
+  ```
+- **Nota previa a `v0.1.0`:** mientras no se haya publicado la primera release `v0.1.0` en GHCR, `docker compose up -d` o `docker compose pull` fallarán al descargar la imagen (comportamiento esperado hasta aprobar G1 de `v0.1.0`).
+
+### Stack local de pruebas desde código fuente (`docker-compose.dev.yml`)
+
+- Compila el build de producción desde el `Dockerfile` (`lrc-studio:local`) y lo sirve con `nginx` (sin `vite dev` ni volúmenes de código) escuchando en `0.0.0.0:8080` (configurable vía `.env` tomando como plantilla `.env.example`).
+- Comandos principales mediante `scripts/dev-stack.sh`:
+  ```bash
+  bash scripts/dev-stack.sh up      # Compila, levanta, espera healthy y muestra URLs local y LAN
+  bash scripts/dev-stack.sh status  # Estado del contenedor
+  bash scripts/dev-stack.sh logs    # Logs en vivo
+  bash scripts/dev-stack.sh down    # Detiene y elimina el stack local
+  ```
+
+### Acceso desde el celular por red local (Windows)
+
+- `nginx` escucha en todas las interfaces (`listen 8080;`) y la aplicación opera por HTTP en la LAN (`crypto.randomUUID` y `navigator.clipboard` cuentan con respaldos sin requerir HTTPS, y no se usa Service Worker).
+- Para permitir conexiones entrantes desde el segmento `10.1.10.0/24` en el perfil de red **Privado**, ejecutar en **PowerShell como Administrador**:
+  ```powershell
+  New-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 8080)" -Direction Inbound -Protocol TCP -LocalPort 8080 -RemoteAddress 10.1.10.0/24 -Profile Private -Action Allow
+  ```
+- Para eliminar la regla cuando terminen las pruebas:
+  ```powershell
+  Remove-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 8080)"
+  ```
+
+## 5. SEO
 
 La app es una herramienta cliente (sin SSR). `index.html` y archivos estáticos deben incluir:
 - `<html lang="es">`
