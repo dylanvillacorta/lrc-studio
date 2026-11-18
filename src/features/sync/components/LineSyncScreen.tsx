@@ -11,10 +11,15 @@ import {
   WellPanel,
 } from '@/ui';
 import { NoAudioCard } from './NoAudioCard';
-import { getNextPlaybackRate } from './syncViewHelpers';
+import {
+  getNextPlaybackRate,
+  SYNC_MODE_OPTIONS,
+  SYNC_SEGMENTED_CLASS,
+  type SyncSegmentedMode,
+} from './syncViewHelpers';
 import { WaveformStrip } from './WaveformStrip';
 
-export type SyncSegmentedMode = 'line' | 'word' | 'burst';
+export type { SyncSegmentedMode };
 
 export interface LineSyncScreenProps {
   hasAudio: boolean;
@@ -40,12 +45,6 @@ export interface LineSyncScreenProps {
   onUploadAudio: (file: File) => Promise<void>;
   onUseDemo: () => Promise<void>;
 }
-
-const MODE_OPTIONS: readonly { value: SyncSegmentedMode; label: string }[] = [
-  { value: 'line', label: 'Línea' },
-  { value: 'word', label: 'Palabra' },
-  { value: 'burst', label: 'Ráfaga' },
-];
 
 /**
  * Pantalla móvil de sincronización por línea y modo ráfaga de línea aislada.
@@ -96,10 +95,11 @@ export function LineSyncScreen({
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-3">
         <Segmented
-          options={MODE_OPTIONS}
+          options={SYNC_MODE_OPTIONS}
           value={syncMode}
           onChange={onSelectMode}
           aria-label="Modo de sincronización"
+          className={SYNC_SEGMENTED_CLASS}
         />
         <NoAudioCard onUploadAudio={onUploadAudio} onUseDemo={onUseDemo} />
       </div>
@@ -125,13 +125,14 @@ export function LineSyncScreen({
   return (
     <section
       aria-label="Sincronizar por línea"
-      className="flex-1 min-h-0 flex flex-col gap-3"
+      className="flex-1 min-h-0 flex flex-col gap-2.5 [@media(max-height:720px)]:gap-1.5"
     >
       <Segmented
-        options={MODE_OPTIONS}
+        options={SYNC_MODE_OPTIONS}
         value={syncMode}
         onChange={onSelectMode}
         aria-label="Modo de sincronización"
+        className={SYNC_SEGMENTED_CLASS}
       />
 
       <WaveformStrip
@@ -262,6 +263,7 @@ export function LineSyncScreen({
         disabled={!hasLines}
         onPointerDown={handleStampPointerDown}
         onContextMenu={(e) => e.preventDefault()}
+        className="[@media(max-height:720px)]:min-h-[68px] [@media(max-height:720px)]:rounded-[26px]"
         style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none' }}
       />
 

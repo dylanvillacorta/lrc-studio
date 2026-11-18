@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { LyricLine } from '@/types';
+import { KaraokePreview } from './KaraokePreview';
 import { LineSyncScreen } from './LineSyncScreen';
 import { WordSyncScreen } from './WordSyncScreen';
 
@@ -63,6 +64,7 @@ describe('LineSyncScreen', () => {
     expect(html).toContain('Deshacer última marca');
     expect(html).toContain('Abrir ajuste fino en lupa');
     expect(html).toContain('esperando marca');
+    expect(html).toContain('Karaoke');
   });
 
   it('muestra el estado vacío cuando no hay audio', () => {
@@ -144,5 +146,56 @@ describe('WordSyncScreen', () => {
     expect(html).toContain('Pre-Roll:');
     expect(html).toContain('Francotirador');
     expect(html).toContain('Mantener');
+  });
+});
+
+describe('KaraokePreview', () => {
+  it('renderiza la vista previa karaoke con línea activa, barrido por palabra y aviso de líneas sin sincronizar', () => {
+    const html = renderToString(
+      <KaraokePreview
+        hasAudio
+        durationMs={120_000}
+        isPlaying={false}
+        lines={SAMPLE_LINES}
+        syncMode="karaoke"
+        pausedTimeMs={13_075}
+        getCurrentTimeMs={() => 13_075}
+        onSelectMode={vi.fn()}
+        onTogglePlay={vi.fn()}
+        onSeek={vi.fn()}
+        onUploadAudio={vi.fn(async () => {})}
+        onUseDemo={vi.fn(async () => {})}
+      />,
+    );
+
+    expect(html).toContain('Vista previa Karaoke');
+    expect(html).toContain('60 FPS');
+    expect(html).toContain('data-state="active"');
+    expect(html).toContain('data-state="upcoming"');
+    expect(html).toContain('--karaoke-fill:50%');
+    expect(html).toContain('1 línea sin sincronizar');
+    expect(html).toContain('motion-reduce:transition-none');
+  });
+
+  it('muestra la tarjeta de carga cuando no hay audio en KaraokePreview', () => {
+    const html = renderToString(
+      <KaraokePreview
+        hasAudio={false}
+        durationMs={0}
+        isPlaying={false}
+        lines={[]}
+        syncMode="karaoke"
+        pausedTimeMs={0}
+        getCurrentTimeMs={() => 0}
+        onSelectMode={vi.fn()}
+        onTogglePlay={vi.fn()}
+        onSeek={vi.fn()}
+        onUploadAudio={vi.fn(async () => {})}
+        onUseDemo={vi.fn(async () => {})}
+      />,
+    );
+
+    expect(html).toContain('Subir audio');
+    expect(html).toContain('Usar demo');
   });
 });

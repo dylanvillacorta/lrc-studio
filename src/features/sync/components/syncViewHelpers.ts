@@ -6,6 +6,21 @@ import type { AudioFileInput } from '@/lib/audioImport';
 import { createSynthesizedDemoWav } from '@/lib/demoWav';
 import type { LyricLine, PreRollTrafficLight } from '@/types';
 
+export type SyncSegmentedMode = 'line' | 'word' | 'burst' | 'karaoke';
+
+export const SYNC_MODE_OPTIONS: readonly {
+  value: SyncSegmentedMode;
+  label: string;
+}[] = [
+  { value: 'line', label: 'Línea' },
+  { value: 'word', label: 'Palabra' },
+  { value: 'burst', label: 'Ráfaga' },
+  { value: 'karaoke', label: 'Karaoke' },
+];
+
+export const SYNC_SEGMENTED_CLASS =
+  '[&>button]:px-1.5 [&>button]:text-[13px] max-[375px]:[&>button]:text-xs [@media(max-height:720px)]:p-1 [@media(max-height:720px)]:[&>button]:min-h-[40px]';
+
 export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5] as const;
 
 export interface PreRollStatus {
@@ -148,4 +163,21 @@ export function createDemoAudioFile(durationSeconds = 28): {
     durationMs: demo.durationMs,
     peaks: demo.peaks,
   };
+}
+
+/**
+ * Genera el aviso en español cuando existen líneas sin marca temporal en la vista Karaoke.
+ */
+export function formatUnsyncedLinesNotice(
+  syncedLinesCount: number,
+  unsyncedLinesCount: number,
+): string | null {
+  if (unsyncedLinesCount <= 0) {
+    return null;
+  }
+  if (syncedLinesCount === 0) {
+    return 'Ninguna línea está sincronizada todavía. Marca los tiempos en Línea o Palabra para ver el karaoke.';
+  }
+  const noun = unsyncedLinesCount === 1 ? '1 línea sin sincronizar' : `${unsyncedLinesCount} líneas sin sincronizar`;
+  return `Hay ${noun}; no se iluminarán hasta que tengan marca de tiempo.`;
 }

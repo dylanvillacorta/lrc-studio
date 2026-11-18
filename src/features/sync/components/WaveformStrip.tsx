@@ -53,7 +53,13 @@ export function WaveformStrip({
   const stepX = viewWidth / bars.length;
 
   return (
-    <WellPanel className={compact ? 'p-2.5 flex flex-col gap-1.5' : 'p-3 flex flex-col gap-2'}>
+    <WellPanel
+      className={
+        compact
+          ? 'p-2 flex flex-col gap-1 [@media(max-height:720px)]:p-1.5'
+          : 'p-3 flex flex-col gap-2 [@media(max-height:720px)]:p-2 [@media(max-height:720px)]:gap-1'
+      }
+    >
       <div
         role="slider"
         tabIndex={0}
@@ -72,7 +78,9 @@ export function WaveformStrip({
           }
         }}
         className={`relative w-full overflow-hidden rounded-[12px] cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
-          compact ? 'h-[44px]' : 'h-[76px]'
+          compact
+            ? 'h-[38px] [@media(max-height:720px)]:h-[28px]'
+            : 'h-[76px] [@media(max-height:720px)]:h-[44px]'
         }`}
         style={{ touchAction: 'manipulation' }}
       >
@@ -171,7 +179,7 @@ export function WaveformStrip({
               onClick={onOpenLoupe}
               disabled={!canOpenLoupe}
               aria-label="Abrir ajuste fino en lupa"
-              className="min-h-12 px-3 text-xs font-extrabold text-acc"
+              className="min-h-12 [@media(max-height:720px)]:min-h-9 px-3 text-xs font-extrabold text-acc"
             >
               <Icon name="search" size={16} />
               <span>Lupa</span>

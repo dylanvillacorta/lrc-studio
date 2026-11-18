@@ -11,11 +11,13 @@ import {
   SyncButton,
   WellPanel,
 } from '@/ui';
-import type { SyncSegmentedMode } from './LineSyncScreen';
 import { NoAudioCard } from './NoAudioCard';
 import {
   computePreRollStatus,
   resolveWordTargetStartMs,
+  SYNC_MODE_OPTIONS,
+  SYNC_SEGMENTED_CLASS,
+  type SyncSegmentedMode,
 } from './syncViewHelpers';
 import { WaveformStrip } from './WaveformStrip';
 
@@ -61,12 +63,6 @@ export interface WordSyncScreenProps {
   onUseDemo: () => Promise<void>;
 }
 
-const MODE_OPTIONS: readonly { value: SyncSegmentedMode; label: string }[] = [
-  { value: 'line', label: 'Línea' },
-  { value: 'word', label: 'Palabra' },
-  { value: 'burst', label: 'Ráfaga' },
-];
-
 /**
  * Pantalla móvil de sincronización palabra por palabra con Pre-Roll, semáforo,
  * modo Francotirador y modo mantener.
@@ -103,10 +99,11 @@ export function WordSyncScreen({
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-3">
         <Segmented
-          options={MODE_OPTIONS}
+          options={SYNC_MODE_OPTIONS}
           value={syncMode}
           onChange={onSelectMode}
           aria-label="Modo de sincronización"
+          className={SYNC_SEGMENTED_CLASS}
         />
         <NoAudioCard onUploadAudio={onUploadAudio} onUseDemo={onUseDemo} />
       </div>
@@ -191,13 +188,14 @@ export function WordSyncScreen({
   return (
     <section
       aria-label="Sincronizar palabra por palabra"
-      className="flex-1 min-h-0 flex flex-col gap-2.5"
+      className="flex-1 min-h-0 flex flex-col gap-2 [@media(max-height:720px)]:gap-1.5"
     >
       <Segmented
-        options={MODE_OPTIONS}
+        options={SYNC_MODE_OPTIONS}
         value={syncMode}
         onChange={onSelectMode}
         aria-label="Modo de sincronización"
+        className={SYNC_SEGMENTED_CLASS}
       />
 
       <WaveformStrip
@@ -212,14 +210,14 @@ export function WordSyncScreen({
         canOpenLoupe={Boolean(activeLine)}
       />
 
-      <WellPanel className="flex-1 min-h-0 p-3 flex flex-col gap-1.5 overflow-y-auto">
-        <div className="flex items-center justify-between gap-2">
+      <WellPanel className="flex-1 min-h-0 p-2.5 flex flex-col justify-between gap-1.5 overflow-y-auto [@media(max-height:720px)]:p-2 [@media(max-height:720px)]:gap-1">
+        <div className="flex items-center gap-2 shrink-0">
           <RaisedButton
             size="sm"
             variant={sniperMode ? 'acc' : 'default'}
             aria-pressed={sniperMode}
             onClick={onToggleSniper}
-            className="flex-1 min-h-12 py-0 text-xs font-extrabold"
+            className="flex-1 min-h-[40px] [@media(max-height:720px)]:min-h-[34px] rounded-[14px] py-0 px-2.5 text-xs font-extrabold"
           >
             Francotirador
           </RaisedButton>
@@ -228,13 +226,13 @@ export function WordSyncScreen({
             variant={holdMode ? 'acc' : 'default'}
             aria-pressed={holdMode}
             onClick={onToggleHold}
-            className="flex-1 min-h-12 py-0 text-xs font-extrabold"
+            className="flex-1 min-h-[40px] [@media(max-height:720px)]:min-h-[34px] rounded-[14px] py-0 px-2.5 text-xs font-extrabold"
           >
             Mantener
           </RaisedButton>
         </div>
 
-        <div className="text-[14px] leading-snug font-semibold text-mute">
+        <div className="text-[14px] [@media(max-height:720px)]:text-[13px] leading-snug font-semibold text-mute shrink-0">
           {words.length > 0 ? (
             words.map((word, idx) => {
               const isTarget = idx === activeWordIndex;
@@ -261,33 +259,38 @@ export function WordSyncScreen({
           )}
         </div>
 
-        <div className="text-center my-auto">
-          <div className="text-[11px] font-extrabold tracking-[0.12em] text-mute uppercase">
+        <div className="text-center shrink-0">
+          <div className="text-[11px] [@media(max-height:720px)]:text-[10px] font-extrabold tracking-[0.12em] text-mute uppercase">
             PALABRA OBJETIVO
           </div>
-          <div className="text-[72px] font-extrabold leading-none text-acc mt-0.5 break-words">
+          <div className="text-[72px] [@media(max-height:740px)]:text-[clamp(1.85rem,5.8vh,2.75rem)] font-extrabold leading-none text-acc mt-0.5 break-words">
             {targetWord ? targetWord.text : '—'}
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <Pill variant="mute" className="truncate max-w-[48%]">
+        <div className="flex items-center justify-between gap-2 shrink-0">
+          <Pill variant="mute" className="truncate max-w-[48%] [@media(max-height:720px)]:py-0.5 [@media(max-height:720px)]:text-[11px]">
             {prevWord ? `← ${prevWord.text}` : '← inicio'}
           </Pill>
-          <Pill variant="mute" className="truncate max-w-[48%]">
+          <Pill variant="mute" className="truncate max-w-[48%] [@media(max-height:720px)]:py-0.5 [@media(max-height:720px)]:text-[11px]">
             {nextWord ? `${nextWord.text} →` : 'fin →'}
           </Pill>
         </div>
 
-        <div className="boton rounded-[18px] px-3 py-2 flex items-center gap-3">
-          <Lamps lit={preRoll.light} />
+        <div className="boton rounded-[18px] px-3 py-1.5 flex items-center gap-2.5 shrink-0 [@media(max-height:720px)]:px-2.5 [@media(max-height:720px)]:py-1 [@media(max-height:720px)]:gap-2">
+          <Lamps
+            lit={preRoll.light}
+            className="shrink-0 [@media(max-height:720px)]:scale-90 [@media(max-height:720px)]:origin-left"
+          />
           <div className="flex-1 min-w-0">
-            <div className="font-extrabold text-sm text-ink">{preRoll.label}</div>
-            <div className="text-xs font-semibold text-mute truncate">
+            <div className="font-extrabold text-sm text-ink leading-tight [@media(max-height:720px)]:text-xs">
+              {preRoll.label}
+            </div>
+            <div className="text-xs font-semibold text-mute truncate [@media(max-height:720px)]:text-[11px]">
               cuenta regresiva del Pre-Roll
             </div>
           </div>
-          <div className="font-mono text-[20px] font-bold tabular-nums text-ink shrink-0">
+          <div className="font-mono text-[20px] [@media(max-height:720px)]:text-base font-bold tabular-nums text-ink shrink-0">
             {preRoll.countdownText}
           </div>
         </div>
@@ -296,7 +299,7 @@ export function WordSyncScreen({
       <RaisedButton
         onClick={handleRepeatPreRoll}
         disabled={!targetWord}
-        className="w-full min-h-12 text-acc font-extrabold"
+        className="w-full min-h-12 [@media(max-height:720px)]:min-h-10 text-acc font-extrabold shrink-0"
       >
         <Icon name="replay" size={18} />
         <span>{`Repetir Pre-Roll −${preRollSecondsLabel} s`}</span>
@@ -314,7 +317,7 @@ export function WordSyncScreen({
         onPointerUp={handleStampPointerUp}
         onPointerCancel={() => setIsHolding(false)}
         onContextMenu={(e) => e.preventDefault()}
-        className="min-h-[96px]"
+        className="min-h-[96px] [@media(max-height:720px)]:min-h-[68px] [@media(max-height:720px)]:rounded-[26px]"
         style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none' }}
       />
 

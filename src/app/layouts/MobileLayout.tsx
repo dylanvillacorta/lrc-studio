@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MobileHeader } from '@/app/layouts/MobileHeader';
 import { useActiveProject, useStorage } from '@/app/providers';
 import { CatalogPanel, useCatalog } from '@/features/catalog';
@@ -11,11 +11,12 @@ import {
   mergeRawTextWithExistingLines,
 } from '@/features/lyrics';
 import { DEFAULT_PRE_ROLL_MS, getActiveLineWindow } from '@/features/sync';
+import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
+import { LineSyncScreen } from '@/features/sync/components/LineSyncScreen';
 import {
-  LineSyncScreen,
+  createDemoAudioFile,
   type SyncSegmentedMode,
-} from '@/features/sync/components/LineSyncScreen';
-import { createDemoAudioFile } from '@/features/sync/components/syncViewHelpers';
+} from '@/features/sync/components/syncViewHelpers';
 import { WordSyncScreen } from '@/features/sync/components/WordSyncScreen';
 import { downloadTextFile } from '@/lib/download';
 import { NavBar, type NavBarItem } from '@/ui';
@@ -51,9 +52,16 @@ export function MobileLayout() {
 
   const catalog = useCatalog(storage);
   const { refresh: refreshCatalog } = catalog;
-  const [burstActive, setBurstActive] = useState(false);
+  const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
+  const playerTimeRef = useRef(player.currentTime);
+
+  useEffect(() => {
+    playerTimeRef.current = player.currentTime;
+  }, [player.currentTime]);
+
+  const getCurrentTimeMs = useCallback(() => playerTimeRef.current, []);
 
   const durationMs =
     player.duration > 0
@@ -66,6 +74,7 @@ export function MobileLayout() {
       : DEFAULT_PRE_ROLL_MS;
 
   const sniperMode = project?.settings.sniperMode ?? true;
+  const burstActive = syncSubView === 'burst';
 
   const burstWindow = useMemo(() => {
     if (!burstActive || sync.lines.length === 0) {
@@ -93,53 +102,67 @@ export function MobileLayout() {
     }
   }, [activeTab, refreshCatalog]);
 
-  const handleSelectMode = (mode: SyncSegmentedMode) => {
-    if (mode === 'line') {
-      setBurstActive(false);
-      setActiveTab('sync');
-      return;
-    }
-    if (mode === 'word') {
-      setBurstActive(false);
-      setActiveTab('word');
-      return;
-    }
-    if (sync.lines.length > 0) {
-      const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, {
-        preRollMs,
-        durationMs,
-      });
-      setBurstActive(true);
-      setActiveTab('sync');
-      player.seekTo(win.windowStartMs);
-      void player.play();
-    }
-  };
+  const { seekTo, play, togglePlay } = player;
+  const { lines: syncLines, activeLineIndex: syncActiveLineIndex, replaceLines } = sync;
 
-  const handleUploadAudio = async (file: File) => {
-    if (!project) {
-      const baseTitle = file.name.replace(/\.[^.]+$/, '').trim() || 'Nueva canción';
-      await createProject({ title: baseTitle, artist: '' });
-    }
-    await attachAudio(file);
-  };
+  const handleSelectMode = useCallback(
+    (mode: SyncSegmentedMode) => {
+      if (mode === 'line') {
+        setSyncSubView('default');
+        setActiveTab('sync');
+        return;
+      }
+      if (mode === 'word') {
+        setSyncSubView('default');
+        setActiveTab('word');
+        return;
+      }
+      if (mode === 'karaoke') {
+        setSyncSubView('karaoke');
+        setActiveTab('sync');
+        return;
+      }
+      if (syncLines.length > 0) {
+        const win = getActiveLineWindow(syncLines, syncActiveLineIndex, {
+          preRollMs,
+          durationMs,
+        });
+        setSyncSubView('burst');
+        setActiveTab('sync');
+        seekTo(win.windowStartMs);
+        void play();
+      }
+    },
+    [durationMs, play, preRollMs, seekTo, setActiveTab, syncActiveLineIndex, syncLines],
+  );
 
-  const handleUseDemo = async () => {
+  const handleUploadAudio = useCallback(
+    async (file: File) => {
+      if (!project) {
+        const baseTitle = file.name.replace(/\.[^.]+$/, '').trim() || 'Nueva canción';
+        await createProject({ title: baseTitle, artist: '' });
+      }
+      await attachAudio(file);
+    },
+    [attachAudio, createProject, project],
+  );
+
+  const handleUseDemo = useCallback(async () => {
     if (!project) {
       await createProject({ title: 'Noches de Verano', artist: 'Luna Alba' });
     }
     const demo = createDemoAudioFile(28);
     await attachAudio(demo.file);
-    if (sync.lines.length === 0) {
-      sync.replaceLines(buildStructuredLinesFromText(INITIAL_DEMO_LYRICS, true), false);
+    if (syncLines.length === 0) {
+      replaceLines(buildStructuredLinesFromText(INITIAL_DEMO_LYRICS, true), false);
     }
-  };
+  }, [attachAudio, createProject, project, replaceLines, syncLines.length]);
 
   const handleOpenLoupe = () => {
     if (!sync.lines[sync.activeLineIndex]) {
       return;
     }
-    setBurstActive(false);
+    setSyncSubView('default');
     setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
     setActiveTab('loupe');
   };
@@ -179,7 +202,7 @@ export function MobileLayout() {
   };
 
   const handleNavSelect = (tab: 'catalog' | 'lyrics' | 'sync' | 'export') => {
-    setBurstActive(false);
+    setSyncSubView('default');
     setActiveTab(tab);
   };
 
@@ -213,7 +236,7 @@ export function MobileLayout() {
           />
         ) : null}
 
-        <main className="flex-1 min-h-0 px-4 pb-3 flex flex-col overflow-y-auto">
+        <main className="flex-1 min-h-0 px-4 pb-3 [@media(max-height:720px)]:pb-1.5 flex flex-col overflow-y-auto">
           {activeTab === 'catalog' ? (
             <CatalogPanel
               projects={catalog.projects}
@@ -279,7 +302,24 @@ export function MobileLayout() {
             />
           ) : null}
 
-          {activeTab === 'sync' ? (
+          {activeTab === 'sync' && syncSubView === 'karaoke' ? (
+            <KaraokePreview
+              hasAudio={Boolean(audioUrl)}
+              durationMs={durationMs}
+              isPlaying={player.isPlaying}
+              lines={sync.lines}
+              syncMode="karaoke"
+              pausedTimeMs={player.isPlaying ? -1 : player.currentTime}
+              getCurrentTimeMs={getCurrentTimeMs}
+              onSelectMode={handleSelectMode}
+              onTogglePlay={togglePlay}
+              onSeek={seekTo}
+              onUploadAudio={handleUploadAudio}
+              onUseDemo={handleUseDemo}
+            />
+          ) : null}
+
+          {activeTab === 'sync' && syncSubView !== 'karaoke' ? (
             <LineSyncScreen
               hasAudio={Boolean(audioUrl)}
               peaks={waveformPeaks}
@@ -315,7 +355,7 @@ export function MobileLayout() {
               }}
               onOpenLoupe={handleOpenLoupe}
               onStopBurst={() => {
-                setBurstActive(false);
+                setSyncSubView('default');
                 player.pause();
               }}
               onUploadAudio={handleUploadAudio}
@@ -394,6 +434,7 @@ export function MobileLayout() {
             items={NAV_ITEMS}
             activeId={navActiveId}
             onSelect={handleNavSelect}
+            className="[@media(max-height:720px)]:pt-1.5 [@media(max-height:720px)]:pb-2 [@media(max-height:720px)]:[&>button]:min-h-[48px]"
           />
         ) : null}
       </div>

@@ -4,8 +4,10 @@ import {
   createDemoAudioFile,
   downsampleWaveformBars,
   formatAudioDecodeError,
+  formatUnsyncedLinesNotice,
   getNextPlaybackRate,
   resolveWordTargetStartMs,
+  SYNC_MODE_OPTIONS,
 } from './syncViewHelpers';
 import type { LyricLine } from '@/types';
 
@@ -69,5 +71,18 @@ describe('syncViewHelpers', () => {
     expect(demo.peaks.length).toBeGreaterThan(0);
     const buf = await demo.file.arrayBuffer();
     expect(buf.byteLength).toBeGreaterThan(44);
+  });
+
+  it('expone las 4 opciones del selector de sincronización y formatea avisos de karaoke', () => {
+    expect(SYNC_MODE_OPTIONS.map((o) => o.value)).toEqual([
+      'line',
+      'word',
+      'burst',
+      'karaoke',
+    ]);
+    expect(formatUnsyncedLinesNotice(4, 0)).toBeNull();
+    expect(formatUnsyncedLinesNotice(0, 3)).toContain('Ninguna línea está sincronizada');
+    expect(formatUnsyncedLinesNotice(2, 1)).toContain('1 línea sin sincronizar');
+    expect(formatUnsyncedLinesNotice(2, 3)).toContain('3 líneas sin sincronizar');
   });
 });

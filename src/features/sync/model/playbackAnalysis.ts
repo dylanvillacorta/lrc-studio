@@ -12,10 +12,28 @@ import type {
   LyricLine,
   PreRollTrafficLight,
   SyncProgress,
+  WordTiming,
 } from '@/types';
 
 export const DEFAULT_PRE_ROLL_MS = 2500;
 export const DEFAULT_POST_ROLL_MS = 800;
+export const DEFAULT_WORD_SWEEP_MS = 350;
+
+export interface KaraokeLineState {
+  lineIndex: number;
+  isActive: boolean;
+  isPast: boolean;
+  wordProgressPct: number[];
+}
+
+export interface KaraokePlaybackState {
+  activeLineIndex: number;
+  activeWordIndex: number;
+  syncedLinesCount: number;
+  unsyncedLinesCount: number;
+  hasUnsyncedLines: boolean;
+  lines: KaraokeLineState[];
+}
 
 export interface ActiveLineWindowOptions {
   preRollMs?: number;
@@ -188,5 +206,96 @@ export function computeSyncProgress(lines: readonly LyricLine[]): SyncProgress {
     syncedWords,
     lineProgress,
     wordProgress,
+  };
+}
+
+/**
+ * Calcula el porcentaje de barrido (0 a 100) de una palabra para `currentTimeMs`.
+ * Si la palabra no tiene marca propia pero la línea está activa sin desglose por palabra,
+ * devuelve `100` para resaltar la línea completa (compatible con el archivo base).
+ */
+export function computeWordProgressPct(
+  word: WordTiming,
+  currentTimeMs: number,
+  fallbackLineActive = false,
+): number {
+  if (word.startMs === null) {
+    return fallbackLineActive ? 100 : 0;
+  }
+  if (currentTimeMs <= word.startMs) {
+    return 0;
+  }
+  const endMs =
+    word.endMs !== null && word.endMs > word.startMs
+      ? word.endMs
+      : word.startMs + DEFAULT_WORD_SWEEP_MS;
+  if (currentTimeMs >= endMs) {
+    return 100;
+  }
+  const rawPct = ((currentTimeMs - word.startMs) / (endMs - word.startMs)) * 100;
+  return Math.min(100, Math.max(0, Math.round(rawPct * 10) / 10));
+}
+
+/**
+ * Calcula el estado completo de la vista previa Karaoke para `currentTimeMs`:
+ * línea activa, palabra activa, líneas pasadas/futuras, progreso de barrido por palabra
+ * y conteo de líneas sin sincronizar.
+ */
+export function computeKaraokeState(
+  lines: readonly LyricLine[],
+  currentTimeMs: number,
+): KaraokePlaybackState {
+  const activeLineIndex = findActiveLineIndex(lines, currentTimeMs);
+  const activeLine = activeLineIndex >= 0 ? lines[activeLineIndex] : undefined;
+  const activeWordIndex = findActiveWordIndex(activeLine, currentTimeMs);
+
+  let lastStartedLineIndex = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const startMs = lines[i]?.startMs;
+    if (startMs !== null && startMs !== undefined && currentTimeMs >= startMs) {
+      lastStartedLineIndex = i;
+      break;
+    }
+  }
+
+  let syncedLinesCount = 0;
+  let unsyncedLinesCount = 0;
+
+  const lineStates: KaraokeLineState[] = lines.map((line, lineIndex) => {
+    const isSynced = line.startMs !== null;
+    if (isSynced) {
+      syncedLinesCount++;
+    } else {
+      unsyncedLinesCount++;
+    }
+
+    const isActive = lineIndex === activeLineIndex;
+    const isPast =
+      !isActive &&
+      isSynced &&
+      ((lastStartedLineIndex >= 0 && lineIndex < lastStartedLineIndex) ||
+        (line.endMs !== null &&
+          currentTimeMs > Math.max(line.startMs ?? 0, line.endMs)));
+
+    const fallbackLineActive = isActive && isSynced;
+    const wordProgressPct = line.words.map((word) =>
+      computeWordProgressPct(word, currentTimeMs, fallbackLineActive),
+    );
+
+    return {
+      lineIndex,
+      isActive,
+      isPast,
+      wordProgressPct,
+    };
+  });
+
+  return {
+    activeLineIndex,
+    activeWordIndex,
+    syncedLinesCount,
+    unsyncedLinesCount,
+    hasUnsyncedLines: unsyncedLinesCount > 0,
+    lines: lineStates,
   };
 }
