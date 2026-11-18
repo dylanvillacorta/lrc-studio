@@ -1,0 +1,27 @@
+{
+  "name": "LyricSync Studio",
+  "short_name": "LyricSync",
+  "description": "Sincroniza letras LRC y ELRC para karaoke directamente en el navegador, sin subir archivos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E6E2DC",
+  "theme_color": "#E6E2DC",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
