@@ -23,7 +23,7 @@ export const MobileHeader = memo(function MobileHeader({
   const isSaving = saveStatus === 'saving' || saveStatus === 'pending';
 
   return (
-    <header className="px-4 pt-3 pb-2 [@media(max-height:720px)]:pt-1.5 [@media(max-height:720px)]:pb-1 flex items-center gap-2.5 flex-none">
+    <header className="px-4 pt-2 pb-1 [@media(max-height:720px)]:pt-1 [@media(max-height:720px)]:pb-0.5 flex items-center gap-2.5 flex-none">
       <IconButton
         aria-label="Abrir Mis transcripciones"
         onClick={onOpenCatalog}

@@ -10,7 +10,13 @@ import {
   LyricsScreen,
   mergeRawTextWithExistingLines,
 } from '@/features/lyrics';
-import { DEFAULT_PRE_ROLL_MS, getActiveLineWindow } from '@/features/sync';
+import {
+  computeBurstEnterState,
+  computeBurstExitState,
+  DEFAULT_PRE_ROLL_MS,
+  getActiveLineWindow,
+  getBurstLoopSeekTargetMs,
+} from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { LineSyncScreen } from '@/features/sync/components/LineSyncScreen';
 import {
@@ -22,6 +28,7 @@ import {
   usePlaybackTime,
   type PlaybackTimeStore,
 } from '@/features/sync/hooks/playbackTimeStore';
+import { usePlaybackLineTracking } from '@/features/sync/hooks/usePlaybackLineTracking';
 import {
   UpdateBanner,
   VersionFooter,
@@ -148,26 +155,48 @@ export function MobileLayout() {
     });
   }, [burstActive, durationMs, preRollMs, sync.activeLineIndex, sync.lines]);
 
-  // Bucle continuo para modo Ráfaga de línea aislada.
+  // Bucle continuo para modo Ráfaga de línea aislada (solo si está reproduciendo y editando).
   useEffect(() => {
-    if (!burstActive || !burstWindow || !player.isPlaying) {
+    if (
+      !burstWindow ||
+      !burstActive ||
+      !player.isPlaying ||
+      activeTab !== 'sync' ||
+      syncSubView !== 'burst'
+    ) {
       return;
     }
     const timeStore = player.timeStore;
     if (!timeStore) {
-      if (player.currentTime >= burstWindow.windowEndMs) {
-        player.seekTo(burstWindow.windowStartMs);
+      const targetMs = getBurstLoopSeekTargetMs({
+        burstActive,
+        isPlaying: player.isPlaying,
+        isEditing: true,
+        currentTimeMs: player.currentTime,
+        windowStartMs: burstWindow.windowStartMs,
+        windowEndMs: burstWindow.windowEndMs,
+      });
+      if (targetMs !== null) {
+        player.seekTo(targetMs);
       }
       return;
     }
     const checkBurstEnd = () => {
-      if (timeStore.getTimeMs() >= burstWindow.windowEndMs) {
-        player.seekTo(burstWindow.windowStartMs);
+      const targetMs = getBurstLoopSeekTargetMs({
+        burstActive: true,
+        isPlaying: true,
+        isEditing: true,
+        currentTimeMs: timeStore.getTimeMs(),
+        windowStartMs: burstWindow.windowStartMs,
+        windowEndMs: burstWindow.windowEndMs,
+      });
+      if (targetMs !== null) {
+        player.seekTo(targetMs);
       }
     };
     checkBurstEnd();
     return timeStore.subscribe(checkBurstEnd);
-  }, [burstActive, burstWindow, player]);
+  }, [activeTab, burstActive, burstWindow, player, syncSubView]);
 
   useEffect(() => {
     if (activeTab === 'catalog') {
@@ -175,38 +204,75 @@ export function MobileLayout() {
     }
   }, [activeTab, flushPendingSave, refreshCatalog]);
 
-  const { seekTo, play, togglePlay } = player;
-  const { lines: syncLines, activeLineIndex: syncActiveLineIndex, replaceLines } = sync;
+  const { seekTo, pause, togglePlay } = player;
+  const {
+    lines: syncLines,
+    activeLineIndex: syncActiveLineIndex,
+    setActiveLineIndex: setSyncActiveLineIndex,
+    setActiveWordIndex: setSyncActiveWordIndex,
+    replaceLines,
+  } = sync;
+
+  const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
+  const { playingLineIndex, trackedListIndex, selectLine: handleSelectLine } =
+    usePlaybackLineTracking({
+      lines: syncLines,
+      isPlaying: player.isPlaying,
+      activeLineIndex: syncActiveLineIndex,
+      timeStore: player.timeStore,
+      fallbackCurrentTimeMs,
+      setActiveLineIndex: setSyncActiveLineIndex,
+      setActiveWordIndex: setSyncActiveWordIndex,
+      seekTo,
+    });
+
+  const exitBurstIfNeeded = useCallback(() => {
+    const exit = computeBurstExitState(syncSubView === 'burst');
+    if (exit.shouldPause) {
+      pause();
+    }
+  }, [pause, syncSubView]);
 
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
       if (mode === 'line') {
+        exitBurstIfNeeded();
         setSyncSubView('default');
         setActiveTab('sync');
         return;
       }
       if (mode === 'word') {
+        exitBurstIfNeeded();
         setSyncSubView('default');
         setActiveTab('word');
         return;
       }
       if (mode === 'karaoke') {
+        exitBurstIfNeeded();
         setSyncSubView('karaoke');
         setActiveTab('sync');
         return;
       }
-      if (syncLines.length > 0) {
+      const enter = computeBurstEnterState();
+      setSyncSubView('burst');
+      setActiveTab('sync');
+      if (syncLines.length > 0 && enter.shouldPlay === false) {
         const win = getActiveLineWindow(syncLines, syncActiveLineIndex, {
           preRollMs,
           durationMs,
         });
-        setSyncSubView('burst');
-        setActiveTab('sync');
         seekTo(win.windowStartMs);
-        void play();
       }
     },
-    [durationMs, play, preRollMs, seekTo, setActiveTab, syncActiveLineIndex, syncLines],
+    [
+      durationMs,
+      exitBurstIfNeeded,
+      preRollMs,
+      seekTo,
+      setActiveTab,
+      syncActiveLineIndex,
+      syncLines,
+    ],
   );
 
   const handleUploadAudio = useCallback(
@@ -235,10 +301,11 @@ export function MobileLayout() {
     if (!sync.lines[sync.activeLineIndex]) {
       return;
     }
+    exitBurstIfNeeded();
     setSyncSubView('default');
     setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
     setActiveTab('loupe');
-  }, [activeTab, setActiveTab, sync.activeLineIndex, sync.lines]);
+  }, [activeTab, exitBurstIfNeeded, setActiveTab, sync.activeLineIndex, sync.lines]);
 
   const handleLoupeBoundsChange = useCallback(
     (bounds: LineBounds) => {
@@ -282,10 +349,11 @@ export function MobileLayout() {
 
   const handleNavSelect = useCallback(
     (tab: 'catalog' | 'lyrics' | 'sync' | 'export') => {
+      exitBurstIfNeeded();
       setSyncSubView('default');
       setActiveTab(tab);
     },
-    [setActiveTab],
+    [exitBurstIfNeeded, setActiveTab],
   );
 
   const handleOpenCatalogFromHeader = useCallback(() => {
@@ -308,14 +376,6 @@ export function MobileLayout() {
     [player, project, updateProjectMetadata],
   );
 
-  const handleSelectLine = useCallback(
-    (index: number) => {
-      sync.setActiveLineIndex(index);
-      sync.setActiveWordIndex(0);
-    },
-    [sync],
-  );
-
   const handleStampLine = useCallback(
     (nowMs: number) => {
       sync.stampLineStart(nowMs, false);
@@ -326,6 +386,14 @@ export function MobileLayout() {
   const handleStopBurst = useCallback(() => {
     setSyncSubView('default');
     player.pause();
+  }, [player]);
+
+  const handleSeekStart = useCallback(() => {
+    player.setSeeking(true);
+  }, [player]);
+
+  const handleSeekEnd = useCallback(() => {
+    player.setSeeking(false);
   }, [player]);
 
   const handleToggleSniper = useCallback(() => {
@@ -351,8 +419,6 @@ export function MobileLayout() {
   const handleLoupeBack = useCallback(() => {
     setActiveTab(loupeReturnTab);
   }, [loupeReturnTab, setActiveTab]);
-
-  const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
 
   const activeLine = sync.lines[sync.activeLineIndex];
   const lineNumber = sync.lines.length > 0 ? sync.activeLineIndex + 1 : 0;
@@ -387,7 +453,13 @@ export function MobileLayout() {
           />
         ) : null}
 
-        <main className="flex-1 min-h-0 px-4 pb-3 [@media(max-height:720px)]:pb-1.5 flex flex-col overflow-y-auto">
+        <main
+          className={`flex-1 min-h-0 px-4 flex flex-col ${
+            activeTab === 'sync' || activeTab === 'word' || activeTab === 'loupe'
+              ? 'pb-1.5 [@media(max-height:720px)]:pb-1 overflow-hidden'
+              : 'pb-3 [@media(max-height:720px)]:pb-1.5 overflow-y-auto'
+          }`}
+        >
           {activeTab === 'catalog' ? (
             <CatalogPanel
               projects={catalog.projects}
@@ -471,7 +543,6 @@ export function MobileLayout() {
               onTogglePlay={togglePlay}
               onSeek={seekTo}
               onUploadAudio={handleUploadAudio}
-              onUseDemo={handleUseDemo}
             />
           ) : null}
 
@@ -487,11 +558,15 @@ export function MobileLayout() {
               playbackRate={player.playbackRate}
               lines={sync.lines}
               activeLineIndex={sync.activeLineIndex}
+              playingLineIndex={playingLineIndex}
+              trackedListIndex={trackedListIndex}
               canUndo={sync.canUndo}
               syncMode={burstActive ? 'burst' : 'line'}
               burstWindow={burstWindow}
               onSelectMode={handleSelectMode}
               onSeek={player.seekTo}
+              onSeekStart={handleSeekStart}
+              onSeekEnd={handleSeekEnd}
               onTogglePlay={player.togglePlay}
               onChangePlaybackRate={handleChangePlaybackRate}
               onUndo={sync.undo}
@@ -500,7 +575,6 @@ export function MobileLayout() {
               onOpenLoupe={handleOpenLoupe}
               onStopBurst={handleStopBurst}
               onUploadAudio={handleUploadAudio}
-              onUseDemo={handleUseDemo}
             />
           ) : null}
 
@@ -524,13 +598,14 @@ export function MobileLayout() {
               onToggleSniper={handleToggleSniper}
               onToggleHold={handleToggleHold}
               onSeek={player.seekTo}
+              onSeekStart={handleSeekStart}
+              onSeekEnd={handleSeekEnd}
               onPlay={player.play}
               onPause={player.pause}
               onStampWordStart={sync.stampWordStart}
               onStampWordEnd={sync.stampWordEnd}
               onOpenLoupe={handleOpenLoupe}
               onUploadAudio={handleUploadAudio}
-              onUseDemo={handleUseDemo}
             />
           ) : null}
 
@@ -562,7 +637,9 @@ export function MobileLayout() {
               </div>
             )
           ) : null}
-          <VersionFooter />
+          {activeTab === 'catalog' || activeTab === 'lyrics' || activeTab === 'export' ? (
+            <VersionFooter />
+          ) : null}
         </main>
 
         {showNavBar ? (
@@ -570,7 +647,7 @@ export function MobileLayout() {
             items={NAV_ITEMS}
             activeId={navActiveId}
             onSelect={handleNavSelect}
-            className="[@media(max-height:720px)]:pt-1.5 [@media(max-height:720px)]:pb-2 [@media(max-height:720px)]:[&>button]:min-h-[48px]"
+            className="pt-1.5 pb-2.5 [&>button]:min-h-[48px] [@media(max-height:720px)]:pt-1 [@media(max-height:720px)]:pb-1.5 [@media(max-height:720px)]:[&>button]:min-h-[44px]"
           />
         ) : null}
       </div>

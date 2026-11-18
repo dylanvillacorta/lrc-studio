@@ -50,6 +50,8 @@ export interface WordSyncScreenProps {
   onToggleSniper: () => void;
   onToggleHold: () => void;
   onSeek: (targetMs: number) => void;
+  onSeekStart?: () => void;
+  onSeekEnd?: () => void;
   onPlay: () => Promise<void> | void;
   onPause: () => void;
   onStampWordStart: (params: {
@@ -66,7 +68,6 @@ export interface WordSyncScreenProps {
   }) => WordStampFeedback;
   onOpenLoupe: () => void;
   onUploadAudio: (file: File) => Promise<void>;
-  onUseDemo: () => Promise<void>;
 }
 
 interface MobilePreRollPanelProps {
@@ -129,13 +130,14 @@ export const WordSyncScreen = memo(function WordSyncScreen({
   onToggleSniper,
   onToggleHold,
   onSeek,
+  onSeekStart,
+  onSeekEnd,
   onPlay,
   onPause,
   onStampWordStart,
   onStampWordEnd,
   onOpenLoupe,
   onUploadAudio,
-  onUseDemo,
 }: WordSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
   const [isHolding, setIsHolding] = useState(false);
@@ -150,7 +152,7 @@ export const WordSyncScreen = memo(function WordSyncScreen({
           aria-label="Modo de sincronización"
           className={SYNC_SEGMENTED_CLASS}
         />
-        <NoAudioCard onUploadAudio={onUploadAudio} onUseDemo={onUseDemo} />
+        <NoAudioCard onUploadAudio={onUploadAudio} />
       </div>
     );
   }
@@ -253,6 +255,8 @@ export const WordSyncScreen = memo(function WordSyncScreen({
         compact
         statusText={`Pre-Roll activo · ${preRollSecondsLabel} s`}
         onSeek={onSeek}
+        onSeekStart={onSeekStart}
+        onSeekEnd={onSeekEnd}
         onOpenLoupe={onOpenLoupe}
         canOpenLoupe={Boolean(activeLine)}
       />

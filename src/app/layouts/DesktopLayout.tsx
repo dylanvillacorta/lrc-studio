@@ -19,9 +19,12 @@ import {
   INITIAL_DEMO_LYRICS,
 } from '@/features/lyrics';
 import {
+  computeBurstEnterState,
+  computeBurstExitState,
   computePreRollStartMs,
   DEFAULT_PRE_ROLL_MS,
   getActiveLineWindow,
+  getBurstLoopSeekTargetMs,
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { NoAudioCard } from '@/features/sync/components/NoAudioCard';
@@ -31,6 +34,7 @@ import {
   type SyncSegmentedMode,
 } from '@/features/sync/components/syncViewHelpers';
 import { useKeyboardShortcuts } from '@/features/sync/hooks/useKeyboardShortcuts';
+import { usePlaybackLineTracking } from '@/features/sync/hooks/usePlaybackLineTracking';
 import {
   UpdateBanner,
   VersionFooter,
@@ -122,24 +126,40 @@ export function DesktopLayout() {
   }, [burstActive, durationMs, preRollMs, sync.activeLineIndex, sync.lines]);
 
   useEffect(() => {
-    if (!burstActive || !burstWindow || !player.isPlaying) {
+    if (!burstWindow || !burstActive || !player.isPlaying || centerView !== 'editor') {
       return;
     }
     const timeStore = player.timeStore;
     if (!timeStore) {
-      if (player.currentTime >= burstWindow.windowEndMs) {
-        player.seekTo(burstWindow.windowStartMs);
+      const targetMs = getBurstLoopSeekTargetMs({
+        burstActive,
+        isPlaying: player.isPlaying,
+        isEditing: true,
+        currentTimeMs: player.currentTime,
+        windowStartMs: burstWindow.windowStartMs,
+        windowEndMs: burstWindow.windowEndMs,
+      });
+      if (targetMs !== null) {
+        player.seekTo(targetMs);
       }
       return;
     }
     const checkBurstEnd = () => {
-      if (timeStore.getTimeMs() >= burstWindow.windowEndMs) {
-        player.seekTo(burstWindow.windowStartMs);
+      const targetMs = getBurstLoopSeekTargetMs({
+        burstActive: true,
+        isPlaying: true,
+        isEditing: true,
+        currentTimeMs: timeStore.getTimeMs(),
+        windowStartMs: burstWindow.windowStartMs,
+        windowEndMs: burstWindow.windowEndMs,
+      });
+      if (targetMs !== null) {
+        player.seekTo(targetMs);
       }
     };
     checkBurstEnd();
     return timeStore.subscribe(checkBurstEnd);
-  }, [burstActive, burstWindow, player]);
+  }, [burstActive, burstWindow, centerView, player]);
 
   useEffect(() => {
     if (activeTab === 'catalog') {
@@ -158,31 +178,51 @@ export function DesktopLayout() {
 
   const activeLine = sync.lines[sync.activeLineIndex];
   const targetWord = activeLine?.words[sync.activeWordIndex];
+  const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
+  const { playingLineIndex, trackedListIndex, selectLine: handleSelectLine } =
+    usePlaybackLineTracking({
+      lines: sync.lines,
+      isPlaying: player.isPlaying,
+      activeLineIndex: sync.activeLineIndex,
+      timeStore: player.timeStore,
+      fallbackCurrentTimeMs,
+      setActiveLineIndex: sync.setActiveLineIndex,
+      setActiveWordIndex: sync.setActiveWordIndex,
+      seekTo: player.seekTo,
+    });
 
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
       if (mode === 'line') {
+        const exit = computeBurstExitState(burstActive);
+        if (exit.shouldPause) player.pause();
         setKaraokeActive(false);
         setBurstActive(false);
         setActiveTab('sync');
       } else if (mode === 'word') {
+        const exit = computeBurstExitState(burstActive);
+        if (exit.shouldPause) player.pause();
         setKaraokeActive(false);
         setBurstActive(false);
         setActiveTab('word');
-      } else if (mode === 'burst' && sync.lines.length > 0) {
-        const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
+      } else if (mode === 'burst') {
+        const enter = computeBurstEnterState();
         setKaraokeActive(false);
-        setBurstActive(true);
+        setBurstActive(enter.burstActive);
         setActiveTab('sync');
-        player.seekTo(win.windowStartMs);
-        void player.play();
+        if (sync.lines.length > 0 && enter.shouldPlay === false) {
+          const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
+          player.seekTo(win.windowStartMs);
+        }
       } else if (mode === 'karaoke') {
+        const exit = computeBurstExitState(burstActive);
+        if (exit.shouldPause) player.pause();
         setBurstActive(false);
         setKaraokeActive(true);
         setActiveTab('sync');
       }
     },
-    [durationMs, player, preRollMs, setActiveTab, sync.activeLineIndex, sync.lines],
+    [burstActive, durationMs, player, preRollMs, setActiveTab, sync.activeLineIndex, sync.lines],
   );
 
   const handleUploadAudio = useCallback(
@@ -387,13 +427,13 @@ export function DesktopLayout() {
     [player, project, updateProjectMetadata],
   );
 
-  const handleSelectLine = useCallback(
-    (index: number) => {
-      sync.setActiveLineIndex(index);
-      sync.setActiveWordIndex(0);
-    },
-    [sync],
-  );
+  const handleSeekStart = useCallback(() => {
+    player.setSeeking(true);
+  }, [player]);
+
+  const handleSeekEnd = useCallback(() => {
+    player.setSeeking(false);
+  }, [player]);
 
   const handleToggleSniper = useCallback(() => {
     if (project) {
@@ -425,8 +465,6 @@ export function DesktopLayout() {
     },
     [catalog, clearActiveProject, project?.id],
   );
-
-  const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
 
   return (
     <div className="min-h-dvh w-full bg-bg text-ink flex flex-col p-5 gap-4 overflow-x-hidden">
@@ -475,7 +513,7 @@ export function DesktopLayout() {
               onSetActiveTab={setActiveTab}
             />
           ) : !audioUrl ? (
-            <NoAudioCard onUploadAudio={handleUploadAudio} onUseDemo={handleUseDemo} />
+            <NoAudioCard onUploadAudio={handleUploadAudio} />
           ) : (
             <>
               <DesktopWaveformCard
@@ -490,6 +528,8 @@ export function DesktopLayout() {
                 canUndo={sync.canUndo}
                 canOpenLoupe={Boolean(activeLine)}
                 onSeek={player.seekTo}
+                onSeekStart={handleSeekStart}
+                onSeekEnd={handleSeekEnd}
                 onTogglePlay={player.togglePlay}
                 onChangePlaybackRate={handleChangePlaybackRate}
                 onUndo={sync.undo}
@@ -526,7 +566,6 @@ export function DesktopLayout() {
                   onTogglePlay={player.togglePlay}
                   onSeek={player.seekTo}
                   onUploadAudio={handleUploadAudio}
-                  onUseDemo={handleUseDemo}
                 />
               ) : (
                 <>
@@ -549,6 +588,8 @@ export function DesktopLayout() {
                   <DesktopLineList
                     lines={sync.lines}
                     activeLineIndex={sync.activeLineIndex}
+                    playingLineIndex={playingLineIndex}
+                    trackedListIndex={trackedListIndex}
                     onSelectLine={handleSelectLine}
                   />
                   {syncMode !== 'word' ? (

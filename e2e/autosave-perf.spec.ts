@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   openExport,
   openLyrics,
   openSyncEditor,
@@ -27,7 +27,7 @@ test.describe('T23: guardado sin parpadeo y estabilidad de render durante reprod
   }, testInfo) => {
     const isMobile = isMobileProject(testInfo);
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
     await waitForSaved(page);
 
     const installObservers = async () => {

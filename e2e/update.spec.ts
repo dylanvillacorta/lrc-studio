@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   tapOrPointerDown,
 } from './helpers/studio';
 
@@ -31,7 +31,7 @@ test.describe('Actualización de versión en caliente', () => {
     await page.goto('/');
     await expect(page.getByText('Nueva versión disponible · Actualizar')).toBeVisible();
 
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
 
     // Marcar línea 5 en 00:05.000 y pulsar Actualizar de inmediato sin esperar 300 ms
     const line5 = page.getByRole('button', {

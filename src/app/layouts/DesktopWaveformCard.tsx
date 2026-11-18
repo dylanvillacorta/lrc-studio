@@ -21,6 +21,8 @@ export interface DesktopWaveformCardProps {
   canUndo: boolean;
   canOpenLoupe: boolean;
   onSeek: (targetMs: number) => void;
+  onSeekStart?: () => void;
+  onSeekEnd?: () => void;
   onTogglePlay: () => void;
   onChangePlaybackRate: (rate: number) => void;
   onUndo: () => void;
@@ -57,6 +59,8 @@ export const DesktopWaveformCard = memo(function DesktopWaveformCard({
   canUndo,
   canOpenLoupe,
   onSeek,
+  onSeekStart,
+  onSeekEnd,
   onTogglePlay,
   onChangePlaybackRate,
   onUndo,
@@ -74,6 +78,8 @@ export const DesktopWaveformCard = memo(function DesktopWaveformCard({
         durationMs={durationMs}
         lines={lines}
         onSeek={onSeek}
+        onSeekStart={onSeekStart}
+        onSeekEnd={onSeekEnd}
         onOpenLoupe={onOpenLoupe}
         canOpenLoupe={canOpenLoupe}
       />
