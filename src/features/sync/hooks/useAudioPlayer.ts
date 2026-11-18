@@ -46,6 +46,7 @@ export function useAudioPlayer(
   const internalAudioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const playbackRateRef = useRef(initialPlaybackRate);
+  const pendingSeekMsRef = useRef<number | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(initialDurationMs);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -96,7 +97,14 @@ export function useAudioPlayer(
 
     const handleLoadedMetadata = () => {
       if (Number.isFinite(audio.duration) && audio.duration > 0) {
-        setDuration(Math.round(audio.duration * 1000));
+        const durMs = Math.round(audio.duration * 1000);
+        setDuration(durMs);
+        if (pendingSeekMsRef.current !== null) {
+          const clampedPending = Math.max(0, Math.min(durMs, pendingSeekMsRef.current));
+          pendingSeekMsRef.current = null;
+          audio.currentTime = clampedPending / 1000;
+          setCurrentTime(Math.round(clampedPending));
+        }
       }
     };
     const handlePlay = () => setIsPlaying(true);
@@ -183,7 +191,14 @@ export function useAudioPlayer(
       const clampedMs = Math.max(0, Math.min(maxMs, Number(targetMs) || 0));
       const audio = getAudioElement();
       if (audio) {
-        audio.currentTime = clampedMs / 1000;
+        if (audio.readyState >= 1) {
+          pendingSeekMsRef.current = null;
+          audio.currentTime = clampedMs / 1000;
+        } else {
+          pendingSeekMsRef.current = clampedMs;
+        }
+      } else {
+        pendingSeekMsRef.current = clampedMs;
       }
       setCurrentTime(Math.round(clampedMs));
     },
