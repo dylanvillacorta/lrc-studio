@@ -27,6 +27,8 @@ export interface ScrollShadowProps {
   contentClassName?: string;
   /** Etiqueta semántica del área scrollable (`div` por defecto, o `main`). */
   as?: 'div' | 'main';
+  /** Desactiva el scroll y las sombras (útil en vistas de altura fija). */
+  disabled?: boolean;
   'aria-label'?: string;
 }
 
@@ -39,6 +41,7 @@ export function ScrollShadow({
   className = '',
   contentClassName = '',
   as = 'div',
+  disabled = false,
   'aria-label': ariaLabel,
 }: ScrollShadowProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -61,7 +64,11 @@ export function ScrollShadow({
 
   useEffect(() => {
     const scroller = scrollRef.current;
-    if (!scroller) {
+    if (!scroller || disabled) {
+      if (wrapperRef.current) {
+        wrapperRef.current.dataset.scrollUp = 'false';
+        wrapperRef.current.dataset.scrollDown = 'false';
+      }
       return;
     }
 
@@ -93,7 +100,7 @@ export function ScrollShadow({
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
     };
-  }, [syncScrollIndicators]);
+  }, [disabled, syncScrollIndicators]);
 
   const ScrollTag = as;
 
@@ -104,27 +111,31 @@ export function ScrollShadow({
       data-scroll-down="false"
       className={`group/scroll relative flex flex-col min-h-0 ${className}`.trim()}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-0 inset-x-0 h-6 z-10 opacity-0 group-data-[scroll-up=true]/scroll:opacity-100 transition-opacity duration-150 motion-reduce:transition-none"
-        style={{
-          background: 'linear-gradient(to bottom, var(--color-bg), transparent)',
-        }}
-      />
+      {!disabled ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 inset-x-0 h-6 z-10 opacity-0 group-data-[scroll-up=true]/scroll:opacity-100 transition-opacity duration-150 motion-reduce:transition-none"
+          style={{
+            background: 'linear-gradient(to bottom, var(--color-bg), transparent)',
+          }}
+        />
+      ) : null}
       <ScrollTag
         ref={scrollRef as never}
         aria-label={ariaLabel}
-        className={`flex-1 min-h-0 overflow-y-auto ${contentClassName}`.trim()}
+        className={`flex-1 min-h-0 ${disabled ? 'overflow-hidden' : 'overflow-y-auto'} ${contentClassName}`.trim()}
       >
         {children}
       </ScrollTag>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 inset-x-0 h-6 z-10 opacity-0 group-data-[scroll-down=true]/scroll:opacity-100 transition-opacity duration-150 motion-reduce:transition-none"
-        style={{
-          background: 'linear-gradient(to top, var(--color-bg), transparent)',
-        }}
-      />
+      {!disabled ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 inset-x-0 h-6 z-10 opacity-0 group-data-[scroll-down=true]/scroll:opacity-100 transition-opacity duration-150 motion-reduce:transition-none"
+          style={{
+            background: 'linear-gradient(to top, var(--color-bg), transparent)',
+          }}
+        />
+      ) : null}
     </div>
   );
 }

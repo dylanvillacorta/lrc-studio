@@ -1,11 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  createAutosaveScheduler,
+  createDualAutosaveCoordinator,
   DEFAULT_AUTOSAVE_DELAY_MS,
+  DEFAULT_SESSION_AUTOSAVE_DELAY_MS,
+  type AutosaveKind,
   type AutosaveState,
 } from '@/features/session/model/autosaveScheduler';
 import type { IStorageAdapter } from '@/storage';
 import type { ProjectFullData, SessionState } from '@/types';
+
+/**
+ * Fuente externa de tiempo de reproducción para escuchar cambios sin re-renderizar el árbol React.
+ */
+export interface PlaybackTimeSource {
+  getTimeMs: () => number;
+  subscribe: (listener: () => void) => () => void;
+}
 
 /**
  * Intervalo mínimo (en ms) entre guardados automáticos de `currentTime` durante reproducción.
@@ -150,10 +160,14 @@ export function evaluatePlaybackSaveTick(
 }
 
 export interface UseAutosaveOptions extends AutosaveLifecycleTargets {
-  /** Retraso del debounce en milisegundos (por defecto 300 ms). */
+  /** Retraso del debounce de datos del proyecto en milisegundos (por defecto 300 ms). */
   delayMs?: number;
+  /** Retraso del debounce silencioso de sesión en milisegundos (por defecto 800 ms). */
+  sessionDelayMs?: number;
   isPlaying?: boolean;
-  /** Posición de reproducción actual en milisegundos. */
+  /** Fuente externa de tiempo de reproducción (evita re-renders por fotograma). */
+  timeStore?: PlaybackTimeSource | null;
+  /** Posición de reproducción actual en milisegundos (respaldo si no se pasa `timeStore`). */
   currentTime?: number;
   /** Intervalo mínimo entre guardados de `currentTime` al reproducir, en milisegundos (por defecto 1000 ms). */
   playbackSaveIntervalMs?: number;
@@ -162,15 +176,21 @@ export interface UseAutosaveOptions extends AutosaveLifecycleTargets {
 export interface UseAutosaveReturn {
   saveStatus: AutosaveState['status'];
   autosaveState: AutosaveState;
-  scheduleSave: () => void;
+  scheduleSave: () => AutosaveKind;
+  scheduleProjectSave: () => boolean;
+  scheduleSessionSave: () => boolean;
+  markBaseline: (project: ProjectFullData | null, session: SessionState | null) => void;
+  markProjectBaseline: (project: ProjectFullData | null) => void;
+  markSessionBaseline: (session: SessionState | null) => void;
   flush: () => Promise<void>;
   cancel: () => void;
 }
 
 /**
- * Hook que conecta `createAutosaveScheduler` con `IStorageAdapter`,
- * registra listeners de ciclo de vida (`visibilitychange`, `pagehide`, `beforeunload`)
- * y guarda `currentTime` periódicamente mientras se reproduce el audio (máximo 1 vez/s).
+ * Hook que coordina el autoguardado dual con `IStorageAdapter`:
+ * - cambios del proyecto (300 ms, indicador visible),
+ * - estado de sesión y `currentTime` (800 ms silencioso, sin alterar el indicador),
+ * - flush en `visibilitychange`, `pagehide`, `beforeunload` y al pausar.
  */
 export function useAutosave(
   adapter: IStorageAdapter,
@@ -179,9 +199,11 @@ export function useAutosave(
 ): UseAutosaveReturn {
   const {
     delayMs = DEFAULT_AUTOSAVE_DELAY_MS,
+    sessionDelayMs = DEFAULT_SESSION_AUTOSAVE_DELAY_MS,
     windowTarget,
     documentTarget,
     isPlaying = false,
+    timeStore = null,
     currentTime = 0,
     playbackSaveIntervalMs = PLAYBACK_SAVE_INTERVAL_MS,
   } = options;
@@ -191,43 +213,65 @@ export function useAutosave(
     getSnapshotRef.current = getSnapshot;
   }, [getSnapshot]);
 
-  const scheduler = useMemo(
+  const coordinator = useMemo(
     () =>
-      createAutosaveScheduler<AutosaveSnapshot>({
-        delayMs,
-        save: async (snapshot) => {
-          if (snapshot.project) {
-            await adapter.saveProject(snapshot.project);
-          }
-          await adapter.saveSessionState(snapshot.session);
-        },
+      createDualAutosaveCoordinator({
+        projectDelayMs: delayMs,
+        sessionDelayMs,
+        saveProject: (project) => adapter.saveProject(project),
+        saveSession: (session) => adapter.saveSessionState(session),
       }),
-    [adapter, delayMs],
+    [adapter, delayMs, sessionDelayMs],
   );
 
   const [autosaveState, setAutosaveState] = useState<AutosaveState>(() =>
-    scheduler.getState(),
+    coordinator.getState(),
   );
 
   useEffect(() => {
-    return scheduler.subscribe(setAutosaveState);
-  }, [scheduler]);
+    return coordinator.subscribe(setAutosaveState);
+  }, [coordinator]);
 
   const flush = useCallback(async (): Promise<void> => {
-    const latest = getSnapshotRef.current();
-    if (latest.project !== null) {
-      scheduler.schedule(latest);
-    }
-    await scheduler.flush();
-  }, [scheduler]);
+    await coordinator.flush(getSnapshotRef.current());
+  }, [coordinator]);
 
-  const scheduleSave = useCallback((): void => {
-    scheduler.schedule(getSnapshotRef.current());
-  }, [scheduler]);
+  const scheduleSave = useCallback((): AutosaveKind => {
+    return coordinator.schedule(getSnapshotRef.current());
+  }, [coordinator]);
+
+  const scheduleProjectSave = useCallback((): boolean => {
+    return coordinator.scheduleProject(getSnapshotRef.current());
+  }, [coordinator]);
+
+  const scheduleSessionSave = useCallback((): boolean => {
+    return coordinator.scheduleSession(getSnapshotRef.current().session);
+  }, [coordinator]);
+
+  const markBaseline = useCallback(
+    (project: ProjectFullData | null, session: SessionState | null): void => {
+      coordinator.markBaseline(project, session);
+    },
+    [coordinator],
+  );
+
+  const markProjectBaseline = useCallback(
+    (project: ProjectFullData | null): void => {
+      coordinator.markProjectBaseline(project);
+    },
+    [coordinator],
+  );
+
+  const markSessionBaseline = useCallback(
+    (session: SessionState | null): void => {
+      coordinator.markSessionBaseline(session);
+    },
+    [coordinator],
+  );
 
   const cancel = useCallback((): void => {
-    scheduler.cancel();
-  }, [scheduler]);
+    coordinator.cancel();
+  }, [coordinator]);
 
   useEffect(() => {
     const cleanupListeners = registerAutosaveLifecycleListeners(
@@ -239,19 +283,16 @@ export function useAutosave(
 
     return () => {
       cleanupListeners();
-      const status = scheduler.getState().status;
-      if (status === 'pending' || status === 'saving' || status === 'error') {
-        void flush();
-      } else {
-        scheduler.cancel();
-      }
+      void flush();
     };
-  }, [documentTarget, flush, scheduler, windowTarget]);
+  }, [documentTarget, flush, windowTarget]);
 
   const playbackTrackerRef = useRef<PlaybackSaveTrackerState>({
     wasPlaying: false,
     lastSavedTickMs: null,
   });
+
+  // Evalúa transiciones de reproducción/pausa sin depender de `currentTime` cuando existe `timeStore`.
   useEffect(() => {
     const { nextState, action } = evaluatePlaybackSaveTick(
       playbackTrackerRef.current,
@@ -261,18 +302,93 @@ export function useAutosave(
     );
     playbackTrackerRef.current = nextState;
 
+    const latest = getSnapshotRef.current();
+    if (!latest.project) {
+      return;
+    }
+
     if (action === 'schedule') {
-      scheduler.schedule(getSnapshotRef.current());
+      coordinator.scheduleSession(latest.session);
     } else if (action === 'flush') {
       void flush();
     }
-  }, [currentTime, flush, isPlaying, playbackSaveIntervalMs, scheduler]);
+  }, [coordinator, flush, isPlaying, playbackSaveIntervalMs]);
 
-  return {
-    saveStatus: autosaveState.status,
-    autosaveState,
-    scheduleSave,
-    flush,
-    cancel,
-  };
+  // Suscripción externa al tiempo de reproducción para guardado silencioso periódico y al hacer seek.
+  useEffect(() => {
+    if (!timeStore) {
+      return;
+    }
+    return timeStore.subscribe(() => {
+      const latest = getSnapshotRef.current();
+      if (!latest.project) {
+        return;
+      }
+      if (!isPlaying) {
+        coordinator.scheduleSession(latest.session);
+        return;
+      }
+      const { nextState, action } = evaluatePlaybackSaveTick(
+        playbackTrackerRef.current,
+        true,
+        Date.now(),
+        playbackSaveIntervalMs,
+      );
+      playbackTrackerRef.current = nextState;
+      if (action === 'schedule') {
+        coordinator.scheduleSession(latest.session);
+      }
+    });
+  }, [coordinator, isPlaying, playbackSaveIntervalMs, timeStore]);
+
+  // Respaldo para entornos sin `timeStore` que pasan `currentTime` numérico.
+  useEffect(() => {
+    if (timeStore) {
+      return;
+    }
+    const latest = getSnapshotRef.current();
+    if (!latest.project) {
+      return;
+    }
+    if (!isPlaying) {
+      coordinator.scheduleSession(latest.session);
+      return;
+    }
+    const { nextState, action } = evaluatePlaybackSaveTick(
+      playbackTrackerRef.current,
+      true,
+      Date.now(),
+      playbackSaveIntervalMs,
+    );
+    playbackTrackerRef.current = nextState;
+    if (action === 'schedule') {
+      coordinator.scheduleSession(latest.session);
+    }
+  }, [coordinator, currentTime, isPlaying, playbackSaveIntervalMs, timeStore]);
+
+  return useMemo<UseAutosaveReturn>(
+    () => ({
+      saveStatus: autosaveState.status,
+      autosaveState,
+      scheduleSave,
+      scheduleProjectSave,
+      scheduleSessionSave,
+      markBaseline,
+      markProjectBaseline,
+      markSessionBaseline,
+      flush,
+      cancel,
+    }),
+    [
+      autosaveState,
+      cancel,
+      flush,
+      markBaseline,
+      markProjectBaseline,
+      markSessionBaseline,
+      scheduleProjectSave,
+      scheduleSave,
+      scheduleSessionSave,
+    ],
+  );
 }

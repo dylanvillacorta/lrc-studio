@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
+import type { PlaybackTimeStore } from '@/features/sync/hooks/playbackTimeStore';
 import { formatDisplayTime, formatTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
 import {
@@ -24,17 +25,23 @@ export type { SyncSegmentedMode };
 export interface LineSyncScreenProps {
   hasAudio: boolean;
   peaks: readonly number[];
-  currentTimeMs: number;
+  timeStore?: PlaybackTimeStore | null;
+  getCurrentTimeMs?: () => number;
+  currentTimeMs?: number;
   durationMs: number;
   isPlaying: boolean;
   playbackRate: number;
   lines: readonly LyricLine[];
   activeLineIndex: number;
+  playingLineIndex?: number;
+  trackedListIndex?: number;
   canUndo: boolean;
   syncMode: SyncSegmentedMode;
   burstWindow?: { windowStartMs: number; windowEndMs: number } | null;
   onSelectMode: (mode: SyncSegmentedMode) => void;
   onSeek: (targetMs: number) => void;
+  onSeekStart?: () => void;
+  onSeekEnd?: () => void;
   onTogglePlay: () => void;
   onChangePlaybackRate: (rate: number) => void;
   onUndo: () => void;
@@ -43,26 +50,31 @@ export interface LineSyncScreenProps {
   onOpenLoupe: () => void;
   onStopBurst: () => void;
   onUploadAudio: (file: File) => Promise<void>;
-  onUseDemo: () => Promise<void>;
 }
 
 /**
  * Pantalla móvil de sincronización por línea y modo ráfaga de línea aislada.
  */
-export function LineSyncScreen({
+export const LineSyncScreen = memo(function LineSyncScreen({
   hasAudio,
   peaks,
-  currentTimeMs,
+  timeStore = null,
+  getCurrentTimeMs,
+  currentTimeMs = 0,
   durationMs,
   isPlaying,
   playbackRate,
   lines,
   activeLineIndex,
+  playingLineIndex = -1,
+  trackedListIndex = activeLineIndex,
   canUndo,
   syncMode,
   burstWindow = null,
   onSelectMode,
   onSeek,
+  onSeekStart,
+  onSeekEnd,
   onTogglePlay,
   onChangePlaybackRate,
   onUndo,
@@ -71,25 +83,35 @@ export function LineSyncScreen({
   onOpenLoupe,
   onStopBurst,
   onUploadAudio,
-  onUseDemo,
 }: LineSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
-  const activeLineRef = useRef<HTMLButtonElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const lineButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
-    const el = activeLineRef.current;
-    if (!el || typeof el.scrollIntoView !== 'function') {
+    const listEl = listRef.current;
+    const targetEl = lineButtonRefs.current[trackedListIndex];
+    if (!listEl || !targetEl) {
       return;
     }
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    el.scrollIntoView({
-      behavior: reduced ? 'auto' : 'smooth',
-      block: 'nearest',
-    });
-  }, [activeLineIndex]);
+
+    const targetTop = Math.max(
+      0,
+      targetEl.offsetTop - (listEl.clientHeight - targetEl.offsetHeight) / 2,
+    );
+    if (typeof listEl.scrollTo === 'function') {
+      listEl.scrollTo({
+        top: targetTop,
+        behavior: reduced ? 'auto' : 'smooth',
+      });
+    } else {
+      listEl.scrollTop = targetTop;
+    }
+  }, [trackedListIndex]);
 
   if (!hasAudio) {
     return (
@@ -101,7 +123,7 @@ export function LineSyncScreen({
           aria-label="Modo de sincronización"
           className={SYNC_SEGMENTED_CLASS}
         />
-        <NoAudioCard onUploadAudio={onUploadAudio} onUseDemo={onUseDemo} />
+        <NoAudioCard onUploadAudio={onUploadAudio} />
       </div>
     );
   }
@@ -110,11 +132,14 @@ export function LineSyncScreen({
   const hasLines = lines.length > 0;
   const lineNumber = Math.min(lines.length, activeLineIndex + 1);
 
+  const readCurrentTimeMs = () =>
+    getCurrentTimeMs ? getCurrentTimeMs() : timeStore ? timeStore.getTimeMs() : currentTimeMs;
+
   const handleStampPointerDown = () => {
     if (!hasLines) {
       return;
     }
-    const stampMs = currentTimeMs;
+    const stampMs = readCurrentTimeMs();
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       navigator.vibrate(10);
     }
@@ -125,7 +150,7 @@ export function LineSyncScreen({
   return (
     <section
       aria-label="Sincronizar por línea"
-      className="flex-1 min-h-0 flex flex-col gap-2.5 [@media(max-height:720px)]:gap-1.5"
+      className="flex-1 min-h-0 flex flex-col gap-1.5 [@media(max-height:720px)]:gap-1"
     >
       <Segmented
         options={SYNC_MODE_OPTIONS}
@@ -137,16 +162,20 @@ export function LineSyncScreen({
 
       <WaveformStrip
         peaks={peaks}
+        timeStore={timeStore}
         currentTimeMs={currentTimeMs}
         durationMs={durationMs}
         lines={lines}
+        compact
         onSeek={onSeek}
+        onSeekStart={onSeekStart}
+        onSeekEnd={onSeekEnd}
         onOpenLoupe={onOpenLoupe}
         canOpenLoupe={Boolean(activeLine)}
       />
 
       {syncMode === 'burst' && burstWindow ? (
-        <div className="flex items-center justify-between gap-2 px-1">
+        <div className="flex items-center justify-between gap-2 px-1 flex-none">
           <Pill variant="acc">
             <span>
               Ráfaga en bucle · {formatDisplayTime(burstWindow.windowStartMs)} –{' '}
@@ -156,18 +185,18 @@ export function LineSyncScreen({
           <RaisedButton
             size="sm"
             onClick={onStopBurst}
-            className="min-h-12 px-3 text-xs font-extrabold"
+            className="min-h-11 px-3 text-xs font-extrabold"
           >
             Detener ráfaga
           </RaisedButton>
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between px-0.5">
+      <div className="flex items-center justify-between px-0.5 flex-none">
         <IconButton
           aria-label={`Velocidad ${playbackRate}x`}
           onClick={() => onChangePlaybackRate(getNextPlaybackRate(playbackRate))}
-          className="font-mono text-sm font-extrabold"
+          className="font-mono text-xs font-extrabold min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
           <span>{`${playbackRate}×`}</span>
         </IconButton>
@@ -175,73 +204,86 @@ export function LineSyncScreen({
         <IconButton
           round
           aria-label="Retroceder 5 segundos"
-          onClick={() => onSeek(Math.max(0, currentTimeMs - 5000))}
+          onClick={() => onSeek(Math.max(0, readCurrentTimeMs() - 5000))}
+          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
-          <Icon name="rewind" size={20} />
+          <Icon name="rewind" size={18} />
         </IconButton>
 
         <IconButton
           round
-          size="xl"
           aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
           onClick={onTogglePlay}
-          className="text-acc"
+          className="text-acc min-h-12 min-w-12 [@media(max-height:720px)]:min-h-11 [@media(max-height:720px)]:min-w-11"
         >
-          <Icon name={isPlaying ? 'pause' : 'play'} size={26} />
+          <Icon name={isPlaying ? 'pause' : 'play'} size={22} />
         </IconButton>
 
         <IconButton
           round
           aria-label="Adelantar 5 segundos"
-          onClick={() => onSeek(Math.min(durationMs, currentTimeMs + 5000))}
+          onClick={() => onSeek(Math.min(durationMs, readCurrentTimeMs() + 5000))}
+          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
-          <Icon name="forward" size={20} />
+          <Icon name="forward" size={18} />
         </IconButton>
 
         <IconButton
           aria-label="Deshacer última marca"
           disabled={!canUndo}
           onClick={onUndo}
+          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
-          <Icon name="undo" size={20} />
+          <Icon name="undo" size={18} />
         </IconButton>
       </div>
 
-      <WellPanel className="flex-1 min-h-0 p-2 overflow-y-auto flex flex-col gap-1.5">
+      <WellPanel
+        ref={listRef}
+        data-testid="sync-line-list"
+        className="flex-1 min-h-0 p-1.5 overflow-y-auto flex flex-col gap-1"
+      >
         {hasLines ? (
           lines.map((line, index) => {
             const isCurrent = index === activeLineIndex;
+            const isPlayingLine = index === playingLineIndex;
             const isSynced = line.startMs !== null;
             return (
               <button
                 key={line.id}
-                ref={isCurrent ? activeLineRef : null}
+                ref={(el) => {
+                  lineButtonRefs.current[index] = el;
+                }}
                 type="button"
                 onClick={() => onSelectLine(index)}
                 aria-current={isCurrent ? 'true' : undefined}
-                className={`w-full min-h-12 px-3.5 py-2.5 rounded-[14px] flex items-center justify-between gap-2.5 text-left transition-shadow motion-reduce:transition-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
+                data-playing={isPlayingLine ? 'true' : undefined}
+                className={`w-full min-h-11 px-3 py-1.5 rounded-[12px] flex items-center justify-between gap-2 text-left transition-shadow motion-reduce:transition-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
                   isCurrent
-                    ? 'relieve text-ink font-extrabold'
-                    : isSynced
-                      ? 'bg-transparent text-ink font-semibold'
-                      : 'bg-transparent text-mute font-semibold'
+                    ? isPlayingLine
+                      ? 'relieve ring-1 ring-acc/45 text-ink font-extrabold'
+                      : 'relieve text-ink font-extrabold'
+                    : isPlayingLine
+                      ? 'bg-acc/10 ring-1 ring-acc/35 text-ink font-bold'
+                      : isSynced
+                        ? 'bg-transparent text-ink font-semibold'
+                        : 'bg-transparent text-mute font-semibold'
                 }`}
               >
-                <span className="truncate text-[14.5px] flex-1 min-w-0">
+                <span className="truncate text-[14px] flex-1 min-w-0">
                   {line.text}
                 </span>
                 <span
-                  className={`font-mono text-xs font-bold tabular-nums shrink-0 ${
-                    isCurrent
-                      ? 'text-acc'
-                      : isSynced
-                        ? 'text-ok'
-                        : 'text-mute/75'
+                  aria-label={!isSynced ? 'Sin marca de tiempo' : undefined}
+                  className={`font-mono text-xs font-bold tabular-nums shrink-0 w-[8ch] text-right ${
+                    !isSynced
+                      ? 'text-acc/70'
+                      : isCurrent || isPlayingLine
+                        ? 'text-acc'
+                        : 'text-ok'
                   }`}
                 >
-                  {isCurrent && !isSynced
-                    ? 'esperando marca'
-                    : formatDisplayTime(line.startMs)}
+                  {formatDisplayTime(line.startMs)}
                 </span>
               </button>
             );
@@ -263,7 +305,7 @@ export function LineSyncScreen({
         disabled={!hasLines}
         onPointerDown={handleStampPointerDown}
         onContextMenu={(e) => e.preventDefault()}
-        className="[@media(max-height:720px)]:min-h-[68px] [@media(max-height:720px)]:rounded-[26px]"
+        className="min-h-[84px] rounded-[28px] [@media(max-height:720px)]:min-h-[68px] [@media(max-height:720px)]:rounded-[24px]"
         style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none' }}
       />
 
@@ -272,4 +314,4 @@ export function LineSyncScreen({
       </div>
     </section>
   );
-}
+});

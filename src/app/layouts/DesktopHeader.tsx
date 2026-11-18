@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { SaveStatus } from '@/features/session';
 import type { SyncSegmentedMode } from '@/features/sync/components/syncViewHelpers';
 import {
@@ -34,7 +35,7 @@ export interface DesktopHeaderProps {
  * Barra superior del estudio en escritorio: marca, selector de modo,
  * acceso a Letra/Exportar e indicador de autoguardado.
  */
-export function DesktopHeader({
+export const DesktopHeader = memo(function DesktopHeader({
   syncMode,
   centerView,
   saveStatus,
@@ -121,4 +122,4 @@ export function DesktopHeader({
       ) : null}
     </header>
   );
-}
+});

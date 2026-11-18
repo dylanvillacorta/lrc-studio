@@ -1,15 +1,21 @@
+import { memo } from 'react';
 import { DEFAULT_PRE_ROLL_MS } from '@/features/sync';
 import {
   computePreRollStatus,
   resolveWordTargetStartMs,
 } from '@/features/sync/components/syncViewHelpers';
+import {
+  usePlaybackTime,
+  type PlaybackTimeStore,
+} from '@/features/sync/hooks/playbackTimeStore';
 import type { LyricLine } from '@/types';
 import { Icon, Lamps, RaisedButton, SyncButton, WellPanel } from '@/ui';
 
 export interface DesktopWordStageProps {
   activeLine: LyricLine | undefined;
   activeWordIndex: number;
-  currentTimeMs: number;
+  timeStore?: PlaybackTimeStore | null;
+  currentTimeMs?: number;
   preRollMs?: number;
   sniperMode: boolean;
   holdMode: boolean;
@@ -20,14 +26,40 @@ export interface DesktopWordStageProps {
   onStampWordEnd: () => void;
 }
 
+const DesktopPreRollStatus = memo(function DesktopPreRollStatus({
+  targetStartMs,
+  timeStore,
+  fallbackTimeMs,
+  preRollMs,
+}: {
+  targetStartMs: number | null;
+  timeStore: PlaybackTimeStore | null;
+  fallbackTimeMs: number;
+  preRollMs: number;
+}) {
+  const effectiveTimeMs = usePlaybackTime(timeStore, fallbackTimeMs, 50);
+  const preRoll = computePreRollStatus(targetStartMs, effectiveTimeMs, preRollMs);
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-5">
+      <Lamps lit={preRoll.light} />
+      <div className="font-mono text-[22px] font-bold tabular-nums text-ink">
+        {preRoll.countdownText}
+      </div>
+      <div className="font-extrabold text-sm text-ink">{preRoll.label}</div>
+    </div>
+  );
+});
+
 /**
  * Visor de palabra objetivo en escritorio con semáforo Pre-Roll,
  * modos Francotirador/Mantener, botón Repetir Pre-Roll y MARCAR PALABRA.
  */
-export function DesktopWordStage({
+export const DesktopWordStage = memo(function DesktopWordStage({
   activeLine,
   activeWordIndex,
-  currentTimeMs,
+  timeStore = null,
+  currentTimeMs = 0,
   preRollMs = DEFAULT_PRE_ROLL_MS,
   sniperMode,
   holdMode,
@@ -40,7 +72,6 @@ export function DesktopWordStage({
   const words = activeLine?.words ?? [];
   const targetWord = words[activeWordIndex];
   const targetStartMs = resolveWordTargetStartMs(activeLine, activeWordIndex);
-  const preRoll = computePreRollStatus(targetStartMs, currentTimeMs, preRollMs);
 
   return (
     <WellPanel className="p-6 flex flex-col items-center gap-3.5 text-center">
@@ -100,13 +131,12 @@ export function DesktopWordStage({
         {targetWord ? targetWord.text : '—'}
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-5">
-        <Lamps lit={preRoll.light} />
-        <div className="font-mono text-[22px] font-bold tabular-nums text-ink">
-          {preRoll.countdownText}
-        </div>
-        <div className="font-extrabold text-sm text-ink">{preRoll.label}</div>
-      </div>
+      <DesktopPreRollStatus
+        targetStartMs={targetStartMs}
+        timeStore={timeStore}
+        fallbackTimeMs={currentTimeMs}
+        preRollMs={preRollMs}
+      />
 
       <div className="flex flex-wrap items-center justify-center gap-3 mt-1">
         <RaisedButton
@@ -134,4 +164,4 @@ export function DesktopWordStage({
       </div>
     </WellPanel>
   );
-}
+});

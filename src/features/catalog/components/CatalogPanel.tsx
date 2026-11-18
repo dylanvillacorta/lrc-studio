@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { memo, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import type { ProjectSummary } from '@/types';
 import { Icon, IconButton, RaisedButton, ScrollShadow, WellPanel } from '@/ui';
 import { filterProjectsByQuery } from '../model/catalogModel';
@@ -23,7 +23,7 @@ export interface CatalogPanelProps {
 /**
  * Pantalla del catálogo «Mis transcripciones» con buscador, creación, respaldo y lista de tarjetas.
  */
-export function CatalogPanel({
+export const CatalogPanel = memo(function CatalogPanel({
   projects,
   activeProjectId,
   loading = false,
@@ -181,4 +181,4 @@ export function CatalogPanel({
       </ScrollShadow>
     </section>
   );
-}
+});

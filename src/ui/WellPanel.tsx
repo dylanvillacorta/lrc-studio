@@ -1,6 +1,8 @@
-import type { HTMLAttributes } from 'react';
+import type { HTMLAttributes, Ref } from 'react';
 
-export type WellPanelProps = HTMLAttributes<HTMLDivElement>;
+export interface WellPanelProps extends HTMLAttributes<HTMLDivElement> {
+  ref?: Ref<HTMLDivElement>;
+}
 
 /**
  * Contenedor hundido para áreas de lectura, listas de letras, onda o métricas.

@@ -28,9 +28,12 @@ export {
   findActiveWordIndex,
   getActiveLineWindow,
   getPreRollTrafficLight,
+  resolvePlaybackTracking,
   type ActiveLineWindowOptions,
   type KaraokeLineState,
   type KaraokePlaybackState,
+  type PlaybackTrackingInput,
+  type PlaybackTrackingResult,
 } from '@/features/sync/model/playbackAnalysis';
 export {
   MAX_SYNC_HISTORY,
@@ -48,3 +51,20 @@ export {
   type UseSyncEngineOptions,
   type UseSyncEngineReturn,
 } from '@/features/sync/hooks/useSyncEngine';
+export {
+  TIMELINE_COLLAPSE_DELAY_MS,
+  TIMELINE_SEEK_THROTTLE_MS,
+  computeFloatingIndicatorLeftPct,
+  computePointerRatio,
+  computePointerTimeMs,
+  reduceTimelineInteraction,
+  shouldThrottleSeek,
+  type TimelineInteractionState,
+} from '@/features/sync/model/timelineScrub';
+export {
+  computeBurstEnterState,
+  computeBurstExitState,
+  getBurstLoopSeekTargetMs,
+  type BurstLoopCheckParams,
+  type BurstTransitionResult,
+} from '@/features/sync/model/burstLoop';
