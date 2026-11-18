@@ -1,11 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AUDIO_INPUT_ACCEPT,
   AUDIO_MIME_BY_EXTENSION,
   SUPPORTED_AUDIO_EXTENSIONS,
+  getAudioInputAccept,
   inferAudioMime,
   isSupportedAudioFile,
 } from './audioFormats';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('audioFormats', () => {
   it('expone una lista única de extensiones soportadas con su MIME canónico', () => {
@@ -22,10 +27,79 @@ describe('audioFormats', () => {
     ]);
     expect(AUDIO_MIME_BY_EXTENSION.flac).toBe('audio/flac');
     expect(AUDIO_INPUT_ACCEPT).toContain('audio/*');
+    expect(AUDIO_INPUT_ACCEPT).toContain('audio/flac');
+    expect(AUDIO_INPUT_ACCEPT).toContain('audio/x-flac');
     expect(AUDIO_INPUT_ACCEPT).toContain('.flac');
     for (const ext of SUPPORTED_AUDIO_EXTENSIONS) {
       expect(AUDIO_INPUT_ACCEPT).toContain(`.${ext}`);
     }
+  });
+
+  describe('getAudioInputAccept', () => {
+    it('devuelve cadena vacía en iPhone, iPad, iPod e iPadOS (Macintosh táctil)', () => {
+      expect(
+        getAudioInputAccept({
+          userAgent:
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15',
+          maxTouchPoints: 5,
+        }),
+      ).toBe('');
+
+      expect(
+        getAudioInputAccept({
+          userAgent:
+            'Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15',
+          maxTouchPoints: 5,
+        }),
+      ).toBe('');
+
+      expect(
+        getAudioInputAccept({
+          userAgent:
+            'Mozilla/5.0 (iPod touch; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15',
+          maxTouchPoints: 5,
+        }),
+      ).toBe('');
+
+      expect(
+        getAudioInputAccept({
+          userAgent:
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
+          maxTouchPoints: 5,
+        }),
+      ).toBe('');
+    });
+
+    it('devuelve audio/*, audio/flac, audio/x-flac y todas las extensiones en Mac de escritorio, Android, Windows y sin navigator', () => {
+      const macDesktop = getAudioInputAccept({
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
+        maxTouchPoints: 0,
+      });
+      const android = getAudioInputAccept({
+        userAgent:
+          'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/125.0',
+        maxTouchPoints: 5,
+      });
+      const windows = getAudioInputAccept({
+        userAgent:
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0',
+        maxTouchPoints: 0,
+      });
+
+      vi.stubGlobal('navigator', undefined);
+      const noNavigator = getAudioInputAccept();
+
+      for (const accept of [macDesktop, android, windows, noNavigator]) {
+        expect(accept).toBe(AUDIO_INPUT_ACCEPT);
+        expect(accept).toContain('audio/*');
+        expect(accept).toContain('audio/flac');
+        expect(accept).toContain('audio/x-flac');
+        for (const ext of SUPPORTED_AUDIO_EXTENSIONS) {
+          expect(accept).toContain(`.${ext}`);
+        }
+      }
+    });
   });
 
   describe('inferAudioMime', () => {
@@ -42,7 +116,12 @@ describe('audioFormats', () => {
     it('prefiere el tipo declarado cuando es audio/* y cae a extensión si está vacío o es octet-stream', () => {
       expect(inferAudioMime('archivo.bin', 'audio/ogg')).toBe('audio/ogg');
       expect(inferAudioMime('pista.flac', '')).toBe('audio/flac');
+      expect(inferAudioMime('PISTA.FLAC', '')).toBe('audio/flac');
       expect(inferAudioMime('pista.flac', 'application/octet-stream')).toBe('audio/flac');
+      expect(inferAudioMime('PISTA.FLAC', 'application/octet-stream')).toBe('audio/flac');
+      expect(inferAudioMime('sinextension', 'application/octet-stream')).toBe(
+        'application/octet-stream',
+      );
       expect(inferAudioMime('pista.ogg', 'text/plain')).toBe('audio/ogg');
     });
 

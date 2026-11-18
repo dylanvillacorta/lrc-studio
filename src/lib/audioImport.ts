@@ -96,6 +96,9 @@ function resolveDefaultAudioContext(): AudioDecoderContext {
   return new Ctor();
 }
 
+export const AUDIO_READ_FAILED_MESSAGE =
+  'No se pudo leer el archivo de audio. Si está guardado en la nube (iCloud o Drive), verifica tu conexión o descárgalo antes de intentarlo de nuevo.';
+
 export const AUDIO_DECODE_FAILED_MESSAGE =
   'El navegador no pudo decodificar este formato de audio. Si el archivo está dañado o no es compatible, prueba convertirlo a WAV o MP3.';
 
@@ -116,7 +119,12 @@ export async function importAudioFile(
 
   const fileName = file.name && file.name.length > 0 ? file.name : 'audio';
   const resolvedMime = inferAudioMime(fileName, file.type);
-  const arrayBuffer = await file.arrayBuffer();
+  let arrayBuffer: ArrayBuffer;
+  try {
+    arrayBuffer = await file.arrayBuffer();
+  } catch (err) {
+    throw new Error(AUDIO_READ_FAILED_MESSAGE, { cause: err });
+  }
   const blob =
     typeof Blob !== 'undefined' && file instanceof Blob && file.type === resolvedMime
       ? file

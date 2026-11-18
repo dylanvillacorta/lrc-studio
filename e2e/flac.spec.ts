@@ -24,6 +24,9 @@ test.describe('Soporte de audio FLAC', () => {
 
     const fileInput = page.locator('input[aria-label="Seleccionar archivo de audio"]');
     await expect(fileInput).toHaveAttribute('accept', /\.flac/);
+    if (!isMobile) {
+      await expect(fileInput).toHaveAttribute('accept', /audio\/flac/);
+    }
     await fileInput.setInputFiles(
       makeFilePayload('master-estudio.flac', 'audio/flac', flacBytes),
     );
@@ -133,5 +136,39 @@ test.describe('Soporte de audio FLAC', () => {
     await expect(alert).toBeVisible();
     await expect(alert).toContainText(/no pudo decodificar/i);
     await expect(page.getByRole('region', { name: 'Sin pista de audio' })).toBeVisible();
+  });
+
+  test('acepta .flac declarado como application/octet-stream (proveedor en la nube) y dibuja onda con duración válida', async ({
+    page,
+  }, testInfo) => {
+    const assertNoErrors = trackErrors(page);
+    const isMobile = isMobileProject(testInfo);
+    const flacBytes = createTinyFlacBytes(1);
+
+    await page.goto('/');
+    await openCatalog(page, isMobile);
+    const catalogRegion = page.getByRole('region', { name: 'Mis transcripciones' });
+    await catalogRegion.getByRole('button', { name: 'Nueva transcripción' }).click();
+    await expect(page.getByRole('region', { name: 'Sin pista de audio' })).toBeVisible();
+
+    const fileInput = page.locator('input[aria-label="Seleccionar archivo de audio"]');
+    if (!isMobile) {
+      await expect(fileInput).toHaveAttribute('accept', /audio\/flac/);
+    }
+
+    await fileInput.setInputFiles(
+      makeFilePayload('nube-drive.flac', 'application/octet-stream', flacBytes),
+    );
+
+    const slider = page.getByRole('slider', { name: 'Posición en la forma de onda' });
+    await expect(slider).toBeVisible();
+    await expect
+      .poll(async () => Number(await slider.getAttribute('aria-valuemax')))
+      .toBeGreaterThanOrEqual(900);
+    await expect
+      .poll(async () => Number(await slider.getAttribute('aria-valuemax')))
+      .toBeLessThanOrEqual(1100);
+
+    assertNoErrors();
   });
 });
