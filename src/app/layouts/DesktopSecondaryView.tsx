@@ -8,6 +8,7 @@ import {
 } from '@/features/lyrics';
 import { downloadTextFile } from '@/lib/download';
 import type { ActiveTab, LyricLine, ProjectFullData } from '@/types';
+import { ScrollShadow } from '@/ui';
 
 export interface DesktopSecondaryViewProps {
   centerView: Exclude<DesktopCenterView, 'editor'>;
@@ -27,7 +28,6 @@ export interface DesktopSecondaryViewProps {
     patch: Partial<Pick<ProjectFullData, 'title' | 'artist' | 'settings'>>,
   ) => void;
   onReplaceLines: (nextLines: LyricLine[], recordHistory?: boolean) => void;
-  onLoadDemo: () => Promise<void>;
   onImportJson: (parsed: ParsedProjectJson) => Promise<void>;
   onChangeLoupeBounds: (bounds: LineBounds) => void;
   onPlayLoupeBurst: () => void;
@@ -54,7 +54,6 @@ export function DesktopSecondaryView({
   onDeleteProject,
   onUpdateMetadata,
   onReplaceLines,
-  onLoadDemo,
   onImportJson,
   onChangeLoupeBounds,
   onPlayLoupeBurst,
@@ -98,7 +97,10 @@ export function DesktopSecondaryView({
 
   if (centerView === 'lyrics') {
     return (
-      <div className="relieve rounded-[26px] p-5 flex-1 min-h-0 overflow-y-auto">
+      <ScrollShadow
+        className="relieve rounded-[26px] flex-1 min-h-0 overflow-hidden"
+        contentClassName="p-5"
+      >
         <LyricsScreen
           title={project?.title ?? ''}
           artist={project?.artist ?? ''}
@@ -124,15 +126,17 @@ export function DesktopSecondaryView({
             }
             onReplaceLines(mergeRawTextWithExistingLines(rawText, lines));
           }}
-          onLoadDemo={onLoadDemo}
         />
-      </div>
+      </ScrollShadow>
     );
   }
 
   if (centerView === 'export') {
     return (
-      <div className="relieve rounded-[26px] p-5 flex-1 min-h-0 overflow-y-auto">
+      <ScrollShadow
+        className="relieve rounded-[26px] flex-1 min-h-0 overflow-hidden"
+        contentClassName="p-5"
+      >
         {project ? (
           <ExportScreen project={project} onImport={onImportJson} />
         ) : (
@@ -140,7 +144,7 @@ export function DesktopSecondaryView({
             Abre o crea una transcripción para exportar sus marcas LRC, ELRC o JSON.
           </p>
         )}
-      </div>
+      </ScrollShadow>
     );
   }
 

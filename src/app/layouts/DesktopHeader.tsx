@@ -1,6 +1,13 @@
 import type { SaveStatus } from '@/features/session';
 import type { SyncSegmentedMode } from '@/features/sync/components/syncViewHelpers';
-import { Icon, Pill, RaisedButton, Segmented, type SegmentedOption } from '@/ui';
+import {
+  Icon,
+  IconButton,
+  Pill,
+  RaisedButton,
+  Segmented,
+  type SegmentedOption,
+} from '@/ui';
 
 export type DesktopSyncMode = 'line' | 'word' | 'burst' | 'karaoke';
 export type DesktopCenterView = 'editor' | 'lyrics' | 'export' | 'catalog' | 'loupe';
@@ -20,6 +27,7 @@ export interface DesktopHeaderProps {
   onToggleLyrics: () => void;
   onToggleExport: () => void;
   onRetrySave: () => void;
+  onOpenInfo?: () => void;
 }
 
 /**
@@ -34,6 +42,7 @@ export function DesktopHeader({
   onToggleLyrics,
   onToggleExport,
   onRetrySave,
+  onOpenInfo,
 }: DesktopHeaderProps) {
   const isSaving = saveStatus === 'saving' || saveStatus === 'pending';
 
@@ -101,6 +110,15 @@ export function DesktopHeader({
         <Icon name="export" size={18} />
         <span>Exportar LRC / ELRC / JSON</span>
       </RaisedButton>
+
+      {onOpenInfo ? (
+        <IconButton
+          aria-label="Información de la aplicación"
+          onClick={onOpenInfo}
+        >
+          <Icon name="info" size={20} />
+        </IconButton>
+      ) : null}
     </header>
   );
 }

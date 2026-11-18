@@ -1,5 +1,5 @@
 import type { ProjectSummary } from '@/types';
-import { Icon, ProgressBar, RaisedButton, WellPanel } from '@/ui';
+import { Icon, ProgressBar, RaisedButton, ScrollShadow, WellPanel } from '@/ui';
 
 export interface DesktopCatalogSidebarProps {
   projects: ProjectSummary[];
@@ -41,7 +41,10 @@ export function DesktopCatalogSidebar({
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 p-0.5 max-h-[340px] min-[1100px]:max-h-none">
+      <ScrollShadow
+        className="flex-1 min-h-0 -mx-2.5 max-h-[340px] min-[1100px]:max-h-none"
+        contentClassName="px-2.5 py-2 flex flex-col gap-2.5"
+      >
         {loading && projects.length === 0 ? (
           <WellPanel className="p-4 text-center text-xs font-semibold text-mute">
             Cargando transcripciones...
@@ -87,7 +90,7 @@ export function DesktopCatalogSidebar({
             );
           })
         )}
-      </div>
+      </ScrollShadow>
 
       <RaisedButton
         variant="acc"

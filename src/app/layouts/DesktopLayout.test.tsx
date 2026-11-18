@@ -162,6 +162,8 @@ describe('DesktopLayout y montaje de versión', () => {
     expect(html).toContain('aria-label="Inspector de tiempos"');
     expect(html).toContain('aria-label="Atajos de teclado"');
     expect(html).toContain('aria-label="Abrir lupa de onda"');
+    expect(html).toContain('aria-label="Información de la aplicación"');
+    expect(html).not.toContain('<footer');
   });
 
   it('detecta nueva versión con fetch falso, muestra UpdateBanner y ejecuta flushPendingSave antes de recargar', async () => {

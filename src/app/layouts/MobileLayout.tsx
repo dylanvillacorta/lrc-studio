@@ -19,12 +19,12 @@ import {
 } from '@/features/sync/components/syncViewHelpers';
 import { WordSyncScreen } from '@/features/sync/components/WordSyncScreen';
 import {
+  InfoDialog,
   UpdateBanner,
-  VersionFooter,
   useVersionCheck,
 } from '@/features/version';
 import { downloadTextFile } from '@/lib/download';
-import { NavBar, type NavBarItem } from '@/ui';
+import { NavBar, ScrollShadow, type NavBarItem } from '@/ui';
 
 const NAV_ITEMS: readonly NavBarItem<'catalog' | 'lyrics' | 'sync' | 'export'>[] = [
   { id: 'catalog', label: 'Catálogo', icon: 'library' },
@@ -58,9 +58,17 @@ export function MobileLayout() {
 
   const catalog = useCatalog(storage);
   const { refresh: refreshCatalog } = catalog;
-  const { updateAvailable, applyUpdate } = useVersionCheck({
+  const {
+    updateAvailable,
+    checking,
+    builtAt,
+    checkMessage,
+    checkNow,
+    applyUpdate,
+  } = useVersionCheck({
     flush: flushPendingSave,
   });
+  const [infoOpen, setInfoOpen] = useState(false);
   const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
@@ -245,10 +253,15 @@ export function MobileLayout() {
             saveStatus={saveStatus}
             onOpenCatalog={() => handleNavSelect('catalog')}
             onRetrySave={() => void flushPendingSave()}
+            onOpenInfo={() => setInfoOpen(true)}
           />
         ) : null}
 
-        <main className="flex-1 min-h-0 px-4 pb-3 [@media(max-height:720px)]:pb-1.5 flex flex-col overflow-y-auto">
+        <ScrollShadow
+          as="main"
+          className="flex-1 min-h-0"
+          contentClassName="px-4 pb-3 [@media(max-height:720px)]:pb-1.5 flex flex-col"
+        >
           {activeTab === 'catalog' ? (
             <CatalogPanel
               projects={catalog.projects}
@@ -314,7 +327,6 @@ export function MobileLayout() {
                 const merged = mergeRawTextWithExistingLines(rawText, sync.lines);
                 sync.replaceLines(merged);
               }}
-              onLoadDemo={handleUseDemo}
             />
           ) : null}
 
@@ -443,8 +455,7 @@ export function MobileLayout() {
               </div>
             )
           ) : null}
-          <VersionFooter />
-        </main>
+        </ScrollShadow>
 
         {showNavBar ? (
           <NavBar
@@ -454,6 +465,16 @@ export function MobileLayout() {
             className="[@media(max-height:720px)]:pt-1.5 [@media(max-height:720px)]:pb-2 [@media(max-height:720px)]:[&>button]:min-h-[48px]"
           />
         ) : null}
+        <InfoDialog
+          open={infoOpen}
+          onClose={() => setInfoOpen(false)}
+          builtAt={builtAt}
+          updateAvailable={updateAvailable}
+          checking={checking}
+          checkMessage={checkMessage}
+          onCheckUpdates={checkNow}
+          onApplyUpdate={applyUpdate}
+        />
       </div>
     </div>
   );

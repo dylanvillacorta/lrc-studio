@@ -32,8 +32,8 @@ import {
 } from '@/features/sync/components/syncViewHelpers';
 import { useKeyboardShortcuts } from '@/features/sync/hooks/useKeyboardShortcuts';
 import {
+  InfoDialog,
   UpdateBanner,
-  VersionFooter,
   useVersionCheck,
 } from '@/features/version';
 import { formatDisplayTime } from '@/lib/time';
@@ -66,9 +66,17 @@ export function DesktopLayout() {
 
   const catalog = useCatalog(storage);
   const { refresh: refreshCatalog } = catalog;
-  const { updateAvailable, applyUpdate } = useVersionCheck({
+  const {
+    updateAvailable,
+    checking,
+    builtAt,
+    checkMessage,
+    checkNow,
+    applyUpdate,
+  } = useVersionCheck({
     flush: flushPendingSave,
   });
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const [burstActive, setBurstActive] = useState(false);
   const [karaokeActive, setKaraokeActive] = useState(false);
@@ -327,6 +335,7 @@ export function DesktopLayout() {
         onToggleLyrics={() => setActiveTab(centerView === 'lyrics' ? 'sync' : 'lyrics')}
         onToggleExport={() => setActiveTab(centerView === 'export' ? 'sync' : 'export')}
         onRetrySave={() => void flushPendingSave()}
+        onOpenInfo={() => setInfoOpen(true)}
       />
       <div className="flex-1 min-h-0 flex flex-col min-[1100px]:flex-row gap-5">
         <DesktopCatalogSidebar
@@ -366,7 +375,6 @@ export function DesktopLayout() {
               }}
               onUpdateMetadata={updateProjectMetadata}
               onReplaceLines={sync.replaceLines}
-              onLoadDemo={handleUseDemo}
               onImportJson={handleImportJson}
               onChangeLoupeBounds={handleInspectorBoundsChange}
               onPlayLoupeBurst={() => {
@@ -486,7 +494,16 @@ export function DesktopLayout() {
           onOpenLoupe={handleOpenLoupe}
         />
       </div>
-      <VersionFooter />
+      <InfoDialog
+        open={infoOpen}
+        onClose={() => setInfoOpen(false)}
+        builtAt={builtAt}
+        updateAvailable={updateAvailable}
+        checking={checking}
+        checkMessage={checkMessage}
+        onCheckUpdates={checkNow}
+        onApplyUpdate={applyUpdate}
+      />
       <div aria-live="polite" className="sr-only">
         {liveNotice}
       </div>

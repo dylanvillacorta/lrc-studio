@@ -7,6 +7,7 @@ export interface MobileHeaderProps {
   saveStatus: SaveStatus;
   onOpenCatalog: () => void;
   onRetrySave: () => void;
+  onOpenInfo?: () => void;
 }
 
 /**
@@ -18,6 +19,7 @@ export function MobileHeader({
   saveStatus,
   onOpenCatalog,
   onRetrySave,
+  onOpenInfo,
 }: MobileHeaderProps) {
   const isSaving = saveStatus === 'saving' || saveStatus === 'pending';
 
@@ -57,6 +59,15 @@ export function MobileHeader({
           <span>{isSaving ? 'Guardando' : 'Guardado'}</span>
         </Pill>
       )}
+
+      {onOpenInfo ? (
+        <IconButton
+          aria-label="Información de la aplicación"
+          onClick={onOpenInfo}
+        >
+          <Icon name="info" size={20} />
+        </IconButton>
+      ) : null}
     </header>
   );
 }
