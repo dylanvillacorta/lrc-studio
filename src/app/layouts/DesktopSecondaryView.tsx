@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { DesktopCenterView } from '@/app/layouts/DesktopHeader';
 import { CatalogPanel, type UseCatalogResult } from '@/features/catalog';
 import { ExportScreen, type ParsedProjectJson } from '@/features/export';
@@ -6,6 +7,10 @@ import {
   LyricsScreen,
   mergeRawTextWithExistingLines,
 } from '@/features/lyrics';
+import {
+  usePlaybackTime,
+  type PlaybackTimeStore,
+} from '@/features/sync/hooks/playbackTimeStore';
 import { downloadTextFile } from '@/lib/download';
 import type { ActiveTab, LyricLine, ProjectFullData } from '@/types';
 
@@ -17,7 +22,8 @@ export interface DesktopSecondaryViewProps {
   activeLineIndex: number;
   waveformPeaks: number[];
   durationMs: number;
-  currentTimeMs: number;
+  timeStore?: PlaybackTimeStore | null;
+  currentTimeMs?: number;
   isSaved: boolean;
   loupeReturnTab: 'sync' | 'word';
   onOpenProject: (id: string) => Promise<void>;
@@ -34,11 +40,59 @@ export interface DesktopSecondaryViewProps {
   onSetActiveTab: (tab: ActiveTab) => void;
 }
 
+const DesktopLoupeBridge = memo(function DesktopLoupeBridge({
+  peaks,
+  durationMs,
+  timeStore,
+  fallbackTimeMs,
+  line,
+  lineIndex,
+  lines,
+  isSaved,
+  loupeReturnTab,
+  onChangeLoupeBounds,
+  onPlayLoupeBurst,
+  onSetActiveTab,
+}: {
+  peaks: number[];
+  durationMs: number;
+  timeStore: PlaybackTimeStore | null;
+  fallbackTimeMs: number;
+  line: LyricLine;
+  lineIndex: number;
+  lines: LyricLine[];
+  isSaved: boolean;
+  loupeReturnTab: 'sync' | 'word';
+  onChangeLoupeBounds: (bounds: LineBounds) => void;
+  onPlayLoupeBurst: () => void;
+  onSetActiveTab: (tab: ActiveTab) => void;
+}) {
+  const effectiveTimeMs = usePlaybackTime(timeStore, fallbackTimeMs, 33);
+  return (
+    <LoupeScreen
+      peaks={peaks}
+      durationMs={durationMs}
+      currentTimeMs={effectiveTimeMs}
+      line={line}
+      lineIndex={lineIndex}
+      lines={lines}
+      isSaved={isSaved}
+      onChange={onChangeLoupeBounds}
+      onPlayBurst={onPlayLoupeBurst}
+      onApply={(bounds) => {
+        onChangeLoupeBounds(bounds);
+        onSetActiveTab(loupeReturnTab);
+      }}
+      onBack={() => onSetActiveTab(loupeReturnTab)}
+    />
+  );
+});
+
 /**
  * Renderiza las vistas secundarias en el panel central de escritorio
  * (Catálogo completo, Letra, Exportar y Lupa).
  */
-export function DesktopSecondaryView({
+export const DesktopSecondaryView = memo(function DesktopSecondaryView({
   centerView,
   project,
   catalog,
@@ -46,7 +100,8 @@ export function DesktopSecondaryView({
   activeLineIndex,
   waveformPeaks,
   durationMs,
-  currentTimeMs,
+  timeStore = null,
+  currentTimeMs = 0,
   isSaved,
   loupeReturnTab,
   onOpenProject,
@@ -151,22 +206,20 @@ export function DesktopSecondaryView({
 
   return (
     <div className="relieve rounded-[26px] p-5 flex-1 min-h-0 overflow-y-auto">
-      <LoupeScreen
+      <DesktopLoupeBridge
         peaks={waveformPeaks}
         durationMs={durationMs}
-        currentTimeMs={currentTimeMs}
+        timeStore={timeStore}
+        fallbackTimeMs={currentTimeMs}
         line={activeLine}
         lineIndex={activeLineIndex}
         lines={lines}
         isSaved={isSaved}
-        onChange={onChangeLoupeBounds}
-        onPlayBurst={onPlayLoupeBurst}
-        onApply={(bounds) => {
-          onChangeLoupeBounds(bounds);
-          onSetActiveTab(loupeReturnTab);
-        }}
-        onBack={() => onSetActiveTab(loupeReturnTab)}
+        loupeReturnTab={loupeReturnTab}
+        onChangeLoupeBounds={onChangeLoupeBounds}
+        onPlayLoupeBurst={onPlayLoupeBurst}
+        onSetActiveTab={onSetActiveTab}
       />
     </div>
   );
-}
+});

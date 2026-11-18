@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { formatDisplayTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
 import { WellPanel } from '@/ui';
@@ -14,7 +14,7 @@ export interface DesktopLineListProps {
 /**
  * Lista scrollable de líneas de letra para seleccionar y visualizar marcas en escritorio.
  */
-export function DesktopLineList({
+export const DesktopLineList = memo(function DesktopLineList({
   lines,
   activeLineIndex,
   playingLineIndex = -1,
@@ -106,4 +106,4 @@ export function DesktopLineList({
       )}
     </WellPanel>
   );
-}
+});

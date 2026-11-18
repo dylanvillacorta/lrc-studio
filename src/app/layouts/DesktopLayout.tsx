@@ -23,10 +23,8 @@ import {
   computeBurstExitState,
   computePreRollStartMs,
   DEFAULT_PRE_ROLL_MS,
-  findActiveLineIndex,
   getActiveLineWindow,
   getBurstLoopSeekTargetMs,
-  resolvePlaybackTracking,
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { NoAudioCard } from '@/features/sync/components/NoAudioCard';
@@ -36,6 +34,7 @@ import {
   type SyncSegmentedMode,
 } from '@/features/sync/components/syncViewHelpers';
 import { useKeyboardShortcuts } from '@/features/sync/hooks/useKeyboardShortcuts';
+import { usePlaybackLineTracking } from '@/features/sync/hooks/usePlaybackLineTracking';
 import {
   UpdateBanner,
   VersionFooter,
@@ -80,15 +79,16 @@ export function DesktopLayout() {
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
   const [liveNotice, setLiveNotice] = useState('');
-  const [manualOverrideAtPlayingIndex, setManualOverrideAtPlayingIndex] = useState<number | null>(
-    null,
-  );
-  const lastPlayingLineRef = useRef<number>(-1);
-  const playerTimeRef = useRef(player.currentTime);
+  const playerRef = useRef(player);
 
   useEffect(() => {
-    playerTimeRef.current = player.currentTime;
-  }, [player.currentTime]);
+    playerRef.current = player;
+  }, [player]);
+
+  const getCurrentTimeMs = useCallback(
+    () => playerRef.current.getCurrentTimeMs?.() ?? playerRef.current.currentTime,
+    [],
+  );
 
   const durationMs =
     player.duration > 0
@@ -126,20 +126,39 @@ export function DesktopLayout() {
   }, [burstActive, durationMs, preRollMs, sync.activeLineIndex, sync.lines]);
 
   useEffect(() => {
-    if (!burstWindow) {
+    if (!burstWindow || !burstActive || !player.isPlaying || centerView !== 'editor') {
       return;
     }
-    const targetMs = getBurstLoopSeekTargetMs({
-      burstActive,
-      isPlaying: player.isPlaying,
-      isEditing: centerView === 'editor' && burstActive,
-      currentTimeMs: player.currentTime,
-      windowStartMs: burstWindow.windowStartMs,
-      windowEndMs: burstWindow.windowEndMs,
-    });
-    if (targetMs !== null) {
-      player.seekTo(targetMs);
+    const timeStore = player.timeStore;
+    if (!timeStore) {
+      const targetMs = getBurstLoopSeekTargetMs({
+        burstActive,
+        isPlaying: player.isPlaying,
+        isEditing: true,
+        currentTimeMs: player.currentTime,
+        windowStartMs: burstWindow.windowStartMs,
+        windowEndMs: burstWindow.windowEndMs,
+      });
+      if (targetMs !== null) {
+        player.seekTo(targetMs);
+      }
+      return;
     }
+    const checkBurstEnd = () => {
+      const targetMs = getBurstLoopSeekTargetMs({
+        burstActive: true,
+        isPlaying: true,
+        isEditing: true,
+        currentTimeMs: timeStore.getTimeMs(),
+        windowStartMs: burstWindow.windowStartMs,
+        windowEndMs: burstWindow.windowEndMs,
+      });
+      if (targetMs !== null) {
+        player.seekTo(targetMs);
+      }
+    };
+    checkBurstEnd();
+    return timeStore.subscribe(checkBurstEnd);
   }, [burstActive, burstWindow, centerView, player]);
 
   useEffect(() => {
@@ -148,50 +167,29 @@ export function DesktopLayout() {
     }
   }, [activeTab, flushPendingSave, refreshCatalog]);
 
+  const prevProjectIdRef = useRef<string | null>(project?.id ?? null);
   useEffect(() => {
-    if (saveStatus === 'saved') {
+    const nextId = project?.id ?? null;
+    if (saveStatus === 'saved' || (nextId !== null && nextId !== prevProjectIdRef.current)) {
       void refreshCatalog();
     }
+    prevProjectIdRef.current = nextId;
   }, [project?.id, refreshCatalog, saveStatus]);
 
   const activeLine = sync.lines[sync.activeLineIndex];
   const targetWord = activeLine?.words[sync.activeWordIndex];
-  const playingLineIndex = player.isPlaying
-    ? findActiveLineIndex(sync.lines, player.currentTime)
-    : -1;
-  const isManualOverrideActive =
-    manualOverrideAtPlayingIndex !== null &&
-    manualOverrideAtPlayingIndex === playingLineIndex;
-  const trackedListIndex =
-    isManualOverrideActive || playingLineIndex < 0
-      ? sync.activeLineIndex
-      : playingLineIndex;
-  const { setActiveLineIndex: setSyncActiveLineIndex } = sync;
-
-  useEffect(() => {
-    const res = resolvePlaybackTracking({
+  const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
+  const { playingLineIndex, trackedListIndex, selectLine: handleSelectLine } =
+    usePlaybackLineTracking({
       lines: sync.lines,
-      currentTimeMs: player.currentTime,
       isPlaying: player.isPlaying,
       activeLineIndex: sync.activeLineIndex,
-      lastPlayingLineIndex: lastPlayingLineRef.current,
-      manualOverrideAtPlayingIndex: isManualOverrideActive
-        ? manualOverrideAtPlayingIndex
-        : null,
+      timeStore: player.timeStore,
+      fallbackCurrentTimeMs,
+      setActiveLineIndex: sync.setActiveLineIndex,
+      setActiveWordIndex: sync.setActiveWordIndex,
+      seekTo: player.seekTo,
     });
-    lastPlayingLineRef.current = res.playingLineIndex;
-    if (res.nextActiveLineIndex !== null && res.nextActiveLineIndex !== sync.activeLineIndex) {
-      setSyncActiveLineIndex(res.nextActiveLineIndex);
-    }
-  }, [
-    isManualOverrideActive,
-    manualOverrideAtPlayingIndex,
-    player.currentTime,
-    player.isPlaying,
-    setSyncActiveLineIndex,
-    sync.activeLineIndex,
-    sync.lines,
-  ]);
 
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
@@ -253,11 +251,11 @@ export function DesktopLayout() {
     const targetStartMs =
       syncMode === 'word'
         ? resolveWordTargetStartMs(activeLine, sync.activeWordIndex)
-        : (activeLine?.startMs ?? playerTimeRef.current);
+        : (activeLine?.startMs ?? getCurrentTimeMs());
     player.seekTo(computePreRollStartMs(targetStartMs, preRollMs));
     void player.play();
     setLiveNotice('Repitiendo Pre-Roll');
-  }, [activeLine, player, preRollMs, sync.activeWordIndex, syncMode]);
+  }, [activeLine, getCurrentTimeMs, player, preRollMs, sync.activeWordIndex, syncMode]);
 
   const applyWordFeedback = useCallback(
     (feedback: { shouldPause: boolean; shouldRewindPreRoll: boolean }, nowMs: number) => {
@@ -273,7 +271,7 @@ export function DesktopLayout() {
   );
 
   const handleStampStart = useCallback(() => {
-    const nowMs = playerTimeRef.current;
+    const nowMs = getCurrentTimeMs();
     if (syncMode === 'word') {
       if (!targetWord) return;
       if (!player.isPlaying) void player.play();
@@ -290,11 +288,11 @@ export function DesktopLayout() {
     if (sync.lines.length === 0) return;
     sync.stampLineStart(nowMs, false);
     setLiveNotice(`Línea ${sync.activeLineIndex + 1} marcada`);
-  }, [applyWordFeedback, holdMode, player, subMode, sync, syncMode, targetWord]);
+  }, [applyWordFeedback, getCurrentTimeMs, holdMode, player, subMode, sync, syncMode, targetWord]);
 
   const handleStampEnd = useCallback(() => {
     if (syncMode !== 'word' || !holdMode || !targetWord) return;
-    const nowMs = playerTimeRef.current;
+    const nowMs = getCurrentTimeMs();
     const feedback = sync.stampWordEnd({
       nowMs,
       subMode,
@@ -302,7 +300,7 @@ export function DesktopLayout() {
       sniperAutoAdvancePreRoll: true,
     });
     applyWordFeedback(feedback, nowMs);
-  }, [applyWordFeedback, holdMode, subMode, sync, syncMode, targetWord]);
+  }, [applyWordFeedback, getCurrentTimeMs, holdMode, subMode, sync, syncMode, targetWord]);
 
   const handleNudge = useCallback(
     (deltaMs: -50 | -10 | 10 | 50) => {
@@ -339,46 +337,134 @@ export function DesktopLayout() {
       ? `Línea ${sync.activeLineIndex + 1} · ${activeLine.text}`
       : null;
 
-  const handleInspectorBoundsChange = (bounds: LineBounds) => {
-    if (inspectorIsWord && activeLine && targetWord) {
-      const nextLines = sync.lines.map((line, lIdx) =>
-        lIdx === sync.activeLineIndex
-          ? {
-              ...line,
-              words: line.words.map((w, wIdx) =>
-                wIdx === sync.activeWordIndex ? { ...w, startMs: bounds.startMs, endMs: bounds.endMs } : w,
-              ),
-            }
-          : line,
+  const handleInspectorBoundsChange = useCallback(
+    (bounds: LineBounds) => {
+      if (inspectorIsWord && activeLine && targetWord) {
+        const nextLines = sync.lines.map((line, lIdx) =>
+          lIdx === sync.activeLineIndex
+            ? {
+                ...line,
+                words: line.words.map((w, wIdx) =>
+                  wIdx === sync.activeWordIndex
+                    ? { ...w, startMs: bounds.startMs, endMs: bounds.endMs }
+                    : w,
+                ),
+              }
+            : line,
+        );
+        sync.replaceLines(nextLines, false);
+        return;
+      }
+      if (!activeLine) return;
+      sync.replaceLines(
+        sync.lines.map((line, idx) =>
+          idx === sync.activeLineIndex
+            ? { ...line, startMs: bounds.startMs, endMs: bounds.endMs }
+            : line,
+        ),
+        false,
       );
-      sync.replaceLines(nextLines, false);
-      return;
-    }
-    if (!activeLine) return;
-    sync.replaceLines(
-      sync.lines.map((line, idx) =>
-        idx === sync.activeLineIndex ? { ...line, startMs: bounds.startMs, endMs: bounds.endMs } : line,
-      ),
-      false,
-    );
-  };
+    },
+    [activeLine, inspectorIsWord, sync, targetWord],
+  );
 
-  const handleOpenLoupe = () => {
+  const handleOpenLoupe = useCallback(() => {
     if (!activeLine) return;
     setBurstActive(false);
     setKaraokeActive(false);
     setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
     setActiveTab('loupe');
-  };
+  }, [activeLine, activeTab, setActiveTab]);
 
-  const handleImportJson = async (parsed: ParsedProjectJson) => {
-    const title = parsed.metadata.title ?? 'Sin título';
-    const artist = parsed.metadata.artist ?? '';
-    if (!project) await createProject({ title, artist });
-    else updateProjectMetadata({ title, artist });
-    sync.replaceLines(parsed.lines);
+  const handleImportJson = useCallback(
+    async (parsed: ParsedProjectJson) => {
+      const title = parsed.metadata.title ?? 'Sin título';
+      const artist = parsed.metadata.artist ?? '';
+      if (!project) await createProject({ title, artist });
+      else updateProjectMetadata({ title, artist });
+      sync.replaceLines(parsed.lines);
+      setActiveTab('sync');
+    },
+    [createProject, project, setActiveTab, sync, updateProjectMetadata],
+  );
+
+  const handleToggleLyrics = useCallback(() => {
+    setActiveTab(centerView === 'lyrics' ? 'sync' : 'lyrics');
+  }, [centerView, setActiveTab]);
+
+  const handleToggleExport = useCallback(() => {
+    setActiveTab(centerView === 'export' ? 'sync' : 'export');
+  }, [centerView, setActiveTab]);
+
+  const handleRetrySave = useCallback(() => {
+    void flushPendingSave();
+  }, [flushPendingSave]);
+
+  const handleSidebarOpen = useCallback(
+    async (id: string) => {
+      await openProject(id);
+      setActiveTab('sync');
+    },
+    [openProject, setActiveTab],
+  );
+
+  const handleSidebarCreate = useCallback(async () => {
+    await createProject();
     setActiveTab('sync');
-  };
+  }, [createProject, setActiveTab]);
+
+  const handleOpenFullCatalog = useCallback(() => {
+    setActiveTab('catalog');
+  }, [setActiveTab]);
+
+  const handleChangePlaybackRate = useCallback(
+    (rate: number) => {
+      player.setPlaybackRate(rate);
+      if (project) {
+        updateProjectMetadata({ settings: { ...project.settings, playbackRate: rate } });
+      }
+    },
+    [player, project, updateProjectMetadata],
+  );
+
+  const handleSeekStart = useCallback(() => {
+    player.setSeeking(true);
+  }, [player]);
+
+  const handleSeekEnd = useCallback(() => {
+    player.setSeeking(false);
+  }, [player]);
+
+  const handleToggleSniper = useCallback(() => {
+    if (project) {
+      updateProjectMetadata({ settings: { ...project.settings, sniperMode: !sniperMode } });
+    }
+  }, [project, sniperMode, updateProjectMetadata]);
+
+  const handleToggleHold = useCallback(() => {
+    setHoldMode((prev) => !prev);
+  }, []);
+
+  const handleStopBurst = useCallback(() => {
+    setBurstActive(false);
+    player.pause();
+  }, [player]);
+
+  const handlePlayLoupeBurst = useCallback(() => {
+    const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
+    player.seekTo(win.windowStartMs);
+    void player.play();
+  }, [durationMs, player, preRollMs, sync.activeLineIndex, sync.lines]);
+
+  const handleDeleteCatalogProject = useCallback(
+    async (id: string) => {
+      if (id === project?.id) {
+        await clearActiveProject();
+      }
+      await catalog.deleteProject(id);
+    },
+    [catalog, clearActiveProject, project?.id],
+  );
 
   return (
     <div className="min-h-dvh w-full bg-bg text-ink flex flex-col p-5 gap-4 overflow-x-hidden">
@@ -388,24 +474,18 @@ export function DesktopLayout() {
         centerView={centerView}
         saveStatus={saveStatus}
         onSelectSyncMode={handleSelectMode}
-        onToggleLyrics={() => setActiveTab(centerView === 'lyrics' ? 'sync' : 'lyrics')}
-        onToggleExport={() => setActiveTab(centerView === 'export' ? 'sync' : 'export')}
-        onRetrySave={() => void flushPendingSave()}
+        onToggleLyrics={handleToggleLyrics}
+        onToggleExport={handleToggleExport}
+        onRetrySave={handleRetrySave}
       />
       <div className="flex-1 min-h-0 flex flex-col min-[1100px]:flex-row gap-5">
         <DesktopCatalogSidebar
           projects={catalog.projects}
           activeProjectId={project?.id ?? null}
           loading={catalog.loading}
-          onOpen={async (id) => {
-            await openProject(id);
-            setActiveTab('sync');
-          }}
-          onCreate={async () => {
-            await createProject();
-            setActiveTab('sync');
-          }}
-          onOpenFullCatalog={() => setActiveTab('catalog')}
+          onOpen={handleSidebarOpen}
+          onCreate={handleSidebarCreate}
+          onOpenFullCatalog={handleOpenFullCatalog}
         />
         <main className="flex-1 min-w-0 flex flex-col gap-4">
           {centerView !== 'editor' ? (
@@ -417,27 +497,19 @@ export function DesktopLayout() {
               activeLineIndex={sync.activeLineIndex}
               waveformPeaks={waveformPeaks}
               durationMs={durationMs}
-              currentTimeMs={player.currentTime}
+              timeStore={player.timeStore}
+              currentTimeMs={fallbackCurrentTimeMs}
               isSaved={saveStatus === 'saved' || saveStatus === 'idle'}
               loupeReturnTab={loupeReturnTab}
               onOpenProject={openProject}
               onCreateProject={createProject}
-              onDeleteProject={async (id) => {
-                if (id === project?.id) {
-                  await clearActiveProject();
-                }
-                await catalog.deleteProject(id);
-              }}
+              onDeleteProject={handleDeleteCatalogProject}
               onUpdateMetadata={updateProjectMetadata}
               onReplaceLines={sync.replaceLines}
               onLoadDemo={handleUseDemo}
               onImportJson={handleImportJson}
               onChangeLoupeBounds={handleInspectorBoundsChange}
-              onPlayLoupeBurst={() => {
-                const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
-                player.seekTo(win.windowStartMs);
-                void player.play();
-              }}
+              onPlayLoupeBurst={handlePlayLoupeBurst}
               onSetActiveTab={setActiveTab}
             />
           ) : !audioUrl ? (
@@ -446,7 +518,9 @@ export function DesktopLayout() {
             <>
               <DesktopWaveformCard
                 peaks={waveformPeaks}
-                currentTimeMs={player.currentTime}
+                timeStore={player.timeStore}
+                getCurrentTimeMs={getCurrentTimeMs}
+                currentTimeMs={fallbackCurrentTimeMs}
                 durationMs={durationMs}
                 isPlaying={player.isPlaying}
                 playbackRate={player.playbackRate}
@@ -454,13 +528,10 @@ export function DesktopLayout() {
                 canUndo={sync.canUndo}
                 canOpenLoupe={Boolean(activeLine)}
                 onSeek={player.seekTo}
-                onSeekStart={() => player.setSeeking(true)}
-                onSeekEnd={() => player.setSeeking(false)}
+                onSeekStart={handleSeekStart}
+                onSeekEnd={handleSeekEnd}
                 onTogglePlay={player.togglePlay}
-                onChangePlaybackRate={(rate) => {
-                  player.setPlaybackRate(rate);
-                  if (project) updateProjectMetadata({ settings: { ...project.settings, playbackRate: rate } });
-                }}
+                onChangePlaybackRate={handleChangePlaybackRate}
                 onUndo={sync.undo}
                 onOpenLoupe={handleOpenLoupe}
               />
@@ -474,10 +545,7 @@ export function DesktopLayout() {
                   </Pill>
                   <RaisedButton
                     size="sm"
-                    onClick={() => {
-                      setBurstActive(false);
-                      player.pause();
-                    }}
+                    onClick={handleStopBurst}
                     className="min-h-12 px-3 text-xs font-extrabold"
                   >
                     Detener ráfaga
@@ -491,8 +559,9 @@ export function DesktopLayout() {
                   isPlaying={player.isPlaying}
                   lines={sync.lines}
                   syncMode="karaoke"
-                  pausedTimeMs={player.currentTime}
-                  getCurrentTimeMs={() => playerTimeRef.current}
+                  timeStore={player.timeStore}
+                  pausedTimeMs={player.timeStore ? -1 : player.currentTime}
+                  getCurrentTimeMs={getCurrentTimeMs}
                   onSelectMode={handleSelectMode}
                   onTogglePlay={player.togglePlay}
                   onSeek={player.seekTo}
@@ -504,14 +573,13 @@ export function DesktopLayout() {
                     <DesktopWordStage
                       activeLine={activeLine}
                       activeWordIndex={sync.activeWordIndex}
-                      currentTimeMs={player.currentTime}
+                      timeStore={player.timeStore}
+                      currentTimeMs={fallbackCurrentTimeMs}
                       preRollMs={preRollMs}
                       sniperMode={sniperMode}
                       holdMode={holdMode}
-                      onToggleSniper={() => {
-                        if (project) updateProjectMetadata({ settings: { ...project.settings, sniperMode: !sniperMode } });
-                      }}
-                      onToggleHold={() => setHoldMode((prev) => !prev)}
+                      onToggleSniper={handleToggleSniper}
+                      onToggleHold={handleToggleHold}
                       onRepeatPreRoll={handleRepeatPreRoll}
                       onStampWordStart={handleStampStart}
                       onStampWordEnd={handleStampEnd}
@@ -522,15 +590,7 @@ export function DesktopLayout() {
                     activeLineIndex={sync.activeLineIndex}
                     playingLineIndex={playingLineIndex}
                     trackedListIndex={trackedListIndex}
-                    onSelectLine={(index) => {
-                      setManualOverrideAtPlayingIndex(player.isPlaying ? playingLineIndex : null);
-                      sync.setActiveLineIndex(index);
-                      sync.setActiveWordIndex(0);
-                      const selected = sync.lines[index];
-                      if (selected && selected.startMs !== null) {
-                        player.seekTo(selected.startMs);
-                      }
-                    }}
+                    onSelectLine={handleSelectLine}
                   />
                   {syncMode !== 'word' ? (
                     <SyncButton

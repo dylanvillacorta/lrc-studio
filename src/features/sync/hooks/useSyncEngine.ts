@@ -7,7 +7,7 @@
  * la capa de sesión/autoguardado (T6) persista el estado.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   popSyncHistory,
   pushSyncHistory,
@@ -84,68 +84,124 @@ export function useSyncEngine(
   } = options;
 
   const [lines, setLines] = useState<LyricLine[]>(initialLines);
-  const [activeLineIndex, setActiveLineIndex] = useState(initialLineIndex);
-  const [activeWordIndex, setActiveWordIndex] = useState(initialWordIndex);
+  const [activeLineIndex, setActiveLineIndexState] = useState(initialLineIndex);
+  const [activeWordIndex, setActiveWordIndexState] = useState(initialWordIndex);
   const [history, setHistory] = useState<SyncSnapshot[]>([]);
+
+  const linesRef = useRef(lines);
+  const activeLineIndexRef = useRef(activeLineIndex);
+  const activeWordIndexRef = useRef(activeWordIndex);
+  const historyRef = useRef(history);
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    linesRef.current = lines;
+  }, [lines]);
+
+  useEffect(() => {
+    activeLineIndexRef.current = activeLineIndex;
+  }, [activeLineIndex]);
+
+  useEffect(() => {
+    activeWordIndexRef.current = activeWordIndex;
+  }, [activeWordIndex]);
+
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const setActiveLineIndex = useCallback((index: number) => {
+    activeLineIndexRef.current = index;
+    setActiveLineIndexState(index);
+  }, []);
+
+  const setActiveWordIndex = useCallback((index: number) => {
+    activeWordIndexRef.current = index;
+    setActiveWordIndexState(index);
+  }, []);
 
   const commitLines = useCallback(
     (
       nextLines: LyricLine[],
-      nextLineIdx = activeLineIndex,
-      nextWordIdx = activeWordIndex,
+      nextLineIdx = activeLineIndexRef.current,
+      nextWordIdx = activeWordIndexRef.current,
       recordHistory = true,
     ) => {
       if (recordHistory) {
-        setHistory((prev) =>
-          pushSyncHistory(prev, {
-            lines,
-            activeLineIndex,
-            activeWordIndex,
-          }),
-        );
+        const snapshot: SyncSnapshot = {
+          lines: linesRef.current,
+          activeLineIndex: activeLineIndexRef.current,
+          activeWordIndex: activeWordIndexRef.current,
+        };
+        setHistory((prev) => {
+          const updated = pushSyncHistory(prev, snapshot);
+          historyRef.current = updated;
+          return updated;
+        });
       }
+      linesRef.current = nextLines;
+      activeLineIndexRef.current = nextLineIdx;
+      activeWordIndexRef.current = nextWordIdx;
       setLines(nextLines);
-      setActiveLineIndex(nextLineIdx);
-      setActiveWordIndex(nextWordIdx);
-      onChange?.(nextLines);
+      setActiveLineIndexState(nextLineIdx);
+      setActiveWordIndexState(nextWordIdx);
+      onChangeRef.current?.(nextLines);
     },
-    [activeLineIndex, activeWordIndex, lines, onChange],
+    [],
   );
 
   const replaceLines = useCallback(
     (nextLines: LyricLine[], recordHistory = true) => {
       const clampedLine = Math.max(
         0,
-        Math.min(Math.max(0, nextLines.length - 1), activeLineIndex),
+        Math.min(Math.max(0, nextLines.length - 1), activeLineIndexRef.current),
       );
       commitLines(nextLines, clampedLine, 0, recordHistory);
     },
-    [activeLineIndex, commitLines],
+    [commitLines],
   );
 
   const handleStampLineStart = useCallback(
     (nowMs: number, lineHoldMode = false) => {
-      const result = stampLineStart(lines, activeLineIndex, nowMs, lineHoldMode);
-      commitLines(result.lines, result.nextLineIndex, activeWordIndex);
+      const result = stampLineStart(
+        linesRef.current,
+        activeLineIndexRef.current,
+        nowMs,
+        lineHoldMode,
+      );
+      commitLines(result.lines, result.nextLineIndex, activeWordIndexRef.current);
     },
-    [activeLineIndex, activeWordIndex, commitLines, lines],
+    [commitLines],
   );
 
   const handleStampLineEnd = useCallback(
     (nowMs: number, advanceAfter = false) => {
-      const result = stampLineEnd(lines, activeLineIndex, nowMs, advanceAfter);
-      commitLines(result.lines, result.nextLineIndex, activeWordIndex);
+      const result = stampLineEnd(
+        linesRef.current,
+        activeLineIndexRef.current,
+        nowMs,
+        advanceAfter,
+      );
+      commitLines(result.lines, result.nextLineIndex, activeWordIndexRef.current);
     },
-    [activeLineIndex, activeWordIndex, commitLines, lines],
+    [commitLines],
   );
 
   const handleUndoLine = useCallback(
     (currentTimeMs: number): number => {
-      const result = undoLineSync(lines, activeLineIndex, currentTimeMs);
+      const result = undoLineSync(
+        linesRef.current,
+        activeLineIndexRef.current,
+        currentTimeMs,
+      );
       commitLines(result.lines, result.nextLineIndex, 0);
       return result.rewindTargetMs;
     },
-    [activeLineIndex, commitLines, lines],
+    [commitLines],
   );
 
   const handleStampWordStart = useCallback(
@@ -155,9 +211,9 @@ export function useSyncEngine(
       sniperHoldDuration?: boolean;
       sniperAutoAdvancePreRoll?: boolean;
     }) => {
-      const result = stampWordStart(lines, {
-        lineIndex: activeLineIndex,
-        wordIndex: activeWordIndex,
+      const result = stampWordStart(linesRef.current, {
+        lineIndex: activeLineIndexRef.current,
+        wordIndex: activeWordIndexRef.current,
         ...params,
       });
       commitLines(result.lines, result.nextLineIndex, result.nextWordIndex);
@@ -167,7 +223,7 @@ export function useSyncEngine(
         completedLine: result.completedLine,
       };
     },
-    [activeLineIndex, activeWordIndex, commitLines, lines],
+    [commitLines],
   );
 
   const handleStampWordEnd = useCallback(
@@ -177,9 +233,9 @@ export function useSyncEngine(
       sniperHoldDuration?: boolean;
       sniperAutoAdvancePreRoll?: boolean;
     }) => {
-      const result = stampWordEndOnRelease(lines, {
-        lineIndex: activeLineIndex,
-        wordIndex: activeWordIndex,
+      const result = stampWordEndOnRelease(linesRef.current, {
+        lineIndex: activeLineIndexRef.current,
+        wordIndex: activeWordIndexRef.current,
         ...params,
       });
       commitLines(result.lines, result.nextLineIndex, result.nextWordIndex);
@@ -189,15 +245,23 @@ export function useSyncEngine(
         completedLine: result.completedLine,
       };
     },
-    [activeLineIndex, activeWordIndex, commitLines, lines],
+    [commitLines],
   );
 
   const distributeWordsInLine = useCallback(
     (lineIndex: number, fallbackStartMs = 0) => {
-      const next = distributeWordsEvenlyInLine(lines, lineIndex, fallbackStartMs);
+      const target = linesRef.current[lineIndex];
+      if (!target || target.words.length === 0) {
+        return;
+      }
+      const next = distributeWordsEvenlyInLine(
+        linesRef.current,
+        lineIndex,
+        fallbackStartMs,
+      );
       commitLines(next);
     },
-    [commitLines, lines],
+    [commitLines],
   );
 
   const nudgeWord = useCallback(
@@ -207,57 +271,97 @@ export function useSyncEngine(
       field: 'startMs' | 'endMs',
       deltaMs: number,
     ) => {
-      const next = nudgeWordTime(lines, lineIndex, wordIndex, field, deltaMs);
+      if (!linesRef.current[lineIndex]?.words[wordIndex]) {
+        return;
+      }
+      const next = nudgeWordTime(
+        linesRef.current,
+        lineIndex,
+        wordIndex,
+        field,
+        deltaMs,
+      );
       commitLines(next);
     },
-    [commitLines, lines],
+    [commitLines],
   );
 
   const nudgeLine = useCallback(
     (lineIndex: number, field: 'startMs' | 'endMs', deltaMs: number) => {
-      const next = nudgeLineTime(lines, lineIndex, field, deltaMs);
+      if (!linesRef.current[lineIndex]) {
+        return;
+      }
+      const next = nudgeLineTime(linesRef.current, lineIndex, field, deltaMs);
       commitLines(next);
     },
-    [commitLines, lines],
+    [commitLines],
   );
 
   const undo = useCallback((): boolean => {
-    const { snapshot, remaining } = popSyncHistory(history);
+    const { snapshot, remaining } = popSyncHistory(historyRef.current);
     if (!snapshot) {
       return false;
     }
+    historyRef.current = remaining;
+    linesRef.current = snapshot.lines;
+    activeLineIndexRef.current = snapshot.activeLineIndex;
+    activeWordIndexRef.current = snapshot.activeWordIndex;
     setHistory(remaining);
     setLines(snapshot.lines);
-    setActiveLineIndex(snapshot.activeLineIndex);
-    setActiveWordIndex(snapshot.activeWordIndex);
-    onChange?.(snapshot.lines);
+    setActiveLineIndexState(snapshot.activeLineIndex);
+    setActiveWordIndexState(snapshot.activeWordIndex);
+    onChangeRef.current?.(snapshot.lines);
     return true;
-  }, [history, onChange]);
+  }, []);
 
   const resetHistory = useCallback(() => {
+    historyRef.current = [];
     setHistory([]);
   }, []);
 
   const progress = useMemo(() => computeSyncProgress(lines), [lines]);
+  const canUndo = history.length > 0;
 
-  return {
-    lines,
-    activeLineIndex,
-    activeWordIndex,
-    canUndo: history.length > 0,
-    progress,
-    setActiveLineIndex,
-    setActiveWordIndex,
-    replaceLines,
-    stampLineStart: handleStampLineStart,
-    stampLineEnd: handleStampLineEnd,
-    undoLine: handleUndoLine,
-    stampWordStart: handleStampWordStart,
-    stampWordEnd: handleStampWordEnd,
-    distributeWordsInLine,
-    nudgeWord,
-    nudgeLine,
-    undo,
-    resetHistory,
-  };
+  return useMemo<UseSyncEngineReturn>(
+    () => ({
+      lines,
+      activeLineIndex,
+      activeWordIndex,
+      canUndo,
+      progress,
+      setActiveLineIndex,
+      setActiveWordIndex,
+      replaceLines,
+      stampLineStart: handleStampLineStart,
+      stampLineEnd: handleStampLineEnd,
+      undoLine: handleUndoLine,
+      stampWordStart: handleStampWordStart,
+      stampWordEnd: handleStampWordEnd,
+      distributeWordsInLine,
+      nudgeWord,
+      nudgeLine,
+      undo,
+      resetHistory,
+    }),
+    [
+      activeLineIndex,
+      activeWordIndex,
+      canUndo,
+      distributeWordsInLine,
+      handleStampLineEnd,
+      handleStampLineStart,
+      handleStampWordEnd,
+      handleStampWordStart,
+      handleUndoLine,
+      lines,
+      nudgeLine,
+      nudgeWord,
+      progress,
+      replaceLines,
+      resetHistory,
+      setActiveLineIndex,
+      setActiveWordIndex,
+      undo,
+    ],
+  );
 }
