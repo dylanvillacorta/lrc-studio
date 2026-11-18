@@ -33,13 +33,31 @@ const MIME_ALIASES: Readonly<Record<string, string>> = {
 };
 
 /**
- * Valor para el atributo `accept` de inputs de audio: combina `audio/*`
- * con las extensiones explícitas para navegadores móviles que no reportan MIME.
+ * Lista base de tipos y extensiones de audio (conservada por compatibilidad).
  */
 export const AUDIO_INPUT_ACCEPT = [
   'audio/*',
+  'audio/flac',
+  'audio/x-flac',
   ...SUPPORTED_AUDIO_EXTENSIONS.map((ext) => `.${ext}`),
 ].join(',');
+
+export interface AudioInputEnvironment {
+  userAgent?: string;
+  maxTouchPoints?: number;
+}
+
+/**
+ * Calcula el atributo `accept` para inputs de archivo de audio.
+ * Devuelve siempre cadena vacía (sin filtro) en todas las plataformas para que
+ * proveedores en la nube (Google Drive, iCloud, etc.) no atenúen archivos `.flac`
+ * con MIME desconocido o genérico; la validación se realiza tras la selección
+ * mediante `isSupportedAudioFile`.
+ */
+export function getAudioInputAccept(env?: AudioInputEnvironment): string {
+  void env;
+  return '';
+}
 
 /**
  * Lista legible de formatos de audio admitidos para mensajes de UI y errores.

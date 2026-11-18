@@ -1,7 +1,8 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import {
-  AUDIO_INPUT_ACCEPT,
+  SUPPORTED_AUDIO_FORMATS_LABEL,
   UNSUPPORTED_AUDIO_FORMAT_MESSAGE,
+  getAudioInputAccept,
   isSupportedAudioFile,
 } from '@/lib/audioFormats';
 import { Icon, Pill, RaisedButton, WellPanel } from '@/ui';
@@ -18,6 +19,7 @@ export function NoAudioCard({ onUploadAudio }: NoAudioCardProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const accept = getAudioInputAccept();
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -58,14 +60,14 @@ export function NoAudioCard({ onUploadAudio }: NoAudioCardProps) {
             Carga una pista para sincronizar
           </h2>
           <p className="m-0 text-sm font-semibold text-mute leading-relaxed">
-            Sube un archivo de audio local (MP3, WAV, FLAC, M4A u OGG) para comenzar a sincronizar.
+            Sube un audio desde tu dispositivo, iCloud, Google Drive u otros proveedores ({SUPPORTED_AUDIO_FORMATS_LABEL}) para comenzar a sincronizar.
           </p>
         </div>
 
         <input
           ref={inputRef}
           type="file"
-          accept={AUDIO_INPUT_ACCEPT}
+          accept={accept || undefined}
           onChange={handleFileChange}
           aria-label="Seleccionar archivo de audio"
           className="sr-only"
@@ -75,6 +77,7 @@ export function NoAudioCard({ onUploadAudio }: NoAudioCardProps) {
           <RaisedButton
             variant="acc"
             disabled={busy}
+            aria-busy={busy}
             onClick={() => inputRef.current?.click()}
             className="w-full min-h-12"
           >
@@ -82,6 +85,12 @@ export function NoAudioCard({ onUploadAudio }: NoAudioCardProps) {
             <span>{busy ? 'Procesando audio…' : 'Subir audio'}</span>
           </RaisedButton>
         </div>
+
+        {busy ? (
+          <p role="status" className="m-0 text-xs font-semibold text-mute">
+            Leyendo y decodificando el archivo de audio…
+          </p>
+        ) : null}
 
         {errorMsg ? (
           <Pill variant="acc" className="w-full justify-center py-2 text-center">

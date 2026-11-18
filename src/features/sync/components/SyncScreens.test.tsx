@@ -1,10 +1,14 @@
 import { renderToString } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LyricLine } from '@/types';
 import { KaraokePreview } from './KaraokePreview';
 import { LineSyncScreen } from './LineSyncScreen';
 import { WaveformStrip } from './WaveformStrip';
 import { WordSyncScreen } from './WordSyncScreen';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const SAMPLE_LINES: LyricLine[] = [
   {
@@ -101,7 +105,37 @@ describe('LineSyncScreen', () => {
 
     expect(html).toContain('Subir audio');
     expect(html).not.toContain('Usar demo');
-    expect(html).toContain('accept="audio/*,.mp3,.wav,.flac,.ogg,.oga,.m4a,.aac,.opus,.webm"');
+    expect(html).not.toContain('accept=');
+    expect(html).toContain('FLAC');
+    expect(html).toContain('iCloud, Google Drive');
+
+    vi.stubGlobal('navigator', undefined);
+    const ssrHtml = renderToString(
+      <LineSyncScreen
+        hasAudio={false}
+        peaks={[]}
+        currentTimeMs={0}
+        durationMs={0}
+        isPlaying={false}
+        playbackRate={1}
+        lines={[]}
+        activeLineIndex={0}
+        canUndo={false}
+        syncMode="line"
+        onSelectMode={vi.fn()}
+        onSeek={vi.fn()}
+        onTogglePlay={vi.fn()}
+        onChangePlaybackRate={vi.fn()}
+        onUndo={vi.fn()}
+        onSelectLine={vi.fn()}
+        onStampLine={vi.fn()}
+        onOpenLoupe={vi.fn()}
+        onStopBurst={vi.fn()}
+        onUploadAudio={vi.fn(async () => {})}
+      />,
+    );
+    expect(ssrHtml).not.toContain('accept=');
+    expect(ssrHtml).toContain('FLAC');
   });
 });
 
