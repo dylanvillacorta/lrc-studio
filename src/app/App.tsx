@@ -1,7 +1,15 @@
+import { MobileLayout } from '@/app/layouts/MobileLayout';
+import { ActiveProjectProvider, StorageProvider } from '@/app/providers';
+
+/**
+ * Raíz de la aplicación LyricSync Studio.
+ */
 export function App() {
   return (
-    <main>
-      <h1>LyricSync Studio</h1>
-    </main>
+    <StorageProvider>
+      <ActiveProjectProvider>
+        <MobileLayout />
+      </ActiveProjectProvider>
+    </StorageProvider>
   );
 }

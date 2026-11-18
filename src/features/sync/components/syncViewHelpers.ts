@@ -1,0 +1,151 @@
+import {
+  DEFAULT_PRE_ROLL_MS,
+  getPreRollTrafficLight,
+} from '@/features/sync';
+import type { AudioFileInput } from '@/lib/audioImport';
+import { createSynthesizedDemoWav } from '@/lib/demoWav';
+import type { LyricLine, PreRollTrafficLight } from '@/types';
+
+export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5] as const;
+
+export interface PreRollStatus {
+  remainingMs: number;
+  light: PreRollTrafficLight;
+  label: string;
+  countdownText: string;
+}
+
+/**
+ * Devuelve la siguiente velocidad de reproducción en el ciclo de transporte.
+ */
+export function getNextPlaybackRate(current: number): number {
+  const idx = PLAYBACK_RATES.findIndex((rate) => Math.abs(rate - current) < 0.01);
+  if (idx === -1) {
+    return 1;
+  }
+  return PLAYBACK_RATES[(idx + 1) % PLAYBACK_RATES.length] ?? 1;
+}
+
+/**
+ * Calcula el estado del semáforo, etiqueta textual y cuenta regresiva del Pre-Roll.
+ */
+export function computePreRollStatus(
+  targetStartMs: number | null,
+  currentTimeMs: number,
+  preRollMs = DEFAULT_PRE_ROLL_MS,
+): PreRollStatus {
+  const safeTargetMs =
+    targetStartMs !== null && Number.isFinite(targetStartMs) ? targetStartMs : 0;
+  const remainingMs = Math.max(0, Math.round(safeTargetMs - currentTimeMs));
+  const light = getPreRollTrafficLight(remainingMs, preRollMs);
+
+  const label =
+    light === 'red'
+      ? 'ESPERA'
+      : light === 'amber'
+        ? 'PREPÁRATE'
+        : '¡LISTO!';
+
+  const seconds = (remainingMs / 1000).toFixed(1);
+  const countdownText = remainingMs > 0 ? `−${seconds}s` : '0.0s';
+
+  return {
+    remainingMs,
+    light,
+    label,
+    countdownText,
+  };
+}
+
+/**
+ * Resuelve el tiempo objetivo (ms) para calcular el Pre-Roll de una palabra o línea.
+ */
+export function resolveWordTargetStartMs(
+  line: LyricLine | undefined,
+  wordIndex: number,
+): number | null {
+  if (!line) {
+    return null;
+  }
+  const word = line.words[wordIndex];
+  if (word && word.startMs !== null) {
+    return word.startMs;
+  }
+  if (wordIndex > 0) {
+    const prevWord = line.words[wordIndex - 1];
+    if (prevWord && prevWord.endMs !== null) {
+      return prevWord.endMs;
+    }
+    if (prevWord && prevWord.startMs !== null) {
+      return prevWord.startMs + 350;
+    }
+  }
+  return line.startMs;
+}
+
+/**
+ * Reduce o rellena los picos de forma de onda a una cantidad fija de barras para renderizado SVG.
+ */
+export function downsampleWaveformBars(
+  peaks: readonly number[],
+  targetCount = 48,
+): number[] {
+  const safeCount = Math.max(8, targetCount);
+  if (peaks.length === 0) {
+    return Array.from({ length: safeCount }, (_, i) =>
+      0.22 + 0.55 * Math.abs(Math.sin((i + 1) * 0.55)),
+    );
+  }
+  const step = peaks.length / safeCount;
+  const bars: number[] = [];
+  for (let i = 0; i < safeCount; i++) {
+    const start = Math.floor(i * step);
+    const end = Math.max(start + 1, Math.floor((i + 1) * step));
+    let maxVal = 0;
+    for (let j = start; j < end && j < peaks.length; j++) {
+      const val = peaks[j] ?? 0;
+      if (val > maxVal) {
+        maxVal = val;
+      }
+    }
+    bars.push(Math.max(0.08, Math.min(1, maxVal)));
+  }
+  return bars;
+}
+
+/**
+ * Traduce errores de carga/decodificación de audio a mensajes claros en español.
+ */
+export function formatAudioDecodeError(err: unknown): string {
+  if (err instanceof Error) {
+    const msg = err.message.trim();
+    if (/decode|encoding|format|unable|audio/i.test(msg) && !/[áéíóúñ]/i.test(msg)) {
+      return 'No se pudo decodificar el archivo de audio. Prueba con MP3, WAV u OGG.';
+    }
+    if (msg.length > 0) {
+      return msg;
+    }
+  }
+  return 'No se pudo cargar o decodificar el archivo de audio.';
+}
+
+/**
+ * Genera una entrada de archivo de audio compatible con `attachAudio` usando el WAV demo sintetizado.
+ */
+export function createDemoAudioFile(durationSeconds = 28): {
+  file: AudioFileInput;
+  durationMs: number;
+  peaks: number[];
+} {
+  const demo = createSynthesizedDemoWav(durationSeconds);
+  const file: AudioFileInput = {
+    name: 'demo-noches-de-verano.wav',
+    type: 'audio/wav',
+    arrayBuffer: async () => demo.buffer,
+  };
+  return {
+    file,
+    durationMs: demo.durationMs,
+    peaks: demo.peaks,
+  };
+}
