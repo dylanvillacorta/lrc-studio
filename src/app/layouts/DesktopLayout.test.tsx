@@ -145,6 +145,7 @@ describe('DesktopLayout y montaje de versión', () => {
     expect(html).toContain('Línea');
     expect(html).toContain('Palabra');
     expect(html).toContain('Ráfaga');
+    expect(html).toContain('Karaoke');
     expect(html).toContain('Guardado');
     expect(html).toContain('Exportar LRC / ELRC / JSON');
     expect(html).toContain('Mis transcripciones');
