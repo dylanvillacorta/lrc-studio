@@ -16,6 +16,12 @@ import {
   createPlaybackTimeStore,
   type PlaybackTimeStore,
 } from '@/features/sync/hooks/playbackTimeStore';
+import {
+  clampTimeMs,
+  needsCurrentTimeCorrection,
+  resolveDisplayedTimeMs,
+  waitForMetadata,
+} from '@/features/sync/hooks/audioSeekLogic';
 
 export interface UseAudioPlayerOptions {
   /** Referencia opcional a un `<audio>` montado externamente. */
@@ -67,6 +73,10 @@ export function useAudioPlayer(
   const pendingSeekMsRef = useRef<number | null>(null);
   const isSeekingRef = useRef(false);
   const durationRef = useRef(initialDurationMs);
+  const initialDurationRef = useRef(initialDurationMs);
+  useEffect(() => {
+    initialDurationRef.current = initialDurationMs;
+  }, [initialDurationMs]);
 
   const [timeStore] = useState<PlaybackTimeStore>(() => createPlaybackTimeStore(0));
   const [duration, setDuration] = useState(initialDurationMs);
@@ -107,14 +117,25 @@ export function useAudioPlayer(
         internalAudioRef.current = null;
       }
       publishTestAudioRef(null);
-      durationRef.current = initialDurationMs;
+      durationRef.current = initialDurationRef.current;
+      pendingSeekMsRef.current = null;
       timeStore.setTimeMs(0);
       return;
     }
 
+    // Al recrear el elemento se restaura la posición mostrada (causa T25:
+    // antes el audio nuevo arrancaba en 0 mientras la interfaz seguía en otro tiempo).
+    const restoreMs = resolveDisplayedTimeMs(
+      pendingSeekMsRef.current,
+      timeStore.getTimeMs(),
+    );
     const audio = new Audio(src);
+    audio.preload = 'auto';
     audio.playbackRate = playbackRateRef.current;
     audio.preservesPitch = true;
+    if (restoreMs > 0) {
+      pendingSeekMsRef.current = restoreMs;
+    }
     internalAudioRef.current = audio;
     publishTestAudioRef(audio);
 
@@ -126,7 +147,7 @@ export function useAudioPlayer(
         publishTestAudioRef(null);
       }
     };
-  }, [externalRef, initialDurationMs, src, timeStore]);
+  }, [externalRef, src, timeStore]);
 
   // Sincroniza eventos del elemento de audio con `audio.currentTime` como fuente única.
   useEffect(() => {
@@ -235,10 +256,24 @@ export function useAudioPlayer(
     const audio = getAudioElement();
     if (!audio) return;
     audio.playbackRate = playbackRateRef.current;
-    if (pendingSeekMsRef.current !== null && audio.readyState >= 1) {
-      const target = pendingSeekMsRef.current;
+    // Salvaguarda: el audio debe sonar desde el tiempo mostrado.
+    const displayedMs = resolveDisplayedTimeMs(
+      pendingSeekMsRef.current,
+      timeStore.getTimeMs(),
+    );
+    if (audio.readyState < 1 && displayedMs > 0) {
+      pendingSeekMsRef.current = displayedMs;
+      await waitForMetadata(audio);
+    }
+    if (audio.readyState >= 1) {
+      const target = clampTimeMs(
+        resolveDisplayedTimeMs(pendingSeekMsRef.current, timeStore.getTimeMs()),
+        Number.isFinite(audio.duration) ? Math.round(audio.duration * 1000) : 0,
+      );
       pendingSeekMsRef.current = null;
-      audio.currentTime = target / 1000;
+      if (needsCurrentTimeCorrection(target, audio.currentTime)) {
+        audio.currentTime = target / 1000;
+      }
       timeStore.setTimeMs(target);
     }
     try {
