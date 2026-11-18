@@ -135,7 +135,7 @@ export function formatAudioDecodeError(err: unknown): string {
   if (err instanceof Error) {
     const msg = err.message.trim();
     if (/decode|encoding|format|unable|audio/i.test(msg) && !/[áéíóúñ]/i.test(msg)) {
-      return 'No se pudo decodificar el archivo de audio. Prueba con MP3, WAV u OGG.';
+      return 'El navegador no pudo decodificar este formato de audio. Prueba convertirlo a WAV o MP3.';
     }
     if (msg.length > 0) {
       return msg;

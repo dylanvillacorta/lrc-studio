@@ -255,6 +255,42 @@ describe('WebIndexedDBAdapter', () => {
       adapter.importCatalogBackup(JSON.stringify({ schemaVersion: 1, projects: 'mal', audios: [] })),
     ).rejects.toThrow(/estructura del respaldo/i);
   });
+
+  it('conserva bytes exactos y mime audio/flac en ida y vuelta y en respaldo JSON', async () => {
+    const source = new WebIndexedDBAdapter({ dbName: nextDbName(), storage: null });
+    await source.init();
+
+    const flacBytes = new Uint8Array([
+      0x66, 0x4c, 0x61, 0x43, // fLaC
+      0x80, 0x00, 0x00, 0x22, // STREAMINFO
+      0x10, 0x00, 0x10, 0x00,
+    ]);
+    const project = makeProject({ id: 'p-flac', title: 'Master FLAC' });
+    await source.saveProject(project);
+    await source.saveAudioBinary('p-flac', flacBytes.buffer, 'master.FLAC', [0.25, 0.75], 1.5);
+
+    const direct = await source.getAudioBinary('p-flac');
+    expect(direct).not.toBeNull();
+    expect(direct?.fileName).toBe('master.FLAC');
+    expect((direct?.blob as Blob).type).toBe('audio/flac');
+    expect(new Uint8Array(await (direct?.blob as Blob).arrayBuffer())).toEqual(flacBytes);
+
+    const backupJson = await source.exportFullCatalogBackup();
+    const parsed = JSON.parse(backupJson) as {
+      audios: { mimeType: string; fileName: string }[];
+    };
+    expect(parsed.audios[0]?.mimeType).toBe('audio/flac');
+    expect(parsed.audios[0]?.fileName).toBe('master.FLAC');
+
+    const target = new WebIndexedDBAdapter({ dbName: nextDbName(), storage: null });
+    await target.init();
+    await target.importCatalogBackup(backupJson);
+
+    const restored = await target.getAudioBinary('p-flac');
+    expect(restored).not.toBeNull();
+    expect((restored?.blob as Blob).type).toBe('audio/flac');
+    expect(new Uint8Array(await (restored?.blob as Blob).arrayBuffer())).toEqual(flacBytes);
+  });
 });
 
 describe('Selector de adaptador y stub Tauri', () => {

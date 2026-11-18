@@ -1,3 +1,4 @@
+import { inferAudioMime } from '@/lib/audioFormats';
 import { arrayBufferToBase64, base64ToArrayBuffer } from '@/lib/base64';
 import {
   BACKUP_SCHEMA_VERSION,
@@ -81,18 +82,6 @@ function toProjectSummary(project: ProjectFullData): ProjectSummary {
     wordProgress: project.wordProgress,
     updatedAt: project.updatedAt,
   };
-}
-
-function inferMimeFromFileName(fileName: string): string {
-  const lower = fileName.toLowerCase();
-  if (lower.endsWith('.mp3')) return 'audio/mpeg';
-  if (lower.endsWith('.wav')) return 'audio/wav';
-  if (lower.endsWith('.ogg')) return 'audio/ogg';
-  if (lower.endsWith('.flac')) return 'audio/flac';
-  if (lower.endsWith('.m4a') || lower.endsWith('.mp4')) return 'audio/mp4';
-  if (lower.endsWith('.aac')) return 'audio/aac';
-  if (lower.endsWith('.webm')) return 'audio/webm';
-  return 'application/octet-stream';
 }
 
 function isValidSessionState(value: unknown): value is SessionState {
@@ -179,7 +168,7 @@ function parseAndDecodeBackup(jsonString: string): {
       record: {
         projectId: audio.projectId,
         buffer,
-        mime: audio.mimeType || inferMimeFromFileName(audio.fileName),
+        mime: inferAudioMime(audio.fileName, audio.mimeType),
         fileName: audio.fileName,
         peaks: [...audio.peaks],
         duration: audio.duration,
@@ -333,10 +322,10 @@ export class WebIndexedDBAdapter implements IStorageAdapter {
 
     if (fileBlobOrBuffer instanceof ArrayBuffer) {
       buffer = fileBlobOrBuffer;
-      mime = inferMimeFromFileName(fileName);
+      mime = inferAudioMime(fileName);
     } else {
       buffer = await fileBlobOrBuffer.arrayBuffer();
-      mime = fileBlobOrBuffer.type || inferMimeFromFileName(fileName);
+      mime = inferAudioMime(fileName, fileBlobOrBuffer.type);
     }
 
     const db = await this.ensureDb();
@@ -382,7 +371,7 @@ export class WebIndexedDBAdapter implements IStorageAdapter {
     }
 
     const blob = new Blob([record.buffer], {
-      type: record.mime || 'application/octet-stream',
+      type: inferAudioMime(record.fileName, record.mime),
     });
 
     return {

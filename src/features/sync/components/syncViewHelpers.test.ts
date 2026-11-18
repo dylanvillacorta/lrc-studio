@@ -60,7 +60,7 @@ describe('syncViewHelpers', () => {
 
   it('traduce errores técnicos de decodificación al español', () => {
     expect(formatAudioDecodeError(new Error('Unable to decode audio data'))).toContain(
-      'No se pudo decodificar',
+      'no pudo decodificar',
     );
     expect(formatAudioDecodeError('fallo desconocido')).toContain('No se pudo cargar');
   });

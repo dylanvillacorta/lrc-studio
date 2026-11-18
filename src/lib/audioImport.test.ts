@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  AUDIO_DECODE_FAILED_MESSAGE,
   extractPeaksAndDuration,
   importAudioFile,
   type AudioDecoderContext,
 } from './audioImport';
+import { UNSUPPORTED_AUDIO_FORMAT_MESSAGE } from './audioFormats';
 
 describe('audioImport', () => {
   it('extractPeaksAndDuration calcula picos normalizados y valida duración', () => {
@@ -62,5 +64,55 @@ describe('audioImport', () => {
     expect(imported.duration).toBe(3.75);
     expect(imported.peaks).toEqual([1, 0.5]);
     expect(imported.blob).toBe(file);
+  });
+
+  it('importAudioFile conserva bytes de FLAC y normaliza MIME audio/x-flac o vacío a audio/flac', async () => {
+    const flacBytes = new Uint8Array([0x66, 0x4c, 0x61, 0x43, 0x80, 0x00, 0x00, 0x22]);
+    const fakeContext: AudioDecoderContext = {
+      decodeAudioData: vi.fn(async () => ({
+        duration: 1.0,
+        numberOfChannels: 1,
+        getChannelData: () => new Float32Array([0.5, -0.5]),
+      })),
+      close: vi.fn(async () => {}),
+    };
+
+    const file = new File([flacBytes], 'master.FLAC', { type: 'audio/x-flac' });
+    const imported = await importAudioFile(file, {
+      bins: 2,
+      createAudioContext: () => fakeContext,
+    });
+
+    expect(imported.blob.type).toBe('audio/flac');
+    expect(new Uint8Array(await imported.blob.arrayBuffer())).toEqual(flacBytes);
+  });
+
+  it('importAudioFile rechaza archivos no soportados antes de abrir AudioContext', async () => {
+    const createCtxSpy = vi.fn();
+    const txtFile = new File([new Uint8Array([65, 66])], 'notas.txt', { type: 'text/plain' });
+
+    await expect(
+      importAudioFile(txtFile, { createAudioContext: createCtxSpy }),
+    ).rejects.toThrow(UNSUPPORTED_AUDIO_FORMAT_MESSAGE);
+    expect(createCtxSpy).not.toHaveBeenCalled();
+  });
+
+  it('importAudioFile traduce errores de decodeAudioData a un mensaje claro en español y cierra el contexto', async () => {
+    const closeSpy = vi.fn(async () => {});
+    const fakeContext: AudioDecoderContext = {
+      decodeAudioData: vi.fn(async () => {
+        throw new DOMException('Unable to decode audio data', 'EncodingError');
+      }),
+      close: closeSpy,
+    };
+
+    const file = new File([new Uint8Array([0x66, 0x4c, 0x61, 0x43])], 'corrupto.flac', {
+      type: 'audio/flac',
+    });
+
+    await expect(
+      importAudioFile(file, { createAudioContext: () => fakeContext }),
+    ).rejects.toThrow(AUDIO_DECODE_FAILED_MESSAGE);
+    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,3 +1,4 @@
+import { inferAudioMime } from '@/lib/audioFormats';
 import { arrayBufferToBase64 } from '@/lib/base64';
 import {
   BACKUP_SCHEMA_VERSION,
@@ -33,17 +34,6 @@ const MONTH_NAMES_ES = [
   'dic',
 ] as const;
 
-const MIME_BY_EXTENSION: Record<string, string> = {
-  mp3: 'audio/mpeg',
-  wav: 'audio/wav',
-  ogg: 'audio/ogg',
-  oga: 'audio/ogg',
-  m4a: 'audio/mp4',
-  aac: 'audio/aac',
-  flac: 'audio/flac',
-  webm: 'audio/webm',
-};
-
 /**
  * Entrada binaria de audio lista para serializarse en un respaldo JSON síncrono.
  */
@@ -69,11 +59,6 @@ export function createProjectId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).slice(2, 10);
   return `proj-${timestamp}-${random}`;
-}
-
-function inferMimeFromFileName(fileName: string): string {
-  const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
-  return MIME_BY_EXTENSION[ext] ?? 'application/octet-stream';
 }
 
 function sanitizeTimestamp(value: number | null): number | null {
@@ -202,7 +187,7 @@ export async function toSingleProjectAudioData(
     return {
       buffer: audio.blob,
       fileName: audio.fileName,
-      mimeType: inferMimeFromFileName(audio.fileName),
+      mimeType: inferAudioMime(audio.fileName),
       peaks: [...audio.peaks],
       duration: audio.duration,
     };
@@ -212,7 +197,7 @@ export async function toSingleProjectAudioData(
   return {
     buffer,
     fileName: audio.fileName,
-    mimeType: audio.blob.type || inferMimeFromFileName(audio.fileName),
+    mimeType: inferAudioMime(audio.fileName, audio.blob.type),
     peaks: [...audio.peaks],
     duration: audio.duration,
   };
@@ -245,8 +230,10 @@ export function buildSingleProjectBackup(
 
   if (audio) {
     const buffer = 'buffer' in audio ? audio.buffer : audio.blob;
-    const mimeType =
-      ('mimeType' in audio && audio.mimeType) || inferMimeFromFileName(audio.fileName);
+    const mimeType = inferAudioMime(
+      audio.fileName,
+      'mimeType' in audio ? audio.mimeType : undefined,
+    );
 
     audios.push({
       projectId: project.id,
