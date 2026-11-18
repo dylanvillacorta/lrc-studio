@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   openExport,
   openLyrics,
   openSyncEditor,
@@ -19,7 +19,7 @@ test.describe('Exportación LRC, ELRC, JSON e importación', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
 
     // Usar caracteres inválidos de archivo para verificar saneamiento al descargar
     await openLyrics(page, isMobile);

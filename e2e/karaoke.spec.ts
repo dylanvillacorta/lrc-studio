@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   selectSyncMode,
   tapOrPointerDown,
   trackErrors,
@@ -32,7 +32,7 @@ test.describe('Vista Karaoke sin saltos y tiempos exactos', () => {
     const isMobile = isMobileProject(testInfo);
 
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
 
     const slider = page.getByRole('slider', { name: 'Posición en la forma de onda' });
     const durationMs = Number(await slider.getAttribute('aria-valuemax'));
@@ -42,7 +42,7 @@ test.describe('Vista Karaoke sin saltos y tiempos exactos', () => {
     expect(sliderBox).not.toBeNull();
 
     const markedStartMs: number[] = [];
-    const targetSecondsMs = [1200, 2400, 3600, 4800, 6000, 7200];
+    const targetSecondsMs = [1500, 3000, 4500, 6000, 7500, 9000];
 
     // Seleccionar la primera línea y marcar las 6 líneas secuencialmente en tiempos conocidos
     const firstLineBtn = page.getByRole('button', {
@@ -54,15 +54,34 @@ test.describe('Vista Karaoke sin saltos y tiempos exactos', () => {
       const targetMs = targetSecondsMs[i]!;
       const ratio = targetMs / durationMs;
       await slider.scrollIntoViewIfNeeded();
-      const currentSliderBox = await slider.boundingBox();
-      expect(currentSliderBox).not.toBeNull();
-      const clickX = currentSliderBox!.x + ratio * currentSliderBox!.width;
-      const clickY = currentSliderBox!.y + currentSliderBox!.height / 2;
+      const initialBox = await slider.boundingBox();
+      expect(initialBox).not.toBeNull();
 
-      await page.mouse.click(clickX, clickY);
+      await slider.dispatchEvent('pointerdown', {
+        pointerId: 1,
+        pointerType: isMobile ? 'touch' : 'mouse',
+        clientX: initialBox!.x + initialBox!.width * ratio,
+        clientY: initialBox!.y + initialBox!.height / 2,
+        isPrimary: true,
+      });
+      await expect(slider).toHaveAttribute('data-expanded', 'true');
+
+      const expandedBox = await slider.boundingBox();
+      expect(expandedBox).not.toBeNull();
+      const targetX = expandedBox!.x + ratio * expandedBox!.width;
+      const targetY = expandedBox!.y + expandedBox!.height / 2;
+
+      await slider.dispatchEvent('pointerup', {
+        pointerId: 1,
+        pointerType: isMobile ? 'touch' : 'mouse',
+        clientX: targetX,
+        clientY: targetY,
+        isPrimary: true,
+      });
+
       await expect
         .poll(async () => Number(await slider.getAttribute('aria-valuenow')))
-        .toBeGreaterThanOrEqual(targetMs - 200);
+        .toBeGreaterThanOrEqual(targetMs - 100);
 
       const markBtn = page.getByRole('button', {
         name: new RegExp(`MARCAR LÍNEA ${i + 1}`, 'i'),
@@ -75,6 +94,10 @@ test.describe('Vista Karaoke sin saltos y tiempos exactos', () => {
       await expect(lineBtn).toContainText(/\d{2}:\d{2}\.\d{2}/);
       const lineText = (await lineBtn.textContent()) ?? '';
       markedStartMs.push(parseDisplayTimeToMs(lineText));
+    }
+
+    for (let i = 1; i < markedStartMs.length; i++) {
+      expect(markedStartMs[i]).toBeGreaterThan(markedStartMs[i - 1]!);
     }
 
     // Volver al inicio (00:00.00) antes de abrir Karaoke
@@ -97,9 +120,8 @@ test.describe('Vista Karaoke sin saltos y tiempos exactos', () => {
     );
     expect(hasNoOverflow).toBe(true);
 
-    // Iniciar reproducción desde el control de Karaoke
+    // Iniciar reproducción desde el control de Karaoke y comenzar el muestreo de inmediato
     await karaokeRegion.getByRole('button', { name: 'Reproducir' }).click();
-    await expect(karaokeRegion.getByRole('button', { name: 'Pausar' })).toBeVisible();
 
     const observedSequence: number[] = [];
     let screenshotTaken = false;
@@ -159,7 +181,7 @@ test.describe('Vista Karaoke sin saltos y tiempos exactos', () => {
 
           return observedSequence.length;
         },
-        { timeout: 12_000, intervals: [60] },
+        { timeout: 16_000, intervals: [60] },
       )
       .toBe(DEMO_LINES.length);
 

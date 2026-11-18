@@ -6,6 +6,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { computeKaraokeState } from '@/features/sync';
+import type { PlaybackTimeStore } from '@/features/sync/hooks/playbackTimeStore';
 import { formatTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
 import { Icon, IconButton, Pill, Segmented, WellPanel } from '@/ui';
@@ -24,14 +25,14 @@ export interface KaraokePreviewProps {
   isPlaying: boolean;
   lines: readonly LyricLine[];
   syncMode: SyncSegmentedMode;
-  pausedTimeMs: number;
+  timeStore?: PlaybackTimeStore | null;
+  pausedTimeMs?: number;
   getCurrentTimeMs: () => number;
   showModeSelector?: boolean;
   onSelectMode: (mode: SyncSegmentedMode) => void;
   onTogglePlay: () => void;
   onSeek: (targetMs: number) => void;
   onUploadAudio: (file: File) => Promise<void>;
-  onUseDemo: () => Promise<void>;
 }
 
 const SCROLL_ANIMATION_MS = 220;
@@ -54,14 +55,14 @@ export const KaraokePreview = memo(function KaraokePreview({
   isPlaying,
   lines,
   syncMode,
-  pausedTimeMs,
+  timeStore = null,
+  pausedTimeMs = -1,
   getCurrentTimeMs,
   showModeSelector = true,
   onSelectMode,
   onTogglePlay,
   onSeek,
   onUploadAudio,
-  onUseDemo,
 }: KaraokePreviewProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const lineRefs = useRef<(HTMLElement | null)[]>([]);
@@ -134,7 +135,11 @@ export const KaraokePreview = memo(function KaraokePreview({
     [cancelScrollAnimation],
   );
 
-  const initialTimeMs = pausedTimeMs >= 0 ? pausedTimeMs : getCurrentTimeMs();
+  const initialTimeMs = timeStore
+    ? timeStore.getTimeMs()
+    : pausedTimeMs >= 0
+      ? pausedTimeMs
+      : getCurrentTimeMs();
   const initialState = computeKaraokeState(lines, initialTimeMs);
   const unsyncedNotice = formatUnsyncedLinesNotice(
     initialState.syncedLinesCount,
@@ -209,14 +214,27 @@ export const KaraokePreview = memo(function KaraokePreview({
     hasCenteredInitiallyRef.current = false;
   }, [lines]);
 
-  // Sincronización inicial o cuando cambia el tiempo estando en pausa.
+  // Sincronización inicial o cuando cambia el tiempo estando en pausa (sin re-renderizar React).
   useEffect(() => {
     if (isPlaying) {
       return;
     }
-    const targetMs = pausedTimeMs >= 0 ? pausedTimeMs : getCurrentTimeMsRef.current();
+    const targetMs = timeStore
+      ? timeStore.getTimeMs()
+      : pausedTimeMs >= 0
+        ? pausedTimeMs
+        : getCurrentTimeMsRef.current();
     applyFrame(targetMs);
-  }, [applyFrame, isPlaying, pausedTimeMs]);
+  }, [applyFrame, isPlaying, pausedTimeMs, timeStore]);
+
+  useEffect(() => {
+    if (!hasAudio || isPlaying || !timeStore) {
+      return;
+    }
+    return timeStore.subscribe(() => {
+      applyFrame(timeStore.getTimeMs());
+    });
+  }, [applyFrame, hasAudio, isPlaying, timeStore]);
 
   // Bucle a 60 FPS con requestAnimationFrame durante reproducción sin setState.
   useEffect(() => {
@@ -273,7 +291,7 @@ export const KaraokePreview = memo(function KaraokePreview({
             className={SYNC_SEGMENTED_CLASS}
           />
         ) : null}
-        <NoAudioCard onUploadAudio={onUploadAudio} onUseDemo={onUseDemo} />
+        <NoAudioCard onUploadAudio={onUploadAudio} />
       </div>
     );
   }

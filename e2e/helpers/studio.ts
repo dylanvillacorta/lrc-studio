@@ -1,4 +1,14 @@
 import { expect, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { createTinyWavBytes, makeFilePayload } from './wav';
+
+const SAMPLE_E2E_LYRICS = [
+  'Luces de neón brillan en la ciudad',
+  'Caminamos juntos sin mirar atrás',
+  'Cada latido marca nuestra canción',
+  'El tiempo se detiene en tu voz',
+  'Subimos el volumen hasta el amanecer',
+  'Nada nos detiene hoy aquí',
+].join('\n');
 
 export function isMobileProject(testInfo: TestInfo): boolean {
   return testInfo.project.name === 'mobile';
@@ -22,8 +32,27 @@ export function trackErrors(page: Page): () => void {
   };
 }
 
-export async function loadDemoProject(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Usar demo' }).click();
+/**
+ * Crea un proyecto con metadatos, letra de varias líneas desde la pestaña Letra
+ * y sube un archivo WAV generado en memoria.
+ */
+export async function createProjectWithLyricsAndWav(
+  page: Page,
+  isMobile: boolean,
+): Promise<void> {
+  await openLyrics(page, isMobile);
+  await page.getByPlaceholder('Ej. Luces de neón').fill('Noches de Verano');
+  await page.getByPlaceholder('Ej. Estudio Nocturno').fill('Luna Alba');
+  await page
+    .getByPlaceholder('Pega o escribe aquí la letra, una línea por verso...')
+    .fill(SAMPLE_E2E_LYRICS);
+  await page.getByRole('button', { name: 'Aplicar letra' }).click();
+
+  await openSyncEditor(page, isMobile);
+  await page
+    .locator('input[aria-label="Seleccionar archivo de audio"]')
+    .setInputFiles(makeFilePayload('noches-de-verano.wav', 'audio/wav', createTinyWavBytes(28)));
+
   await expect(page.getByRole('button', { name: /MARCAR LÍNEA/i })).toBeVisible();
   const slider = page.getByRole('slider', { name: 'Posición en la forma de onda' });
   await expect

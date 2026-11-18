@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { ProjectSummary } from '@/types';
 import { Icon, ProgressBar, RaisedButton, WellPanel } from '@/ui';
 
@@ -14,7 +15,7 @@ export interface DesktopCatalogSidebarProps {
  * Columna izquierda de escritorio con el catálogo compacto «Mis transcripciones»
  * y acceso directo a «Nueva transcripción».
  */
-export function DesktopCatalogSidebar({
+export const DesktopCatalogSidebar = memo(function DesktopCatalogSidebar({
   projects,
   activeProjectId,
   loading = false,
@@ -99,4 +100,4 @@ export function DesktopCatalogSidebar({
       </RaisedButton>
     </aside>
   );
-}
+});

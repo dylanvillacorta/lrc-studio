@@ -335,3 +335,74 @@ export function computeKaraokeState(
     lines: lineStates,
   };
 }
+
+export interface PlaybackTrackingInput {
+  lines: readonly LyricLine[];
+  currentTimeMs: number;
+  isPlaying: boolean;
+  activeLineIndex: number;
+  lastPlayingLineIndex: number;
+  manualOverrideAtPlayingIndex: number | null;
+}
+
+export interface PlaybackTrackingResult {
+  playingLineIndex: number;
+  trackedListIndex: number;
+  nextActiveLineIndex: number | null;
+  nextManualOverride: number | null;
+}
+
+/**
+ * Resuelve la línea en reproducción según las marcas guardadas y coordina el seguimiento
+ * automático frente a la selección manual del usuario.
+ */
+export function resolvePlaybackTracking({
+  lines,
+  currentTimeMs,
+  isPlaying,
+  activeLineIndex,
+  lastPlayingLineIndex,
+  manualOverrideAtPlayingIndex,
+}: PlaybackTrackingInput): PlaybackTrackingResult {
+  const playingLineIndex = isPlaying ? findActiveLineIndex(lines, currentTimeMs) : -1;
+
+  if (!isPlaying) {
+    return {
+      playingLineIndex: -1,
+      trackedListIndex: activeLineIndex,
+      nextActiveLineIndex: null,
+      nextManualOverride: manualOverrideAtPlayingIndex,
+    };
+  }
+
+  const advancedToNewLine =
+    playingLineIndex >= 0 && playingLineIndex !== lastPlayingLineIndex;
+
+  if (advancedToNewLine && playingLineIndex !== manualOverrideAtPlayingIndex) {
+    const activeLineHasTime = lines[activeLineIndex]?.startMs !== null;
+    const playingLineHasTime = lines[playingLineIndex]?.startMs !== null;
+    return {
+      playingLineIndex,
+      trackedListIndex: playingLineIndex,
+      nextActiveLineIndex:
+        activeLineHasTime && playingLineHasTime ? playingLineIndex : null,
+      nextManualOverride: null,
+    };
+  }
+
+  if (manualOverrideAtPlayingIndex !== null) {
+    return {
+      playingLineIndex,
+      trackedListIndex: activeLineIndex,
+      nextActiveLineIndex: null,
+      nextManualOverride: manualOverrideAtPlayingIndex,
+    };
+  }
+
+  return {
+    playingLineIndex,
+    trackedListIndex: playingLineIndex >= 0 ? playingLineIndex : activeLineIndex,
+    nextActiveLineIndex: null,
+    nextManualOverride: null,
+  };
+}

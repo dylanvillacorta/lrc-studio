@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { ProjectSummary } from '@/types';
 import { Icon, IconButton, Pill, ProgressBar, RaisedButton } from '@/ui';
 import { formatRelativeDate } from '../model/catalogModel';
@@ -32,7 +32,7 @@ function getStatusBadge(
 /**
  * Tarjeta de proyecto del catálogo «Mis transcripciones» con barras de progreso y acciones táctiles.
  */
-export function ProjectCard({
+export const ProjectCard = memo(function ProjectCard({
   project,
   isActive = false,
   now,
@@ -170,4 +170,4 @@ export function ProjectCard({
       </div>
     </article>
   );
-}
+});

@@ -19,7 +19,7 @@ export const SYNC_MODE_OPTIONS: readonly {
 ];
 
 export const SYNC_SEGMENTED_CLASS =
-  '[&>button]:px-1.5 [&>button]:text-[13px] max-[375px]:[&>button]:text-xs [@media(max-height:720px)]:p-1 [@media(max-height:720px)]:[&>button]:min-h-[40px]';
+  'p-1 gap-1 rounded-[16px] [&>button]:min-h-[44px] [&>button]:rounded-[12px] [&>button]:px-1.5 [&>button]:text-xs max-[375px]:[&>button]:text-[11px] [@media(max-height:720px)]:p-0.5 [@media(max-height:720px)]:[&>button]:min-h-[40px]';
 
 export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5] as const;
 

@@ -1,9 +1,18 @@
 export {
   DEFAULT_AUTOSAVE_DELAY_MS,
+  DEFAULT_SESSION_AUTOSAVE_DELAY_MS,
+  classifyAutosaveChange,
   createAutosaveScheduler,
+  createDualAutosaveCoordinator,
+  hasProjectChanged,
+  hasSessionChanged,
+  type AutosaveKind,
   type AutosaveScheduler,
   type AutosaveSchedulerOptions,
   type AutosaveState,
+  type DualAutosaveCoordinator,
+  type DualAutosaveCoordinatorOptions,
+  type DualAutosaveSnapshot,
   type SaveStatus,
 } from '@/features/session/model/autosaveScheduler';
 export {
@@ -26,6 +35,7 @@ export {
   type AutosaveSnapshot,
   type EventTargetLike,
   type PlaybackSaveTrackerState,
+  type PlaybackTimeSource,
   type UseAutosaveOptions,
   type UseAutosaveReturn,
   type VisibilityDocumentLike,

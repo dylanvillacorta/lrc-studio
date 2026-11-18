@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { InspectorPanel, type LineBounds } from '@/features/loupe';
 import { Keycap, WellPanel } from '@/ui';
 
@@ -15,7 +16,7 @@ export interface DesktopInspectorSidebarProps {
  * Columna derecha de escritorio con el Inspector de ±10 y ±50 ms
  * (reutilizando `loupe`) y la leyenda de atajos de teclado con `Keycap`.
  */
-export function DesktopInspectorSidebar({
+export const DesktopInspectorSidebar = memo(function DesktopInspectorSidebar({
   targetLabel,
   startMs,
   endMs,
@@ -120,4 +121,4 @@ export function DesktopInspectorSidebar({
       </section>
     </aside>
   );
-}
+});
