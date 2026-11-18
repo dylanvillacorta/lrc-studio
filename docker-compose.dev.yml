@@ -4,13 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_SITE_URL: ${VITE_SITE_URL:-http://localhost:8080}
+        VITE_SITE_URL: ${VITE_SITE_URL:-http://localhost:30601}
         APP_VERSION: ${APP_VERSION:-0.0.0-dev}
         APP_COMMIT: ${APP_COMMIT:-local}
     image: lrc-studio:local
     restart: unless-stopped
     ports:
-      - "${DEV_BIND_IP:-0.0.0.0}:${DEV_PORT:-8080}:8080"
+      - "${DEV_BIND_IP:-0.0.0.0}:${DEV_PORT:-30601}:8080"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
       interval: 30s

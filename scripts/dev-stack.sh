@@ -3,7 +3,7 @@ set -euo pipefail
 
 COMPOSE_FILE="docker-compose.dev.yml"
 SERVICE_NAME="lrc-studio"
-PORT="${DEV_PORT:-8080}"
+PORT="${DEV_PORT:-30601}"
 
 detect_lan_ip() {
   local ip=""
