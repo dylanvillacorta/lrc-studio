@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MobileHeader } from '@/app/layouts/MobileHeader';
 import { useActiveProject, useStorage } from '@/app/providers';
 import { CatalogPanel, useCatalog } from '@/features/catalog';
@@ -64,13 +64,6 @@ export function MobileLayout() {
   const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
-  const playerTimeRef = useRef(player.currentTime);
-
-  useEffect(() => {
-    playerTimeRef.current = player.currentTime;
-  }, [player.currentTime]);
-
-  const getCurrentTimeMs = useCallback(() => playerTimeRef.current, []);
 
   const durationMs =
     player.duration > 0
@@ -326,7 +319,7 @@ export function MobileLayout() {
               lines={sync.lines}
               syncMode="karaoke"
               pausedTimeMs={player.isPlaying ? -1 : player.currentTime}
-              getCurrentTimeMs={getCurrentTimeMs}
+              getCurrentTimeMs={player.getCurrentTimeMs}
               onSelectMode={handleSelectMode}
               onTogglePlay={togglePlay}
               onSeek={seekTo}
@@ -340,6 +333,7 @@ export function MobileLayout() {
               hasAudio={Boolean(audioUrl)}
               peaks={waveformPeaks}
               currentTimeMs={player.currentTime}
+              getCurrentTimeMs={player.getCurrentTimeMs}
               durationMs={durationMs}
               isPlaying={player.isPlaying}
               playbackRate={player.playbackRate}
@@ -384,6 +378,7 @@ export function MobileLayout() {
               hasAudio={Boolean(audioUrl)}
               peaks={waveformPeaks}
               currentTimeMs={player.currentTime}
+              getCurrentTimeMs={player.getCurrentTimeMs}
               durationMs={durationMs}
               isPlaying={player.isPlaying}
               lines={sync.lines}

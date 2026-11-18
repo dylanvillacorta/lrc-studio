@@ -116,6 +116,7 @@ function createSampleContext(
       duration: 225600,
       isPlaying: false,
       playbackRate: 1,
+      getCurrentTimeMs: () => 72340,
       play: async () => {},
       pause: () => {},
       togglePlay: () => {},

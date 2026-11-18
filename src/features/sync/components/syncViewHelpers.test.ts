@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  computeCenteredScrollTop,
   computePreRollStatus,
   createDemoAudioFile,
   downsampleWaveformBars,
@@ -84,5 +85,42 @@ describe('syncViewHelpers', () => {
     expect(formatUnsyncedLinesNotice(0, 3)).toContain('Ninguna línea está sincronizada');
     expect(formatUnsyncedLinesNotice(2, 1)).toContain('1 línea sin sincronizar');
     expect(formatUnsyncedLinesNotice(2, 3)).toContain('3 líneas sin sincronizar');
+  });
+
+  it('calcula el scrollTop centrado del contenedor dentro de los límites válidos', () => {
+    expect(
+      computeCenteredScrollTop({
+        containerScrollTop: 100,
+        containerClientHeight: 300,
+        containerScrollHeight: 1000,
+        containerTop: 200,
+        elementTop: 520,
+        elementHeight: 60,
+      }),
+    ).toBe(300);
+
+    // Sin desbordamiento vertical devuelve 0
+    expect(
+      computeCenteredScrollTop({
+        containerScrollTop: 0,
+        containerClientHeight: 400,
+        containerScrollHeight: 350,
+        containerTop: 0,
+        elementTop: 100,
+        elementHeight: 60,
+      }),
+    ).toBe(0);
+
+    // Clampeado al máximo desplazable
+    expect(
+      computeCenteredScrollTop({
+        containerScrollTop: 0,
+        containerClientHeight: 300,
+        containerScrollHeight: 600,
+        containerTop: 0,
+        elementTop: 550,
+        elementHeight: 50,
+      }),
+    ).toBe(300);
   });
 });

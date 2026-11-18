@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DesktopCatalogSidebar } from '@/app/layouts/DesktopCatalogSidebar';
 import {
   DesktopHeader,
@@ -75,11 +75,6 @@ export function DesktopLayout() {
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
   const [liveNotice, setLiveNotice] = useState('');
-  const playerTimeRef = useRef(player.currentTime);
-
-  useEffect(() => {
-    playerTimeRef.current = player.currentTime;
-  }, [player.currentTime]);
 
   const durationMs =
     player.duration > 0
@@ -189,7 +184,7 @@ export function DesktopLayout() {
     const targetStartMs =
       syncMode === 'word'
         ? resolveWordTargetStartMs(activeLine, sync.activeWordIndex)
-        : (activeLine?.startMs ?? playerTimeRef.current);
+        : (activeLine?.startMs ?? player.getCurrentTimeMs());
     player.seekTo(computePreRollStartMs(targetStartMs, preRollMs));
     void player.play();
     setLiveNotice('Repitiendo Pre-Roll');
@@ -209,7 +204,8 @@ export function DesktopLayout() {
   );
 
   const handleStampStart = useCallback(() => {
-    const nowMs = playerTimeRef.current;
+    if (syncMode === 'karaoke') return;
+    const nowMs = player.getCurrentTimeMs();
     if (syncMode === 'word') {
       if (!targetWord) return;
       if (!player.isPlaying) void player.play();
@@ -230,7 +226,7 @@ export function DesktopLayout() {
 
   const handleStampEnd = useCallback(() => {
     if (syncMode !== 'word' || !holdMode || !targetWord) return;
-    const nowMs = playerTimeRef.current;
+    const nowMs = player.getCurrentTimeMs();
     const feedback = sync.stampWordEnd({
       nowMs,
       subMode,
@@ -238,7 +234,7 @@ export function DesktopLayout() {
       sniperAutoAdvancePreRoll: true,
     });
     applyWordFeedback(feedback, nowMs);
-  }, [applyWordFeedback, holdMode, subMode, sync, syncMode, targetWord]);
+  }, [applyWordFeedback, holdMode, player, subMode, sync, syncMode, targetWord]);
 
   const handleNudge = useCallback(
     (deltaMs: -50 | -10 | 10 | 50) => {
@@ -419,20 +415,23 @@ export function DesktopLayout() {
                 </div>
               ) : null}
               {syncMode === 'karaoke' ? (
-                <KaraokePreview
-                  hasAudio={Boolean(audioUrl)}
-                  durationMs={durationMs}
-                  isPlaying={player.isPlaying}
-                  lines={sync.lines}
-                  syncMode="karaoke"
-                  pausedTimeMs={player.currentTime}
-                  getCurrentTimeMs={() => playerTimeRef.current}
-                  onSelectMode={handleSelectMode}
-                  onTogglePlay={player.togglePlay}
-                  onSeek={player.seekTo}
-                  onUploadAudio={handleUploadAudio}
-                  onUseDemo={handleUseDemo}
-                />
+                <div className="h-[415px] min-[1100px]:h-[max(320px,calc(100dvh-385px))] flex flex-col min-h-0">
+                  <KaraokePreview
+                    hasAudio={Boolean(audioUrl)}
+                    durationMs={durationMs}
+                    isPlaying={player.isPlaying}
+                    lines={sync.lines}
+                    syncMode="karaoke"
+                    pausedTimeMs={player.isPlaying ? -1 : player.currentTime}
+                    getCurrentTimeMs={player.getCurrentTimeMs}
+                    showModeSelector={false}
+                    onSelectMode={handleSelectMode}
+                    onTogglePlay={player.togglePlay}
+                    onSeek={player.seekTo}
+                    onUploadAudio={handleUploadAudio}
+                    onUseDemo={handleUseDemo}
+                  />
+                </div>
               ) : (
                 <>
                   {syncMode === 'word' ? (
