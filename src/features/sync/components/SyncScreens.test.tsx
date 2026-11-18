@@ -42,6 +42,7 @@ describe('LineSyncScreen', () => {
         playbackRate={1}
         lines={SAMPLE_LINES}
         activeLineIndex={1}
+        playingLineIndex={0}
         canUndo
         syncMode="line"
         onSelectMode={vi.fn()}
@@ -64,7 +65,12 @@ describe('LineSyncScreen', () => {
     expect(html).toContain('Adelantar 5 segundos');
     expect(html).toContain('Deshacer última marca');
     expect(html).toContain('Abrir ajuste fino en lupa');
-    expect(html).toContain('esperando marca');
+    expect(html).not.toContain('esperando marca');
+    expect(html).toContain('--:--.--');
+    expect(html).toContain('aria-label="Sin marca de tiempo"');
+    expect(html).toContain('w-[8ch]');
+    expect(html).toContain('text-acc/70');
+    expect(html).toContain('data-playing="true"');
     expect(html).toContain('Karaoke');
   });
 

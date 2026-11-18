@@ -28,9 +28,12 @@ export {
   findActiveWordIndex,
   getActiveLineWindow,
   getPreRollTrafficLight,
+  resolvePlaybackTracking,
   type ActiveLineWindowOptions,
   type KaraokeLineState,
   type KaraokePlaybackState,
+  type PlaybackTrackingInput,
+  type PlaybackTrackingResult,
 } from '@/features/sync/model/playbackAnalysis';
 export {
   MAX_SYNC_HISTORY,

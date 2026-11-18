@@ -30,6 +30,8 @@ export interface LineSyncScreenProps {
   playbackRate: number;
   lines: readonly LyricLine[];
   activeLineIndex: number;
+  playingLineIndex?: number;
+  trackedListIndex?: number;
   canUndo: boolean;
   syncMode: SyncSegmentedMode;
   burstWindow?: { windowStartMs: number; windowEndMs: number } | null;
@@ -60,6 +62,8 @@ export function LineSyncScreen({
   playbackRate,
   lines,
   activeLineIndex,
+  playingLineIndex = -1,
+  trackedListIndex = activeLineIndex,
   canUndo,
   syncMode,
   burstWindow = null,
@@ -78,22 +82,33 @@ export function LineSyncScreen({
   onUseDemo,
 }: LineSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
-  const activeLineRef = useRef<HTMLButtonElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const lineButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
-    const el = activeLineRef.current;
-    if (!el || typeof el.scrollIntoView !== 'function') {
+    const listEl = listRef.current;
+    const targetEl = lineButtonRefs.current[trackedListIndex];
+    if (!listEl || !targetEl) {
       return;
     }
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    el.scrollIntoView({
-      behavior: reduced ? 'auto' : 'smooth',
-      block: 'center',
-    });
-  }, [activeLineIndex]);
+
+    const targetTop = Math.max(
+      0,
+      targetEl.offsetTop - (listEl.clientHeight - targetEl.offsetHeight) / 2,
+    );
+    if (typeof listEl.scrollTo === 'function') {
+      listEl.scrollTo({
+        top: targetTop,
+        behavior: reduced ? 'auto' : 'smooth',
+      });
+    } else {
+      listEl.scrollTop = targetTop;
+    }
+  }, [trackedListIndex]);
 
   if (!hasAudio) {
     return (
@@ -217,43 +232,51 @@ export function LineSyncScreen({
       </div>
 
       <WellPanel
+        ref={listRef}
         data-testid="sync-line-list"
         className="flex-1 min-h-0 p-1.5 overflow-y-auto flex flex-col gap-1"
       >
         {hasLines ? (
           lines.map((line, index) => {
             const isCurrent = index === activeLineIndex;
+            const isPlayingLine = index === playingLineIndex;
             const isSynced = line.startMs !== null;
             return (
               <button
                 key={line.id}
-                ref={isCurrent ? activeLineRef : null}
+                ref={(el) => {
+                  lineButtonRefs.current[index] = el;
+                }}
                 type="button"
                 onClick={() => onSelectLine(index)}
                 aria-current={isCurrent ? 'true' : undefined}
+                data-playing={isPlayingLine ? 'true' : undefined}
                 className={`w-full min-h-11 px-3 py-1.5 rounded-[12px] flex items-center justify-between gap-2 text-left transition-shadow motion-reduce:transition-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
                   isCurrent
-                    ? 'relieve text-ink font-extrabold'
-                    : isSynced
-                      ? 'bg-transparent text-ink font-semibold'
-                      : 'bg-transparent text-mute font-semibold'
+                    ? isPlayingLine
+                      ? 'relieve ring-1 ring-acc/45 text-ink font-extrabold'
+                      : 'relieve text-ink font-extrabold'
+                    : isPlayingLine
+                      ? 'bg-acc/10 ring-1 ring-acc/35 text-ink font-bold'
+                      : isSynced
+                        ? 'bg-transparent text-ink font-semibold'
+                        : 'bg-transparent text-mute font-semibold'
                 }`}
               >
                 <span className="truncate text-[14px] flex-1 min-w-0">
                   {line.text}
                 </span>
                 <span
-                  className={`font-mono text-xs font-bold tabular-nums shrink-0 ${
-                    isCurrent
-                      ? 'text-acc'
-                      : isSynced
-                        ? 'text-ok'
-                        : 'text-mute/75'
+                  aria-label={!isSynced ? 'Sin marca de tiempo' : undefined}
+                  className={`font-mono text-xs font-bold tabular-nums shrink-0 w-[8ch] text-right ${
+                    !isSynced
+                      ? 'text-acc/70'
+                      : isCurrent || isPlayingLine
+                        ? 'text-acc'
+                        : 'text-ok'
                   }`}
                 >
-                  {isCurrent && !isSynced
-                    ? 'esperando marca'
-                    : formatDisplayTime(line.startMs)}
+                  {formatDisplayTime(line.startMs)}
                 </span>
               </button>
             );

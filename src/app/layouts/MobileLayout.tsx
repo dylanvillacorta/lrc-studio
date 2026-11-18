@@ -14,8 +14,10 @@ import {
   computeBurstEnterState,
   computeBurstExitState,
   DEFAULT_PRE_ROLL_MS,
+  findActiveLineIndex,
   getActiveLineWindow,
   getBurstLoopSeekTargetMs,
+  resolvePlaybackTracking,
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { LineSyncScreen } from '@/features/sync/components/LineSyncScreen';
@@ -70,6 +72,10 @@ export function MobileLayout() {
   const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
+  const [manualOverrideAtPlayingIndex, setManualOverrideAtPlayingIndex] = useState<number | null>(
+    null,
+  );
+  const lastPlayingLineRef = useRef<number>(-1);
   const playerTimeRef = useRef(player.currentTime);
 
   useEffect(() => {
@@ -126,7 +132,48 @@ export function MobileLayout() {
   }, [activeTab, flushPendingSave, refreshCatalog]);
 
   const { seekTo, pause, togglePlay } = player;
-  const { lines: syncLines, activeLineIndex: syncActiveLineIndex, replaceLines } = sync;
+  const {
+    lines: syncLines,
+    activeLineIndex: syncActiveLineIndex,
+    setActiveLineIndex: setSyncActiveLineIndex,
+    replaceLines,
+  } = sync;
+
+  const playingLineIndex = player.isPlaying
+    ? findActiveLineIndex(syncLines, player.currentTime)
+    : -1;
+  const isManualOverrideActive =
+    manualOverrideAtPlayingIndex !== null &&
+    manualOverrideAtPlayingIndex === playingLineIndex;
+  const trackedListIndex =
+    isManualOverrideActive || playingLineIndex < 0
+      ? syncActiveLineIndex
+      : playingLineIndex;
+
+  useEffect(() => {
+    const res = resolvePlaybackTracking({
+      lines: syncLines,
+      currentTimeMs: player.currentTime,
+      isPlaying: player.isPlaying,
+      activeLineIndex: syncActiveLineIndex,
+      lastPlayingLineIndex: lastPlayingLineRef.current,
+      manualOverrideAtPlayingIndex: isManualOverrideActive
+        ? manualOverrideAtPlayingIndex
+        : null,
+    });
+    lastPlayingLineRef.current = res.playingLineIndex;
+    if (res.nextActiveLineIndex !== null && res.nextActiveLineIndex !== syncActiveLineIndex) {
+      setSyncActiveLineIndex(res.nextActiveLineIndex);
+    }
+  }, [
+    isManualOverrideActive,
+    manualOverrideAtPlayingIndex,
+    player.currentTime,
+    player.isPlaying,
+    setSyncActiveLineIndex,
+    syncActiveLineIndex,
+    syncLines,
+  ]);
 
   const exitBurstIfNeeded = useCallback(() => {
     const exit = computeBurstExitState(syncSubView === 'burst');
@@ -385,6 +432,8 @@ export function MobileLayout() {
               playbackRate={player.playbackRate}
               lines={sync.lines}
               activeLineIndex={sync.activeLineIndex}
+              playingLineIndex={playingLineIndex}
+              trackedListIndex={trackedListIndex}
               canUndo={sync.canUndo}
               syncMode={burstActive ? 'burst' : 'line'}
               burstWindow={burstWindow}
@@ -405,6 +454,7 @@ export function MobileLayout() {
                 sync.undo();
               }}
               onSelectLine={(index) => {
+                setManualOverrideAtPlayingIndex(player.isPlaying ? playingLineIndex : null);
                 sync.setActiveLineIndex(index);
                 sync.setActiveWordIndex(0);
                 const selected = sync.lines[index];

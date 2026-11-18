@@ -23,8 +23,10 @@ import {
   computeBurstExitState,
   computePreRollStartMs,
   DEFAULT_PRE_ROLL_MS,
+  findActiveLineIndex,
   getActiveLineWindow,
   getBurstLoopSeekTargetMs,
+  resolvePlaybackTracking,
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { NoAudioCard } from '@/features/sync/components/NoAudioCard';
@@ -78,6 +80,10 @@ export function DesktopLayout() {
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
   const [liveNotice, setLiveNotice] = useState('');
+  const [manualOverrideAtPlayingIndex, setManualOverrideAtPlayingIndex] = useState<number | null>(
+    null,
+  );
+  const lastPlayingLineRef = useRef<number>(-1);
   const playerTimeRef = useRef(player.currentTime);
 
   useEffect(() => {
@@ -150,6 +156,42 @@ export function DesktopLayout() {
 
   const activeLine = sync.lines[sync.activeLineIndex];
   const targetWord = activeLine?.words[sync.activeWordIndex];
+  const playingLineIndex = player.isPlaying
+    ? findActiveLineIndex(sync.lines, player.currentTime)
+    : -1;
+  const isManualOverrideActive =
+    manualOverrideAtPlayingIndex !== null &&
+    manualOverrideAtPlayingIndex === playingLineIndex;
+  const trackedListIndex =
+    isManualOverrideActive || playingLineIndex < 0
+      ? sync.activeLineIndex
+      : playingLineIndex;
+  const { setActiveLineIndex: setSyncActiveLineIndex } = sync;
+
+  useEffect(() => {
+    const res = resolvePlaybackTracking({
+      lines: sync.lines,
+      currentTimeMs: player.currentTime,
+      isPlaying: player.isPlaying,
+      activeLineIndex: sync.activeLineIndex,
+      lastPlayingLineIndex: lastPlayingLineRef.current,
+      manualOverrideAtPlayingIndex: isManualOverrideActive
+        ? manualOverrideAtPlayingIndex
+        : null,
+    });
+    lastPlayingLineRef.current = res.playingLineIndex;
+    if (res.nextActiveLineIndex !== null && res.nextActiveLineIndex !== sync.activeLineIndex) {
+      setSyncActiveLineIndex(res.nextActiveLineIndex);
+    }
+  }, [
+    isManualOverrideActive,
+    manualOverrideAtPlayingIndex,
+    player.currentTime,
+    player.isPlaying,
+    setSyncActiveLineIndex,
+    sync.activeLineIndex,
+    sync.lines,
+  ]);
 
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
@@ -479,7 +521,10 @@ export function DesktopLayout() {
                   <DesktopLineList
                     lines={sync.lines}
                     activeLineIndex={sync.activeLineIndex}
+                    playingLineIndex={playingLineIndex}
+                    trackedListIndex={trackedListIndex}
                     onSelectLine={(index) => {
+                      setManualOverrideAtPlayingIndex(player.isPlaying ? playingLineIndex : null);
                       sync.setActiveLineIndex(index);
                       sync.setActiveWordIndex(0);
                       const selected = sync.lines[index];

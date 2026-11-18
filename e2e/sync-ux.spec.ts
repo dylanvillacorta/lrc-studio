@@ -206,4 +206,43 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
 
     assertNoErrors();
   });
+
+  test('seguimiento de reproducción resalta la línea activa sin scroll de página y conserva dimensiones sin marca', async ({
+    page,
+  }, testInfo) => {
+    const assertNoErrors = trackErrors(page);
+    const isMobile = isMobileProject(testInfo);
+
+    await page.goto('/');
+    await loadDemoProject(page);
+
+    const line1 = page.getByRole('button', { name: /Luces de neón brillan en la ciudad/i });
+    const line2 = page.getByRole('button', { name: /Caminamos juntos sin mirar atrás/i });
+    const line5 = page.getByRole('button', { name: /Subimos el volumen hasta el amanecer/i });
+
+    // B) Línea sin marca tiene marcador --:--.--, aria-label accesible y misma altura que una línea con marca
+    await expect(line5.locator('[aria-label="Sin marca de tiempo"]')).toHaveText('--:--.--');
+    const hSynced = (await line1.boundingBox())!.height;
+    const hUnsynced = (await line5.boundingBox())!.height;
+    expect(Math.abs(hSynced - hUnsynced)).toBeLessThanOrEqual(1);
+
+    // A) Seguimiento durante reproducción: al pasar de 1.5s resalta línea 1, y al pasar de 5.2s pasa a línea 2
+    await line1.click();
+    await page.getByRole('button', { name: 'Reproducir' }).click();
+    await expect(line1).toHaveAttribute('data-playing', 'true', { timeout: 6000 });
+
+    // Adelantar 5s para entrar en el rango de la línea 2 (00:05.20)
+    await page.getByRole('button', { name: 'Adelantar 5 segundos' }).click();
+    await expect(line2).toHaveAttribute('data-playing', 'true', { timeout: 6000 });
+    if (isMobile) {
+      await expect(page.getByRole('button', { name: /MARCAR LÍNEA 2/i })).toBeVisible();
+    }
+
+    // La página no hizo scroll vertical
+    const docScrollTop = await page.evaluate(() => document.documentElement.scrollTop);
+    expect(docScrollTop).toBe(0);
+
+    await page.getByRole('button', { name: 'Pausar' }).click();
+    assertNoErrors();
+  });
 });
