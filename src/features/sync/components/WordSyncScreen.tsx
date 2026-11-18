@@ -31,6 +31,7 @@ export interface WordSyncScreenProps {
   hasAudio: boolean;
   peaks: readonly number[];
   currentTimeMs: number;
+  getCurrentTimeMs?: () => number;
   durationMs: number;
   isPlaying: boolean;
   lines: readonly LyricLine[];
@@ -71,6 +72,7 @@ export function WordSyncScreen({
   hasAudio,
   peaks,
   currentTimeMs,
+  getCurrentTimeMs,
   durationMs,
   isPlaying,
   lines,
@@ -146,7 +148,7 @@ export function WordSyncScreen({
     if (!targetWord) {
       return;
     }
-    const nowMs = currentTimeMs;
+    const nowMs = getCurrentTimeMs ? getCurrentTimeMs() : currentTimeMs;
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       navigator.vibrate(10);
     }
@@ -173,7 +175,7 @@ export function WordSyncScreen({
       return;
     }
     setIsHolding(false);
-    const nowMs = currentTimeMs;
+    const nowMs = getCurrentTimeMs ? getCurrentTimeMs() : currentTimeMs;
     const feedback = onStampWordEnd({
       nowMs,
       subMode,

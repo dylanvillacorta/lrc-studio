@@ -18,6 +18,44 @@ import type {
 export const DEFAULT_PRE_ROLL_MS = 2500;
 export const DEFAULT_POST_ROLL_MS = 800;
 export const DEFAULT_WORD_SWEEP_MS = 350;
+export const LINE_END_TOLERANCE_MS = 600;
+
+interface ChronologicalEntry {
+  index: number;
+  startMs: number;
+  endMs: number | null;
+}
+
+function getChronologicalEntries(
+  items: readonly { startMs: number | null; endMs: number | null }[],
+): ChronologicalEntry[] {
+  const entries: ChronologicalEntry[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item && item.startMs !== null) {
+      entries.push({
+        index: i,
+        startMs: item.startMs,
+        endMs: item.endMs,
+      });
+    }
+  }
+  entries.sort((a, b) => a.startMs - b.startMs || a.index - b.index);
+  return entries;
+}
+
+function findLatestStartedEntry(
+  entries: readonly ChronologicalEntry[],
+  currentTimeMs: number,
+): ChronologicalEntry | null {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (entry && currentTimeMs >= entry.startMs) {
+      return entry;
+    }
+  }
+  return null;
+}
 
 export interface KaraokeLineState {
   lineIndex: number;
@@ -44,22 +82,22 @@ export interface ActiveLineWindowOptions {
 /**
  * Devuelve el índice de la línea activa para `currentTimeMs`, o `-1` si aún no comienza
  * ninguna o está fuera de ventana (+600 ms de tolerancia al final).
- * Proviene de `currentPlayingLineIndex` en el archivo base.
+ * Evalúa las líneas en orden cronológico de `startMs` para que una línea anterior con
+ * `endMs` abierto o solapado nunca reactive ni provoque saltos de múltiples líneas.
  */
 export function findActiveLineIndex(
   lines: readonly LyricLine[],
   currentTimeMs: number,
 ): number {
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (line && line.startMs !== null && currentTimeMs >= line.startMs) {
-      if (
-        line.endMs === null ||
-        currentTimeMs <= Math.max(line.startMs, line.endMs) + 600
-      ) {
-        return i;
-      }
-    }
+  const candidate = findLatestStartedEntry(getChronologicalEntries(lines), currentTimeMs);
+  if (!candidate) {
+    return -1;
+  }
+  if (
+    candidate.endMs === null ||
+    currentTimeMs <= Math.max(candidate.startMs, candidate.endMs) + LINE_END_TOLERANCE_MS
+  ) {
+    return candidate.index;
   }
   return -1;
 }
@@ -74,13 +112,18 @@ export function findActiveWordIndex(
   if (!line || line.words.length === 0) {
     return -1;
   }
-  for (let i = line.words.length - 1; i >= 0; i--) {
-    const word = line.words[i];
-    if (word && word.startMs !== null && currentTimeMs >= word.startMs) {
-      if (word.endMs === null || currentTimeMs <= Math.max(word.startMs, word.endMs)) {
-        return i;
-      }
-    }
+  const candidate = findLatestStartedEntry(
+    getChronologicalEntries(line.words),
+    currentTimeMs,
+  );
+  if (!candidate) {
+    return -1;
+  }
+  if (
+    candidate.endMs === null ||
+    currentTimeMs <= Math.max(candidate.startMs, candidate.endMs)
+  ) {
+    return candidate.index;
   }
   return -1;
 }
@@ -249,15 +292,6 @@ export function computeKaraokeState(
   const activeLine = activeLineIndex >= 0 ? lines[activeLineIndex] : undefined;
   const activeWordIndex = findActiveWordIndex(activeLine, currentTimeMs);
 
-  let lastStartedLineIndex = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const startMs = lines[i]?.startMs;
-    if (startMs !== null && startMs !== undefined && currentTimeMs >= startMs) {
-      lastStartedLineIndex = i;
-      break;
-    }
-  }
-
   let syncedLinesCount = 0;
   let unsyncedLinesCount = 0;
 
@@ -273,14 +307,16 @@ export function computeKaraokeState(
     const isPast =
       !isActive &&
       isSynced &&
-      ((lastStartedLineIndex >= 0 && lineIndex < lastStartedLineIndex) ||
-        (line.endMs !== null &&
-          currentTimeMs > Math.max(line.startMs ?? 0, line.endMs)));
+      line.startMs !== null &&
+      currentTimeMs >= line.startMs;
 
     const fallbackLineActive = isActive && isSynced;
-    const wordProgressPct = line.words.map((word) =>
-      computeWordProgressPct(word, currentTimeMs, fallbackLineActive),
-    );
+    const wordProgressPct =
+      !isActive && !isPast
+        ? line.words.map(() => 0)
+        : line.words.map((word) =>
+            computeWordProgressPct(word, currentTimeMs, fallbackLineActive),
+          );
 
     return {
       lineIndex,

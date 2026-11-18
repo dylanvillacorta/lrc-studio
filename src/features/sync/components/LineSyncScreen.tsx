@@ -25,6 +25,7 @@ export interface LineSyncScreenProps {
   hasAudio: boolean;
   peaks: readonly number[];
   currentTimeMs: number;
+  getCurrentTimeMs?: () => number;
   durationMs: number;
   isPlaying: boolean;
   playbackRate: number;
@@ -53,6 +54,7 @@ export function LineSyncScreen({
   hasAudio,
   peaks,
   currentTimeMs,
+  getCurrentTimeMs,
   durationMs,
   isPlaying,
   playbackRate,
@@ -114,7 +116,7 @@ export function LineSyncScreen({
     if (!hasLines) {
       return;
     }
-    const stampMs = currentTimeMs;
+    const stampMs = getCurrentTimeMs ? getCurrentTimeMs() : currentTimeMs;
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       navigator.vibrate(10);
     }

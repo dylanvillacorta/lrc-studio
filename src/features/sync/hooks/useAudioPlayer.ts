@@ -26,6 +26,7 @@ export interface UseAudioPlayerReturn {
   duration: number;
   isPlaying: boolean;
   playbackRate: number;
+  getCurrentTimeMs: () => number;
   play: () => Promise<void>;
   pause: () => void;
   togglePlay: () => void;
@@ -47,6 +48,7 @@ export function useAudioPlayer(
   const rafRef = useRef<number | null>(null);
   const playbackRateRef = useRef(initialPlaybackRate);
   const pendingSeekMsRef = useRef<number | null>(null);
+  const currentTimeRef = useRef(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(initialDurationMs);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -103,15 +105,24 @@ export function useAudioPlayer(
           const clampedPending = Math.max(0, Math.min(durMs, pendingSeekMsRef.current));
           pendingSeekMsRef.current = null;
           audio.currentTime = clampedPending / 1000;
-          setCurrentTime(Math.round(clampedPending));
+          const rounded = Math.round(clampedPending);
+          currentTimeRef.current = rounded;
+          setCurrentTime(rounded);
         }
       }
     };
     const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    const handlePause = () => {
+      setIsPlaying(false);
+      const ms = Math.round(audio.currentTime * 1000);
+      currentTimeRef.current = ms;
+      setCurrentTime(ms);
+    };
     const handleEnded = () => {
       setIsPlaying(false);
-      setCurrentTime(Math.round(audio.currentTime * 1000));
+      const ms = Math.round(audio.currentTime * 1000);
+      currentTimeRef.current = ms;
+      setCurrentTime(ms);
     };
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -142,7 +153,9 @@ export function useAudioPlayer(
     const updateClock = () => {
       const audio = getAudioElement();
       if (audio && !audio.paused) {
-        setCurrentTime(Math.round(audio.currentTime * 1000));
+        const ms = Math.round(audio.currentTime * 1000);
+        currentTimeRef.current = ms;
+        setCurrentTime(ms);
         rafRef.current = requestAnimationFrame(updateClock);
       }
     };
@@ -172,6 +185,9 @@ export function useAudioPlayer(
     const audio = getAudioElement();
     if (!audio) return;
     audio.pause();
+    const ms = Math.round(audio.currentTime * 1000);
+    currentTimeRef.current = ms;
+    setCurrentTime(ms);
     setIsPlaying(false);
   }, [getAudioElement]);
 
@@ -200,10 +216,23 @@ export function useAudioPlayer(
       } else {
         pendingSeekMsRef.current = clampedMs;
       }
-      setCurrentTime(Math.round(clampedMs));
+      const ms = Math.round(clampedMs);
+      currentTimeRef.current = ms;
+      setCurrentTime(ms);
     },
     [duration, getAudioElement],
   );
+
+  const getCurrentTimeMs = useCallback((): number => {
+    if (pendingSeekMsRef.current !== null) {
+      return Math.round(pendingSeekMsRef.current);
+    }
+    const audio = getAudioElement();
+    if (audio && audio.readyState >= 1) {
+      return Math.round(audio.currentTime * 1000);
+    }
+    return currentTimeRef.current;
+  }, [getAudioElement]);
 
   const setPlaybackRate = useCallback(
     (rate: number) => {
@@ -224,6 +253,7 @@ export function useAudioPlayer(
     duration,
     isPlaying,
     playbackRate,
+    getCurrentTimeMs,
     play,
     pause,
     togglePlay,
