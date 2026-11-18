@@ -1,0 +1,178 @@
+/**
+ * Análisis puro de reproducción, ventanas de Pre-Roll, semáforo y progreso.
+ * Origen en el archivo base (`docs/base/lyricsync_studio_pro_2_00.tsx`):
+ * `getActiveLineWindow` (línea 370), `triggerPreRollPlay` (línea 404),
+ * `currentPlayingLineIndex` (línea 1237) y métricas de progreso (líneas 1414-1419).
+ *
+ * Todas las marcas temporales están en milisegundos.
+ */
+
+import type {
+  ActiveLineWindow,
+  LyricLine,
+  PreRollTrafficLight,
+  SyncProgress,
+} from '@/types';
+
+export const DEFAULT_PRE_ROLL_MS = 2500;
+export const DEFAULT_POST_ROLL_MS = 800;
+
+export interface ActiveLineWindowOptions {
+  preRollMs?: number;
+  postRollMs?: number;
+  durationMs?: number;
+}
+
+/**
+ * Devuelve el índice de la línea activa para `currentTimeMs`, o `-1` si aún no comienza
+ * ninguna o está fuera de ventana (+600 ms de tolerancia al final).
+ * Proviene de `currentPlayingLineIndex` en el archivo base.
+ */
+export function findActiveLineIndex(
+  lines: readonly LyricLine[],
+  currentTimeMs: number,
+): number {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (line && line.startMs !== null && currentTimeMs >= line.startMs) {
+      if (line.endMs === null || currentTimeMs <= line.endMs + 600) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
+ * Devuelve el índice de la palabra activa dentro de una línea para `currentTimeMs`, o `-1`.
+ */
+export function findActiveWordIndex(
+  line: LyricLine | undefined,
+  currentTimeMs: number,
+): number {
+  if (!line || line.words.length === 0) {
+    return -1;
+  }
+  for (let i = line.words.length - 1; i >= 0; i--) {
+    const word = line.words[i];
+    if (word && word.startMs !== null && currentTimeMs >= word.startMs) {
+      if (word.endMs === null || currentTimeMs <= word.endMs) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
+ * Calcula la ventana temporal de la línea activa con Pre-Roll y Post-Roll para la ráfaga aislada.
+ * Proviene de `getActiveLineWindow` en el archivo base (convertido a milisegundos).
+ */
+export function getActiveLineWindow(
+  lines: readonly LyricLine[],
+  lineIndex: number,
+  options: ActiveLineWindowOptions = {},
+): ActiveLineWindow {
+  const preRollMs = options.preRollMs ?? DEFAULT_PRE_ROLL_MS;
+  const postRollMs = options.postRollMs ?? DEFAULT_POST_ROLL_MS;
+  const maxDurationMs = options.durationMs && options.durationMs > 0
+    ? options.durationMs
+    : 9_999_000;
+
+  const line = lines[lineIndex];
+  if (!line) {
+    return {
+      lineStartMs: 0,
+      lineEndMs: 4000,
+      windowStartMs: 0,
+      windowEndMs: Math.min(maxDurationMs, 5000),
+    };
+  }
+
+  const prevLine = lineIndex > 0 ? lines[lineIndex - 1] : undefined;
+  const fallbackStartMs =
+    prevLine && prevLine.endMs !== null ? prevLine.endMs + 300 : lineIndex * 3500;
+  const lineStartMs = line.startMs !== null ? line.startMs : fallbackStartMs;
+
+  const syncedWordEnds = line.words
+    .map((w) => w.endMs)
+    .filter((t): t is number => t !== null);
+  const nextLineStartMs = lines[lineIndex + 1]?.startMs ?? null;
+
+  const fallbackEndMs =
+    syncedWordEnds.length > 0
+      ? Math.max(...syncedWordEnds, lineStartMs + 1800)
+      : nextLineStartMs !== null && nextLineStartMs > lineStartMs
+        ? nextLineStartMs - 100
+        : lineStartMs + 3600;
+
+  const lineEndMs =
+    line.endMs !== null ? Math.max(lineStartMs + 500, line.endMs) : fallbackEndMs;
+  const windowStartMs = Math.max(0, Math.round(lineStartMs - preRollMs));
+  const windowEndMs = Math.min(maxDurationMs, Math.round(lineEndMs + postRollMs));
+
+  return {
+    lineStartMs,
+    lineEndMs,
+    windowStartMs,
+    windowEndMs,
+  };
+}
+
+/**
+ * Calcula el instante de arranque del Pre-Roll para una palabra o línea:
+ * `targetStartMs - preRollMs` (por defecto 2500 ms), limitado a un mínimo de `0 ms`.
+ */
+export function computePreRollStartMs(
+  targetStartMs: number | null,
+  preRollMs = DEFAULT_PRE_ROLL_MS,
+): number {
+  if (targetStartMs === null || !Number.isFinite(targetStartMs)) {
+    return 0;
+  }
+  return Math.max(0, Math.round(targetStartMs - Math.max(0, preRollMs)));
+}
+
+/**
+ * Determina el estado del semáforo de Pre-Roll según el tiempo restante hasta el objetivo:
+ * - `green`: <= 350 ms (¡ya / listo para marcar!)
+ * - `amber`: > 350 ms y <= 1200 ms (prepararse)
+ * - `red`: > 1200 ms (esperar)
+ */
+export function getPreRollTrafficLight(remainingMs: number): PreRollTrafficLight {
+  if (remainingMs <= 350) {
+    return 'green';
+  }
+  if (remainingMs <= 1200) {
+    return 'amber';
+  }
+  return 'red';
+}
+
+/**
+ * Calcula el porcentaje de líneas sincronizadas y palabras sincronizadas.
+ * Proviene de las métricas de progreso del archivo base (líneas 1414-1419).
+ */
+export function computeSyncProgress(lines: readonly LyricLine[]): SyncProgress {
+  const totalLines = lines.length;
+  const syncedLines = lines.filter((l) => l.startMs !== null).length;
+  const totalWords = lines.reduce((acc, l) => acc + l.words.length, 0);
+  const syncedWords = lines.reduce(
+    (acc, l) => acc + l.words.filter((w) => w.startMs !== null).length,
+    0,
+  );
+
+  const lineProgress =
+    totalLines > 0 ? Math.round((syncedLines / totalLines) * 100) : 0;
+  const wordProgress =
+    totalWords > 0 ? Math.round((syncedWords / totalWords) * 100) : 0;
+
+  return {
+    totalLines,
+    syncedLines,
+    totalWords,
+    syncedWords,
+    lineProgress,
+    wordProgress,
+  };
+}

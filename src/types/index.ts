@@ -113,3 +113,57 @@ export interface CatalogBackup {
   projects: ProjectFullData[];
   audios: SerializedAudioBackup[];
 }
+
+/**
+ * Submodos disponibles para la sincronización palabra por palabra.
+ */
+export type WordSyncSubMode = 'sniper' | 'isolatedLine' | 'tap' | 'hold';
+
+/**
+ * Formatos soportados de exportación de letras sincronizadas.
+ */
+export type ExportFormat = 'json' | 'elrc' | 'lrc';
+
+/**
+ * Unidad temporal utilizada en la exportación JSON.
+ */
+export type JsonTimeUnit = 'seconds' | 'ms';
+
+/**
+ * Metadatos editoriales de la canción para encabezados de exportación.
+ */
+export interface SongMetadata {
+  title: string;
+  artist: string;
+  album: string;
+  offsetMs: number;
+}
+
+/**
+ * Estado del semáforo de cuenta regresiva del Pre-Roll.
+ */
+export type PreRollTrafficLight = 'red' | 'amber' | 'green';
+
+/**
+ * Ventana temporal de reproducción para la ráfaga de línea aislada (en milisegundos).
+ */
+export interface ActiveLineWindow {
+  lineStartMs: number;
+  lineEndMs: number;
+  windowStartMs: number;
+  windowEndMs: number;
+}
+
+/**
+ * Métricas de progreso de sincronización de líneas y palabras.
+ */
+export interface SyncProgress {
+  totalLines: number;
+  syncedLines: number;
+  totalWords: number;
+  syncedWords: number;
+  /** Porcentaje de líneas sincronizadas (0-100). */
+  lineProgress: number;
+  /** Porcentaje de palabras sincronizadas (0-100). */
+  wordProgress: number;
+}
