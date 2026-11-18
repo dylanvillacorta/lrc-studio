@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { LyricLine } from '@/types';
 import { KaraokePreview } from './KaraokePreview';
 import { LineSyncScreen } from './LineSyncScreen';
+import { WaveformStrip } from './WaveformStrip';
 import { WordSyncScreen } from './WordSyncScreen';
 
 const SAMPLE_LINES: LyricLine[] = [
@@ -197,5 +198,46 @@ describe('KaraokePreview', () => {
 
     expect(html).toContain('Subir audio');
     expect(html).toContain('Usar demo');
+  });
+});
+
+describe('WaveformStrip', () => {
+  it('renderiza la barra compacta por defecto con touch-action none', () => {
+    const html = renderToString(
+      <WaveformStrip
+        peaks={[0.2, 0.8, 0.5]}
+        currentTimeMs={14_000}
+        durationMs={120_000}
+        lines={SAMPLE_LINES}
+        compact
+        onSeek={vi.fn()}
+        onOpenLoupe={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('data-expanded="false"');
+    expect(html).toContain('data-testid="timeline-compact-time"');
+    expect(html).toContain('touch-action:none');
+    expect(html).toContain('00:14');
+    expect(html).toContain('02:00');
+  });
+
+  it('renderiza la barra expandida con tiempo grande e indicador flotante', () => {
+    const html = renderToString(
+      <WaveformStrip
+        peaks={[0.2, 0.8, 0.5]}
+        currentTimeMs={14_000}
+        durationMs={120_000}
+        lines={SAMPLE_LINES}
+        forceExpanded
+        onSeek={vi.fn()}
+        onOpenLoupe={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('data-expanded="true"');
+    expect(html).toContain('data-testid="timeline-expanded-time"');
+    expect(html).toContain('data-testid="timeline-floating-indicator"');
+    expect(html).toContain('00:14');
   });
 });

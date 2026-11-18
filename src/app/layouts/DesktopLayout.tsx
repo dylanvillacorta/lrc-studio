@@ -19,9 +19,12 @@ import {
   INITIAL_DEMO_LYRICS,
 } from '@/features/lyrics';
 import {
+  computeBurstEnterState,
+  computeBurstExitState,
   computePreRollStartMs,
   DEFAULT_PRE_ROLL_MS,
   getActiveLineWindow,
+  getBurstLoopSeekTargetMs,
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { NoAudioCard } from '@/features/sync/components/NoAudioCard';
@@ -117,10 +120,21 @@ export function DesktopLayout() {
   }, [burstActive, durationMs, preRollMs, sync.activeLineIndex, sync.lines]);
 
   useEffect(() => {
-    if (burstActive && burstWindow && player.isPlaying && player.currentTime >= burstWindow.windowEndMs) {
-      player.seekTo(burstWindow.windowStartMs);
+    if (!burstWindow) {
+      return;
     }
-  }, [burstActive, burstWindow, player]);
+    const targetMs = getBurstLoopSeekTargetMs({
+      burstActive,
+      isPlaying: player.isPlaying,
+      isEditing: centerView === 'editor' && burstActive,
+      currentTimeMs: player.currentTime,
+      windowStartMs: burstWindow.windowStartMs,
+      windowEndMs: burstWindow.windowEndMs,
+    });
+    if (targetMs !== null) {
+      player.seekTo(targetMs);
+    }
+  }, [burstActive, burstWindow, centerView, player]);
 
   useEffect(() => {
     if (activeTab === 'catalog') {
@@ -140,27 +154,35 @@ export function DesktopLayout() {
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
       if (mode === 'line') {
+        const exit = computeBurstExitState(burstActive);
+        if (exit.shouldPause) player.pause();
         setKaraokeActive(false);
         setBurstActive(false);
         setActiveTab('sync');
       } else if (mode === 'word') {
+        const exit = computeBurstExitState(burstActive);
+        if (exit.shouldPause) player.pause();
         setKaraokeActive(false);
         setBurstActive(false);
         setActiveTab('word');
-      } else if (mode === 'burst' && sync.lines.length > 0) {
-        const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
+      } else if (mode === 'burst') {
+        const enter = computeBurstEnterState();
         setKaraokeActive(false);
-        setBurstActive(true);
+        setBurstActive(enter.burstActive);
         setActiveTab('sync');
-        player.seekTo(win.windowStartMs);
-        void player.play();
+        if (sync.lines.length > 0 && enter.shouldPlay === false) {
+          const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
+          player.seekTo(win.windowStartMs);
+        }
       } else if (mode === 'karaoke') {
+        const exit = computeBurstExitState(burstActive);
+        if (exit.shouldPause) player.pause();
         setBurstActive(false);
         setKaraokeActive(true);
         setActiveTab('sync');
       }
     },
-    [durationMs, player, preRollMs, setActiveTab, sync.activeLineIndex, sync.lines],
+    [burstActive, durationMs, player, preRollMs, setActiveTab, sync.activeLineIndex, sync.lines],
   );
 
   const handleUploadAudio = useCallback(
@@ -390,6 +412,8 @@ export function DesktopLayout() {
                 canUndo={sync.canUndo}
                 canOpenLoupe={Boolean(activeLine)}
                 onSeek={player.seekTo}
+                onSeekStart={() => player.setSeeking(true)}
+                onSeekEnd={() => player.setSeeking(false)}
                 onTogglePlay={player.togglePlay}
                 onChangePlaybackRate={(rate) => {
                   player.setPlaybackRate(rate);
@@ -458,6 +482,10 @@ export function DesktopLayout() {
                     onSelectLine={(index) => {
                       sync.setActiveLineIndex(index);
                       sync.setActiveWordIndex(0);
+                      const selected = sync.lines[index];
+                      if (selected && selected.startMs !== null) {
+                        player.seekTo(selected.startMs);
+                      }
                     }}
                   />
                   {syncMode !== 'word' ? (

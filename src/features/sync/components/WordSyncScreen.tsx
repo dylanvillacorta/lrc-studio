@@ -44,6 +44,8 @@ export interface WordSyncScreenProps {
   onToggleSniper: () => void;
   onToggleHold: () => void;
   onSeek: (targetMs: number) => void;
+  onSeekStart?: () => void;
+  onSeekEnd?: () => void;
   onPlay: () => Promise<void> | void;
   onPause: () => void;
   onStampWordStart: (params: {
@@ -84,6 +86,8 @@ export function WordSyncScreen({
   onToggleSniper,
   onToggleHold,
   onSeek,
+  onSeekStart,
+  onSeekEnd,
   onPlay,
   onPause,
   onStampWordStart,
@@ -206,6 +210,8 @@ export function WordSyncScreen({
         compact
         statusText={`Pre-Roll activo · ${preRollSecondsLabel} s`}
         onSeek={onSeek}
+        onSeekStart={onSeekStart}
+        onSeekEnd={onSeekEnd}
         onOpenLoupe={onOpenLoupe}
         canOpenLoupe={Boolean(activeLine)}
       />

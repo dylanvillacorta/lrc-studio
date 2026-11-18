@@ -35,6 +35,8 @@ export interface LineSyncScreenProps {
   burstWindow?: { windowStartMs: number; windowEndMs: number } | null;
   onSelectMode: (mode: SyncSegmentedMode) => void;
   onSeek: (targetMs: number) => void;
+  onSeekStart?: () => void;
+  onSeekEnd?: () => void;
   onTogglePlay: () => void;
   onChangePlaybackRate: (rate: number) => void;
   onUndo: () => void;
@@ -63,6 +65,8 @@ export function LineSyncScreen({
   burstWindow = null,
   onSelectMode,
   onSeek,
+  onSeekStart,
+  onSeekEnd,
   onTogglePlay,
   onChangePlaybackRate,
   onUndo,
@@ -87,7 +91,7 @@ export function LineSyncScreen({
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     el.scrollIntoView({
       behavior: reduced ? 'auto' : 'smooth',
-      block: 'nearest',
+      block: 'center',
     });
   }, [activeLineIndex]);
 
@@ -125,7 +129,7 @@ export function LineSyncScreen({
   return (
     <section
       aria-label="Sincronizar por línea"
-      className="flex-1 min-h-0 flex flex-col gap-2.5 [@media(max-height:720px)]:gap-1.5"
+      className="flex-1 min-h-0 flex flex-col gap-1.5 [@media(max-height:720px)]:gap-1"
     >
       <Segmented
         options={SYNC_MODE_OPTIONS}
@@ -140,13 +144,16 @@ export function LineSyncScreen({
         currentTimeMs={currentTimeMs}
         durationMs={durationMs}
         lines={lines}
+        compact
         onSeek={onSeek}
+        onSeekStart={onSeekStart}
+        onSeekEnd={onSeekEnd}
         onOpenLoupe={onOpenLoupe}
         canOpenLoupe={Boolean(activeLine)}
       />
 
       {syncMode === 'burst' && burstWindow ? (
-        <div className="flex items-center justify-between gap-2 px-1">
+        <div className="flex items-center justify-between gap-2 px-1 flex-none">
           <Pill variant="acc">
             <span>
               Ráfaga en bucle · {formatDisplayTime(burstWindow.windowStartMs)} –{' '}
@@ -156,18 +163,18 @@ export function LineSyncScreen({
           <RaisedButton
             size="sm"
             onClick={onStopBurst}
-            className="min-h-12 px-3 text-xs font-extrabold"
+            className="min-h-11 px-3 text-xs font-extrabold"
           >
             Detener ráfaga
           </RaisedButton>
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between px-0.5">
+      <div className="flex items-center justify-between px-0.5 flex-none">
         <IconButton
           aria-label={`Velocidad ${playbackRate}x`}
           onClick={() => onChangePlaybackRate(getNextPlaybackRate(playbackRate))}
-          className="font-mono text-sm font-extrabold"
+          className="font-mono text-xs font-extrabold min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
           <span>{`${playbackRate}×`}</span>
         </IconButton>
@@ -176,38 +183,43 @@ export function LineSyncScreen({
           round
           aria-label="Retroceder 5 segundos"
           onClick={() => onSeek(Math.max(0, currentTimeMs - 5000))}
+          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
-          <Icon name="rewind" size={20} />
+          <Icon name="rewind" size={18} />
         </IconButton>
 
         <IconButton
           round
-          size="xl"
           aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
           onClick={onTogglePlay}
-          className="text-acc"
+          className="text-acc min-h-12 min-w-12 [@media(max-height:720px)]:min-h-11 [@media(max-height:720px)]:min-w-11"
         >
-          <Icon name={isPlaying ? 'pause' : 'play'} size={26} />
+          <Icon name={isPlaying ? 'pause' : 'play'} size={22} />
         </IconButton>
 
         <IconButton
           round
           aria-label="Adelantar 5 segundos"
           onClick={() => onSeek(Math.min(durationMs, currentTimeMs + 5000))}
+          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
-          <Icon name="forward" size={20} />
+          <Icon name="forward" size={18} />
         </IconButton>
 
         <IconButton
           aria-label="Deshacer última marca"
           disabled={!canUndo}
           onClick={onUndo}
+          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
-          <Icon name="undo" size={20} />
+          <Icon name="undo" size={18} />
         </IconButton>
       </div>
 
-      <WellPanel className="flex-1 min-h-0 p-2 overflow-y-auto flex flex-col gap-1.5">
+      <WellPanel
+        data-testid="sync-line-list"
+        className="flex-1 min-h-0 p-1.5 overflow-y-auto flex flex-col gap-1"
+      >
         {hasLines ? (
           lines.map((line, index) => {
             const isCurrent = index === activeLineIndex;
@@ -219,7 +231,7 @@ export function LineSyncScreen({
                 type="button"
                 onClick={() => onSelectLine(index)}
                 aria-current={isCurrent ? 'true' : undefined}
-                className={`w-full min-h-12 px-3.5 py-2.5 rounded-[14px] flex items-center justify-between gap-2.5 text-left transition-shadow motion-reduce:transition-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
+                className={`w-full min-h-11 px-3 py-1.5 rounded-[12px] flex items-center justify-between gap-2 text-left transition-shadow motion-reduce:transition-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
                   isCurrent
                     ? 'relieve text-ink font-extrabold'
                     : isSynced
@@ -227,7 +239,7 @@ export function LineSyncScreen({
                       : 'bg-transparent text-mute font-semibold'
                 }`}
               >
-                <span className="truncate text-[14.5px] flex-1 min-w-0">
+                <span className="truncate text-[14px] flex-1 min-w-0">
                   {line.text}
                 </span>
                 <span
@@ -263,7 +275,7 @@ export function LineSyncScreen({
         disabled={!hasLines}
         onPointerDown={handleStampPointerDown}
         onContextMenu={(e) => e.preventDefault()}
-        className="[@media(max-height:720px)]:min-h-[68px] [@media(max-height:720px)]:rounded-[26px]"
+        className="min-h-[84px] rounded-[28px] [@media(max-height:720px)]:min-h-[68px] [@media(max-height:720px)]:rounded-[24px]"
         style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none' }}
       />
 
