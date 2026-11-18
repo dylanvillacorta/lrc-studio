@@ -3,6 +3,7 @@ import {
   planRestore,
   type RestorePlan,
 } from '@/features/session/model/sessionPlanner';
+import { inferAudioMime } from '@/lib/audioFormats';
 import { formatStorageErrorMessage } from '@/features/session/model/storageError';
 import type { IStorageAdapter } from '@/storage';
 
@@ -19,6 +20,23 @@ export type RestoreAdapterResult =
   | { status: 'ready'; plan: RestorePlan };
 
 /**
+ * Devuelve un `Blob` con el MIME canónico del audio (mismo criterio que el
+ * adaptador de almacenamiento). Safari de iOS necesita un `type` correcto para
+ * poder hacer seek en un blob URL; si el Blob ya lo tiene correcto se reutiliza.
+ */
+export function buildAudioBlob(
+  binary: Blob | ArrayBuffer,
+  fileName?: string,
+): Blob {
+  const isBlob = typeof Blob !== 'undefined' && binary instanceof Blob;
+  const declared = isBlob ? (binary as Blob).type : undefined;
+  const mime = inferAudioMime(fileName ?? '', declared);
+  if (isBlob && (binary as Blob).type === mime) {
+    return binary as Blob;
+  }
+  return new Blob([binary], { type: mime });
+}
+/**
  * Crea un `ObjectURL` a partir de un `Blob` o `ArrayBuffer` si el entorno soporta `URL.createObjectURL`.
  */
 export function createAudioObjectUrl(
@@ -32,14 +50,7 @@ export function createAudioObjectUrl(
     return null;
   }
 
-  const blob =
-    typeof Blob !== 'undefined' && binary instanceof Blob
-      ? binary
-      : new Blob([binary], {
-          type: fileName?.toLowerCase().endsWith('.wav')
-            ? 'audio/wav'
-            : 'audio/mpeg',
-        });
+  const blob = buildAudioBlob(binary, fileName);
 
   return URL.createObjectURL(blob);
 }

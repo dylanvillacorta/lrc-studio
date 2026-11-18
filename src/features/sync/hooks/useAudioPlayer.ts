@@ -19,8 +19,10 @@ import {
 import {
   clampTimeMs,
   needsCurrentTimeCorrection,
+  nextPendingSeekMs,
+  shouldApplySeek,
+  type SeekOrigin,
   resolveDisplayedTimeMs,
-  waitForMetadata,
 } from '@/features/sync/hooks/audioSeekLogic';
 
 export interface UseAudioPlayerOptions {
@@ -45,7 +47,7 @@ export interface UseAudioPlayerReturn {
   play: () => Promise<void>;
   pause: () => void;
   togglePlay: () => void;
-  seekTo: (targetMs: number) => void;
+  seekTo: (targetMs: number, origin?: SeekOrigin) => void;
   setSeeking: (seeking: boolean) => void;
   setPlaybackRate: (rate: number) => void;
 }
@@ -72,6 +74,7 @@ export function useAudioPlayer(
   const playbackRateRef = useRef(initialPlaybackRate);
   const pendingSeekMsRef = useRef<number | null>(null);
   const isSeekingRef = useRef(false);
+  const userSeekedRef = useRef(false);
   const durationRef = useRef(initialDurationMs);
   const initialDurationRef = useRef(initialDurationMs);
   useEffect(() => {
@@ -129,6 +132,7 @@ export function useAudioPlayer(
       pendingSeekMsRef.current,
       timeStore.getTimeMs(),
     );
+    userSeekedRef.current = false;
     const audio = new Audio(src);
     audio.preload = 'auto';
     audio.playbackRate = playbackRateRef.current;
@@ -207,6 +211,7 @@ export function useAudioPlayer(
     audio.addEventListener('canplay', handleLoadedMetadata);
     audio.addEventListener('seeked', handleSyncFromAudio);
     audio.addEventListener('timeupdate', handleSyncFromAudio);
+    audio.addEventListener('playing', handleLoadedMetadata);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('ended', handleEnded);
@@ -217,6 +222,7 @@ export function useAudioPlayer(
       audio.removeEventListener('canplay', handleLoadedMetadata);
       audio.removeEventListener('seeked', handleSyncFromAudio);
       audio.removeEventListener('timeupdate', handleSyncFromAudio);
+      audio.removeEventListener('playing', handleLoadedMetadata);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('ended', handleEnded);
@@ -261,13 +267,9 @@ export function useAudioPlayer(
       pendingSeekMsRef.current,
       timeStore.getTimeMs(),
     );
-    if (audio.readyState < 1 && displayedMs > 0) {
-      pendingSeekMsRef.current = displayedMs;
-      await waitForMetadata(audio);
-    }
     if (audio.readyState >= 1) {
       const target = clampTimeMs(
-        resolveDisplayedTimeMs(pendingSeekMsRef.current, timeStore.getTimeMs()),
+        displayedMs,
         Number.isFinite(audio.duration) ? Math.round(audio.duration * 1000) : 0,
       );
       pendingSeekMsRef.current = null;
@@ -275,8 +277,18 @@ export function useAudioPlayer(
         audio.currentTime = target / 1000;
       }
       timeStore.setTimeMs(target);
-    }
-    try {
+    } else {
+      // Sin metadatos (p. ej. Safari de iOS tras recargar): no se espera antes de
+      // `play()` para no perder el gesto del usuario. Se fuerza la carga y el tiempo
+      // mostrado se aplica con el primer evento disponible (`loadedmetadata`,
+      // `canplay` o `playing`) antes de que suene.
+      if (displayedMs > 0) {
+        pendingSeekMsRef.current = displayedMs;
+      }
+      if (audio.networkState === 0 || audio.networkState === 3) {
+        audio.load();
+      }
+    }    try {
       await audio.play();
       setIsPlaying(true);
     } catch {
@@ -303,7 +315,13 @@ export function useAudioPlayer(
   }, [getAudioElement, play, pause]);
 
   const seekTo = useCallback(
-    (targetMs: number) => {
+    (targetMs: number, origin: SeekOrigin = 'user') => {
+      if (!shouldApplySeek(origin, userSeekedRef.current)) {
+        return;
+      }
+      if (origin === 'user') {
+        userSeekedRef.current = true;
+      }
       const effectiveDur =
         durationRef.current > 0 ? durationRef.current : Number.MAX_SAFE_INTEGER;
       const clampedMs = Math.max(0, Math.min(effectiveDur, Number(targetMs) || 0));
@@ -312,7 +330,12 @@ export function useAudioPlayer(
         pendingSeekMsRef.current = null;
         audio.currentTime = clampedMs / 1000;
       } else {
-        pendingSeekMsRef.current = clampedMs;
+        pendingSeekMsRef.current = nextPendingSeekMs(
+                    pendingSeekMsRef.current,
+                    clampedMs,
+                    origin,
+                    userSeekedRef.current,
+                  );
       }
       timeStore.setTimeMs(clampedMs);
     },

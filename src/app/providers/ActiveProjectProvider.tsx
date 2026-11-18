@@ -17,6 +17,7 @@ import {
   applyMetadataToProject,
 } from '@/app/providers/projectMutations';
 import { useStorage } from '@/app/providers/StorageProvider';
+import type { SeekOrigin } from '@/features/sync/hooks/audioSeekLogic';
 import { useObjectUrlState } from '@/app/providers/useObjectUrlState';
 import { useProjectLoader } from '@/app/providers/useProjectLoader';
 import { useRestoreHydration } from '@/app/providers/useRestoreHydration';
@@ -161,6 +162,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       lineIndex: number,
       wordIndex: number,
       currentTimeMs: number,
+      seekOrigin: SeekOrigin = 'user',
     ) => {
       projectRef.current = nextProject;
       setProject(nextProject);
@@ -175,7 +177,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       setActiveWordIndex(wordIndex);
       resetHistory();
       setPlaybackRate(nextProject.settings.playbackRate);
-      seekTo(currentTimeMs);
+      seekTo(currentTimeMs, seekOrigin);
     },
     [
       replaceLines,
@@ -210,6 +212,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
         plan.activeLineIndex,
         plan.activeWordIndex,
         plan.currentTime,
+        'restore',
       );
     },
     [applyEngineState, markBaseline],

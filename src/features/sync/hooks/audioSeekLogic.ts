@@ -59,3 +59,26 @@ export function waitForMetadata(
     timer = setTimeout(() => done(audio.readyState >= 1), timeoutMs);
   });
 }
+
+export type SeekOrigin = 'user' | 'restore';
+
+/**
+ * Un seek de restauración nunca pisa un seek del usuario ya emitido
+ * (el último seek del usuario prevalece sobre cualquier seek pendiente).
+ */
+export function shouldApplySeek(
+  origin: SeekOrigin,
+  userHasSeeked: boolean,
+): boolean {
+  return origin === 'user' || !userHasSeeked;
+}
+
+/** Resuelve el seek pendiente tras un nuevo seek: el nuevo reemplaza al previo si procede. */
+export function nextPendingSeekMs(
+  pendingMs: number | null,
+  requestedMs: number,
+  origin: SeekOrigin,
+  userHasSeeked: boolean,
+): number | null {
+  return shouldApplySeek(origin, userHasSeeked) ? requestedMs : pendingMs;
+}
