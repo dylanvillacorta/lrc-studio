@@ -20,9 +20,11 @@ const VALID_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>([
 export interface BuildSessionStateInput {
   projectId: string | null;
   activeTab?: ActiveTab;
+  /** Posición de reproducción actual en milisegundos. */
   currentTime?: number;
   activeLineIndex?: number;
   activeWordIndex?: number;
+  /** Marca de tiempo Unix en milisegundos. */
   updatedAt?: number;
 }
 
@@ -34,12 +36,52 @@ export interface RestorePlan {
   project: ProjectFullData;
   audio: AudioBinary | null;
   activeTab: ActiveTab;
+  /** Posición de reproducción restaurada en milisegundos. */
   currentTime: number;
   activeLineIndex: number;
   activeWordIndex: number;
   peaks: number[];
   /** Duración en segundos (compatible con `AudioBinary.duration`). */
   duration: number;
+}
+
+/**
+ * Convierte una duración en segundos (p. ej. `AudioBinary.duration`) a milisegundos redondeados.
+ */
+export function durationSecToMs(durationSec: number): number {
+  if (typeof durationSec !== 'number' || !Number.isFinite(durationSec) || durationSec <= 0) {
+    return 0;
+  }
+  return Math.round(durationSec * 1000);
+}
+
+/**
+ * Convierte una duración en milisegundos (p. ej. `ProjectFullData.durationMs`) a segundos.
+ */
+export function durationMsToSec(durationMs: number): number {
+  if (typeof durationMs !== 'number' || !Number.isFinite(durationMs) || durationMs <= 0) {
+    return 0;
+  }
+  return durationMs / 1000;
+}
+
+/**
+ * Resuelve la duración del audio en segundos priorizando `AudioBinary.duration` (s)
+ * y cayendo a `ProjectFullData.durationMs` convertido a segundos si el audio no tiene duración válida.
+ */
+export function resolveAudioDurationSec(
+  audio: Pick<AudioBinary, 'duration'> | null | undefined,
+  projectDurationMs: number,
+): number {
+  if (
+    audio &&
+    typeof audio.duration === 'number' &&
+    Number.isFinite(audio.duration) &&
+    audio.duration > 0
+  ) {
+    return audio.duration;
+  }
+  return durationMsToSec(projectDurationMs);
 }
 
 function clampIndex(value: number | undefined, maxLength: number): number {
@@ -107,16 +149,8 @@ export function planRestore(
   const words = activeLine && Array.isArray(activeLine.words) ? activeLine.words : [];
   const activeWordIndex = clampIndex(session.activeWordIndex, words.length);
 
-  const audioDurationSec =
-    audio && typeof audio.duration === 'number' && Number.isFinite(audio.duration) && audio.duration > 0
-      ? audio.duration
-      : 0;
-  const projectDurationMs =
-    typeof project.durationMs === 'number' && Number.isFinite(project.durationMs) && project.durationMs > 0
-      ? project.durationMs
-      : 0;
-  const maxDurationMs =
-    audioDurationSec > 0 ? Math.round(audioDurationSec * 1000) : projectDurationMs;
+  const duration = resolveAudioDurationSec(audio, project.durationMs);
+  const maxDurationMs = durationSecToMs(duration);
 
   const rawTimeMs = sanitizeNonNegativeMs(session.currentTime);
   const currentTime = maxDurationMs > 0 ? Math.min(rawTimeMs, maxDurationMs) : rawTimeMs;
@@ -137,6 +171,6 @@ export function planRestore(
     activeLineIndex,
     activeWordIndex,
     peaks,
-    duration: audioDurationSec > 0 ? audioDurationSec : maxDurationMs / 1000,
+    duration,
   };
 }

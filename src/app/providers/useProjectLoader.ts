@@ -1,26 +1,32 @@
-import { useCallback } from 'react';
-import { createEmptyProject } from '@/features/catalog';
-import { createAudioObjectUrl } from '@/features/session';
-import { importAudioFile, type AudioFileInput } from '@/lib/audioImport';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  createProjectOperations,
+  type ProjectOperations,
+} from '@/app/providers/projectOperations';
 import type { IStorageAdapter } from '@/storage';
 import type { ProjectFullData } from '@/types';
 import type { CreateProjectInput } from './activeProjectContext';
+import type { AudioFileInput } from '@/lib/audioImport';
 
 export interface UseProjectLoaderParams {
   adapter: IStorageAdapter;
   project: ProjectFullData | null;
   flushAutosave: () => Promise<void>;
+  pausePlayback?: () => void;
   applyLoadedProject: (
     nextProject: ProjectFullData,
     nextUrl: string | null,
     peaks: number[],
-    duration: number,
+    /** Duración del audio en segundos. */
+    durationSec: number,
   ) => void;
   onAudioAttached: (
+    projectId: string,
     nextUrl: string | null,
     fileName: string,
     peaks: number[],
-    duration: number,
+    /** Duración del audio en segundos. */
+    durationSec: number,
   ) => void;
 }
 
@@ -31,73 +37,96 @@ export function useProjectLoader({
   adapter,
   project,
   flushAutosave,
+  pausePlayback,
   applyLoadedProject,
   onAudioAttached,
 }: UseProjectLoaderParams) {
+  const projectRef = useRef<ProjectFullData | null>(project);
+  const flushRef = useRef(flushAutosave);
+  const pauseRef = useRef(pausePlayback);
+  const applyRef = useRef(applyLoadedProject);
+  const attachRef = useRef(onAudioAttached);
+  const mountedRef = useRef(true);
+  const opsRef = useRef<ProjectOperations | null>(null);
+  const opsAdapterRef = useRef<IStorageAdapter | null>(null);
+
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
+
+  useEffect(() => {
+    flushRef.current = flushAutosave;
+  }, [flushAutosave]);
+
+  useEffect(() => {
+    pauseRef.current = pausePlayback;
+  }, [pausePlayback]);
+
+  useEffect(() => {
+    applyRef.current = applyLoadedProject;
+  }, [applyLoadedProject]);
+
+  useEffect(() => {
+    attachRef.current = onAudioAttached;
+  }, [onAudioAttached]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const getOps = useCallback((): ProjectOperations => {
+    if (!opsRef.current || opsAdapterRef.current !== adapter) {
+      opsAdapterRef.current = adapter;
+      opsRef.current = createProjectOperations({
+        adapter,
+        getActiveProject: () => projectRef.current,
+        flushAutosave: () => flushRef.current(),
+        pausePlayback: () => pauseRef.current?.(),
+        isMounted: () => mountedRef.current,
+        applyLoadedProject: (nextProject, nextUrl, peaks, durationSec) => {
+          projectRef.current = nextProject;
+          applyRef.current(nextProject, nextUrl, peaks, durationSec);
+        },
+        onAudioAttached: (
+          projectId,
+          nextUrl,
+          fileName,
+          peaks,
+          durationSec,
+        ) => {
+          attachRef.current(
+            projectId,
+            nextUrl,
+            fileName,
+            peaks,
+            durationSec,
+          );
+        },
+      });
+    }
+    return opsRef.current;
+  }, [adapter]);
+
   const openProject = useCallback(
-    async (projectId: string): Promise<void> => {
-      await flushAutosave();
-      const [loadedProject, loadedAudio] = await Promise.all([
-        adapter.getProject(projectId),
-        adapter.getAudioBinary(projectId),
-      ]);
-
-      if (!loadedProject) {
-        throw new Error('No se encontró el proyecto solicitado.');
-      }
-
-      const nextUrl = loadedAudio
-        ? createAudioObjectUrl(loadedAudio.blob, loadedAudio.fileName)
-        : null;
-      const peaks = loadedAudio?.peaks.length
-        ? loadedAudio.peaks
-        : loadedProject.waveformPeaks;
-      const duration = loadedAudio?.duration ?? loadedProject.durationMs / 1000;
-
-      applyLoadedProject(loadedProject, nextUrl, peaks, duration);
-    },
-    [adapter, applyLoadedProject, flushAutosave],
+    (projectId: string) => getOps().openProject(projectId),
+    [getOps],
   );
 
   const createProject = useCallback(
-    async (input: CreateProjectInput = {}): Promise<ProjectFullData> => {
-      await flushAutosave();
-      const nextProject = createEmptyProject(
-        input.title ?? 'Sin título',
-        input.artist ?? '',
-      );
-      await adapter.saveProject(nextProject);
-      applyLoadedProject(nextProject, null, [], 0);
-      return nextProject;
-    },
-    [adapter, applyLoadedProject, flushAutosave],
+    (input?: CreateProjectInput) => getOps().createProject(input),
+    [getOps],
   );
 
   const attachAudio = useCallback(
-    async (file: AudioFileInput): Promise<void> => {
-      if (!project) {
-        throw new Error('No hay un proyecto activo para adjuntar el audio.');
-      }
-
-      const imported = await importAudioFile(file);
-      await adapter.saveAudioBinary(
-        project.id,
-        imported.blob,
-        imported.fileName,
-        imported.peaks,
-        imported.duration,
-      );
-
-      const nextUrl = createAudioObjectUrl(imported.blob, imported.fileName);
-      onAudioAttached(
-        nextUrl,
-        imported.fileName,
-        imported.peaks,
-        imported.duration,
-      );
-    },
-    [adapter, onAudioAttached, project],
+    (file: AudioFileInput) => getOps().attachAudio(file),
+    [getOps],
   );
 
-  return { openProject, createProject, attachAudio };
+  return useMemo(
+    () => ({ openProject, createProject, attachAudio }),
+    [attachAudio, createProject, openProject],
+  );
 }

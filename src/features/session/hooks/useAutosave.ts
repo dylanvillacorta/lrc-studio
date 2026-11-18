@@ -105,10 +105,57 @@ export function shouldSchedulePlaybackSave(
   return nowMs - lastSavedTickMs >= intervalMs;
 }
 
+/**
+ * Estado interno del rastreador de guardado durante reproducción/pausa.
+ */
+export interface PlaybackSaveTrackerState {
+  wasPlaying: boolean;
+  lastSavedTickMs: number | null;
+}
+
+/**
+ * Evalúa qué acción de guardado corresponde al cambiar `isPlaying` o `currentTime`:
+ * - Mientras reproduce: programa como máximo una vez por `intervalMs` (1000 ms).
+ * - Al pausar (transición de `true` a `false`): exige `flush` inmediato para persistir el `currentTime` exacto.
+ */
+export function evaluatePlaybackSaveTick(
+  prev: PlaybackSaveTrackerState,
+  isPlaying: boolean,
+  nowMs: number,
+  intervalMs = PLAYBACK_SAVE_INTERVAL_MS,
+): { nextState: PlaybackSaveTrackerState; action: 'none' | 'schedule' | 'flush' } {
+  if (isPlaying) {
+    const shouldSave = shouldSchedulePlaybackSave(
+      prev.lastSavedTickMs,
+      nowMs,
+      intervalMs,
+    );
+    return {
+      nextState: {
+        wasPlaying: true,
+        lastSavedTickMs: shouldSave ? nowMs : prev.lastSavedTickMs,
+      },
+      action: shouldSave ? 'schedule' : 'none',
+    };
+  }
+
+  const action = prev.wasPlaying ? 'flush' : 'none';
+  return {
+    nextState: {
+      wasPlaying: false,
+      lastSavedTickMs: null,
+    },
+    action,
+  };
+}
+
 export interface UseAutosaveOptions extends AutosaveLifecycleTargets {
+  /** Retraso del debounce en milisegundos (por defecto 300 ms). */
   delayMs?: number;
   isPlaying?: boolean;
+  /** Posición de reproducción actual en milisegundos. */
   currentTime?: number;
+  /** Intervalo mínimo entre guardados de `currentTime` al reproducir, en milisegundos (por defecto 1000 ms). */
   playbackSaveIntervalMs?: number;
 }
 
@@ -192,29 +239,34 @@ export function useAutosave(
 
     return () => {
       cleanupListeners();
-      scheduler.cancel();
+      const status = scheduler.getState().status;
+      if (status === 'pending' || status === 'saving' || status === 'error') {
+        void flush();
+      } else {
+        scheduler.cancel();
+      }
     };
   }, [documentTarget, flush, scheduler, windowTarget]);
 
-  const lastPlaybackTickRef = useRef<number | null>(null);
+  const playbackTrackerRef = useRef<PlaybackSaveTrackerState>({
+    wasPlaying: false,
+    lastSavedTickMs: null,
+  });
   useEffect(() => {
-    if (!isPlaying) {
-      lastPlaybackTickRef.current = null;
-      return;
-    }
+    const { nextState, action } = evaluatePlaybackSaveTick(
+      playbackTrackerRef.current,
+      isPlaying,
+      Date.now(),
+      playbackSaveIntervalMs,
+    );
+    playbackTrackerRef.current = nextState;
 
-    const nowMs = Date.now();
-    if (
-      shouldSchedulePlaybackSave(
-        lastPlaybackTickRef.current,
-        nowMs,
-        playbackSaveIntervalMs,
-      )
-    ) {
-      lastPlaybackTickRef.current = nowMs;
+    if (action === 'schedule') {
       scheduler.schedule(getSnapshotRef.current());
+    } else if (action === 'flush') {
+      void flush();
     }
-  }, [currentTime, isPlaying, playbackSaveIntervalMs, scheduler]);
+  }, [currentTime, flush, isPlaying, playbackSaveIntervalMs, scheduler]);
 
   return {
     saveStatus: autosaveState.status,

@@ -3,6 +3,7 @@ import {
   planRestore,
   type RestorePlan,
 } from '@/features/session/model/sessionPlanner';
+import { formatStorageErrorMessage } from '@/features/session/model/storageError';
 import type { IStorageAdapter } from '@/storage';
 
 /**
@@ -87,9 +88,12 @@ export interface UseSessionRestoreReturn {
   plan: RestorePlan | null;
   audioUrl: string | null;
   peaks: number[];
+  /** Duración del audio restaurado en segundos (`0` si no hay audio). */
   duration: number;
   error: string | null;
   reload: () => Promise<void>;
+  /** Revoca el `ObjectURL` restaurado cuando el proveedor toma el control manual de otro audio/proyecto. */
+  clearAudioUrl: () => void;
 }
 
 /**
@@ -107,6 +111,7 @@ export function useSessionRestore(
 
   const activeUrlRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
+  const requestIdRef = useRef(0);
 
   const replaceAudioUrl = useCallback((nextUrl: string | null) => {
     if (activeUrlRef.current && activeUrlRef.current !== nextUrl) {
@@ -116,13 +121,18 @@ export function useSessionRestore(
     setAudioUrl(nextUrl);
   }, []);
 
+  const clearAudioUrl = useCallback(() => {
+    replaceAudioUrl(null);
+  }, [replaceAudioUrl]);
+
   const runRestore = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setStatus('loading');
     setError(null);
 
     try {
       const result = await restoreSessionFromAdapter(adapter);
-      if (!mountedRef.current) {
+      if (!mountedRef.current || requestIdRef.current !== requestId) {
         return;
       }
 
@@ -140,19 +150,25 @@ export function useSessionRestore(
           )
         : null;
 
+      if (!mountedRef.current || requestIdRef.current !== requestId) {
+        revokeAudioObjectUrl(nextUrl);
+        return;
+      }
+
       replaceAudioUrl(nextUrl);
       setPlan(result.plan);
       setStatus('ready');
     } catch (err) {
-      if (!mountedRef.current) {
+      if (!mountedRef.current || requestIdRef.current !== requestId) {
         return;
       }
       replaceAudioUrl(null);
       setPlan(null);
       setError(
-        err instanceof Error && err.message.length > 0
-          ? err.message
-          : 'No se pudo restaurar la sesión guardada.',
+        formatStorageErrorMessage(
+          err,
+          'No se pudo restaurar la sesión guardada.',
+        ),
       );
       setStatus('error');
     }
@@ -166,6 +182,7 @@ export function useSessionRestore(
 
     return () => {
       mountedRef.current = false;
+      requestIdRef.current += 1;
       clearTimeout(timer);
       revokeAudioObjectUrl(activeUrlRef.current);
       activeUrlRef.current = null;
@@ -180,5 +197,6 @@ export function useSessionRestore(
     duration: plan?.duration ?? 0,
     error,
     reload: runRestore,
+    clearAudioUrl,
   };
 }

@@ -49,6 +49,7 @@ export interface ActiveProjectContextValue {
   setActiveTab: (tab: ActiveTab) => void;
   audioUrl: string | null;
   waveformPeaks: number[];
+  /** Duración del audio activo en segundos (`0` si no hay audio cargado). */
   audioDuration: number;
   saveStatus: SaveStatus;
   autosaveState: AutosaveState;

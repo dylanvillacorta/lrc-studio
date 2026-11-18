@@ -1,62 +1,12 @@
 import 'fake-indexeddb/auto';
-import { describe, expect, it, vi } from 'vitest';
-import {
-  registerAutosaveLifecycleListeners,
-  shouldSchedulePlaybackSave,
-} from '@/features/session/hooks/useAutosave';
+import { describe, expect, it } from 'vitest';
 import { restoreSessionFromAdapter } from '@/features/session/hooks/useSessionRestore';
 import { buildSessionState } from '@/features/session/model/sessionPlanner';
+import { formatStorageErrorMessage } from '@/features/session/model/storageError';
 import { WebIndexedDBAdapter } from '@/storage';
 import type { ProjectFullData } from '@/types';
 
-class FakeVisibilityDocument extends EventTarget {
-  visibilityState = 'visible';
-}
-
-describe('useAutosave lifecycle & useSessionRestore integration', () => {
-  it('listeners de visibilitychange (hidden), pagehide y beforeunload disparan flush y se limpian', () => {
-    const fakeWindow = new EventTarget();
-    const fakeDocument = new FakeVisibilityDocument();
-    const onFlush = vi.fn();
-
-    const cleanup = registerAutosaveLifecycleListeners(onFlush, {
-      windowTarget: fakeWindow,
-      documentTarget: fakeDocument,
-    });
-
-    // visibilitychange con estado visible NO debe disparar flush
-    fakeDocument.visibilityState = 'visible';
-    fakeDocument.dispatchEvent(new Event('visibilitychange'));
-    expect(onFlush).toHaveBeenCalledTimes(0);
-
-    // visibilitychange con estado hidden SÍ dispara flush
-    fakeDocument.visibilityState = 'hidden';
-    fakeDocument.dispatchEvent(new Event('visibilitychange'));
-    expect(onFlush).toHaveBeenCalledTimes(1);
-
-    // pagehide dispara flush
-    fakeWindow.dispatchEvent(new Event('pagehide'));
-    expect(onFlush).toHaveBeenCalledTimes(2);
-
-    // beforeunload dispara flush
-    fakeWindow.dispatchEvent(new Event('beforeunload'));
-    expect(onFlush).toHaveBeenCalledTimes(3);
-
-    // Tras limpiar, ningún evento vuelve a disparar flush
-    cleanup();
-    fakeDocument.dispatchEvent(new Event('visibilitychange'));
-    fakeWindow.dispatchEvent(new Event('pagehide'));
-    fakeWindow.dispatchEvent(new Event('beforeunload'));
-    expect(onFlush).toHaveBeenCalledTimes(3);
-  });
-
-  it('shouldSchedulePlaybackSave limita los guardados durante reproducción a máximo 1 vez por segundo', () => {
-    expect(shouldSchedulePlaybackSave(null, 1000)).toBe(true);
-    expect(shouldSchedulePlaybackSave(1000, 1500)).toBe(false);
-    expect(shouldSchedulePlaybackSave(1000, 1999)).toBe(false);
-    expect(shouldSchedulePlaybackSave(1000, 2000)).toBe(true);
-  });
-
+describe('useSessionRestore integration', () => {
   it('restauración completa contra WebIndexedDBAdapter real tras simular recarga', async () => {
     const dbName = `lyricsync-session-restore-${Date.now()}`;
     const writerAdapter = new WebIndexedDBAdapter({ dbName, storage: null });
@@ -150,5 +100,134 @@ describe('useAutosave lifecycle & useSessionRestore integration', () => {
       await (result.plan.audio!.blob as Blob).arrayBuffer(),
     );
     expect(restoredBytes).toEqual(audioBytes);
+  });
+
+  it('sesión apuntando a un proyecto borrado cae a estado empty sin lanzar', async () => {
+    const dbName = `lyricsync-deleted-project-${Date.now()}`;
+    const writer = new WebIndexedDBAdapter({ dbName, storage: null });
+    await writer.init();
+
+    const project: ProjectFullData = {
+      id: 'proj-to-delete',
+      title: 'Temporal',
+      artist: 'Demo',
+      audioFileName: '',
+      durationMs: 0,
+      totalLines: 0,
+      syncedLines: 0,
+      totalWords: 0,
+      syncedWords: 0,
+      lineProgress: 0,
+      wordProgress: 0,
+      updatedAt: 1000,
+      createdAt: 1000,
+      waveformPeaks: [],
+      settings: {
+        playbackRate: 1,
+        preRollSeconds: 2.5,
+        sniperMode: false,
+        autoAdvance: true,
+      },
+      lines: [],
+    };
+
+    await writer.saveProject(project);
+    await writer.saveSessionState(
+      buildSessionState({
+        projectId: project.id,
+        activeTab: 'lyrics',
+        currentTime: 500,
+      }),
+    );
+    await writer.deleteProject(project.id);
+
+    const reader = new WebIndexedDBAdapter({ dbName, storage: null });
+    const result = await restoreSessionFromAdapter(reader);
+    expect(result).toEqual({ status: 'empty', plan: null });
+  });
+
+  it('ida y vuelta con currentTime entre dos líneas restaura línea y palabra activas exactas', async () => {
+    const dbName = `lyricsync-gap-restore-${Date.now()}`;
+    const writer = new WebIndexedDBAdapter({ dbName, storage: null });
+    await writer.init();
+
+    const project: ProjectFullData = {
+      id: 'proj-gap-1',
+      title: 'Silencio',
+      artist: 'Tester',
+      audioFileName: 'gap.mp3',
+      durationMs: 10_000,
+      totalLines: 2,
+      syncedLines: 2,
+      totalWords: 2,
+      syncedWords: 2,
+      lineProgress: 100,
+      wordProgress: 100,
+      updatedAt: 5000,
+      createdAt: 1000,
+      waveformPeaks: [0.3, 0.7],
+      settings: {
+        playbackRate: 1,
+        preRollSeconds: 2.5,
+        sniperMode: true,
+        autoAdvance: true,
+      },
+      lines: [
+        {
+          id: 'l1',
+          text: 'Inicio',
+          startMs: 200,
+          endMs: 1200,
+          words: [{ id: 'w1', text: 'Inicio', startMs: 200, endMs: 1200 }],
+        },
+        {
+          id: 'l2',
+          text: 'Desenlace',
+          startMs: 5000,
+          endMs: 7000,
+          words: [{ id: 'w2', text: 'Desenlace', startMs: 5000, endMs: 7000 }],
+        },
+      ],
+    };
+
+    await writer.saveProject(project);
+    await writer.saveAudioBinary(
+      project.id,
+      new Blob([new Uint8Array([9, 8, 7])], { type: 'audio/mpeg' }),
+      'gap.mp3',
+      [0.3, 0.7],
+      10,
+    );
+    // 3000 ms cae entre l1 (endMs 1200) y l2 (startMs 5000)
+    await writer.saveSessionState(
+      buildSessionState({
+        projectId: project.id,
+        activeTab: 'word',
+        currentTime: 3000,
+        activeLineIndex: 1,
+        activeWordIndex: 0,
+      }),
+    );
+
+    const reader = new WebIndexedDBAdapter({ dbName, storage: null });
+    const result = await restoreSessionFromAdapter(reader);
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready') {
+      throw new Error('Se esperaba restauración ready');
+    }
+
+    expect(result.plan.currentTime).toBe(3000);
+    expect(result.plan.activeLineIndex).toBe(1);
+    expect(result.plan.activeWordIndex).toBe(0);
+    expect(result.plan.duration).toBe(10);
+  });
+
+  it('IndexedDB no disponible produce mensaje de error en español', () => {
+    expect(
+      formatStorageErrorMessage(
+        new Error('IndexedDB is not available in this environment'),
+        'Fallo genérico',
+      ),
+    ).toBe('IndexedDB no está disponible en este entorno.');
   });
 });

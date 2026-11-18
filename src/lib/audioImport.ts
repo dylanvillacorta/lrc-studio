@@ -9,6 +9,7 @@ export const DEFAULT_WAVEFORM_BINS = 240;
  * Representación mínima de un `AudioBuffer` decodificado para cálculo puro de picos.
  */
 export interface DecodedAudioLike {
+  /** Duración total del audio decodificado en segundos (equivale a `AudioBuffer.duration`). */
   duration: number;
   numberOfChannels?: number;
   getChannelData(channel: number): Float32Array;
@@ -47,11 +48,13 @@ export interface ImportedAudioResult {
   blob: Blob;
   fileName: string;
   peaks: number[];
+  /** Duración total del audio importado en segundos. */
   duration: number;
 }
 
 /**
  * Extrae los picos normalizados y la duración válida (en segundos) de un audio decodificado.
+ * @returns Picos normalizados en `[0, 1]` y `duration` en segundos (`0` si no es válida).
  */
 export function extractPeaksAndDuration(
   decoded: DecodedAudioLike,

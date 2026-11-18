@@ -145,4 +145,100 @@ describe('createAutosaveScheduler', () => {
     expect(saved).toEqual(['dato-critico', 'dato-nuevo-3']);
     expect(scheduler.getState().status).toBe('saved');
   });
+
+  it('cancel() durante un guardado en vuelo regresa a idle sin emitir saved', async () => {
+    let resolveSave: (() => void) | null = null;
+    const states: string[] = [];
+
+    const scheduler = createAutosaveScheduler<string>({
+      delayMs: 300,
+      save: async () => {
+        await new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        });
+      },
+    });
+    scheduler.subscribe((s) => states.push(s.status));
+
+    scheduler.schedule('v1');
+    const flushPromise = scheduler.flush();
+    expect(scheduler.getState().status).toBe('saving');
+
+    scheduler.cancel();
+    resolveSave!();
+    await flushPromise;
+
+    expect(scheduler.getState().status).toBe('idle');
+    expect(states).not.toContain('saved');
+  });
+
+  it('múltiples flush() concurrentes esperan el guardado en curso y drenan cambios intermedios', async () => {
+    let resolveFirst: (() => void) | null = null;
+    const saved: string[] = [];
+
+    const scheduler = createAutosaveScheduler<string>({
+      delayMs: 300,
+      save: async (snapshot) => {
+        if (snapshot === 'v1') {
+          await new Promise<void>((resolve) => {
+            resolveFirst = resolve;
+          });
+        }
+        saved.push(snapshot);
+      },
+    });
+
+    scheduler.schedule('v1');
+    const flush1 = scheduler.flush();
+    const flush2 = scheduler.flush();
+
+    scheduler.schedule('v2');
+    resolveFirst!();
+
+    await Promise.all([flush1, flush2]);
+    expect(saved).toEqual(['v1', 'v2']);
+    expect(scheduler.getState().status).toBe('saved');
+  });
+
+  it('QuotaExceededError y SecurityError dejan saveStatus en error en español, conservan el snapshot y reintentan', async () => {
+    let mode: 'quota' | 'security' | 'ok' = 'quota';
+    const saved: string[] = [];
+
+    const scheduler = createAutosaveScheduler<string>({
+      delayMs: 300,
+      save: async (snapshot) => {
+        if (mode === 'quota') {
+          const err = new Error('The quota has been exceeded.');
+          err.name = 'QuotaExceededError';
+          throw err;
+        }
+        if (mode === 'security') {
+          const err = new Error('IndexedDB access denied');
+          err.name = 'SecurityError';
+          throw err;
+        }
+        saved.push(snapshot);
+      },
+    });
+
+    scheduler.schedule('snapshot-cuota');
+    await scheduler.flush();
+
+    expect(scheduler.getState().status).toBe('error');
+    expect(scheduler.getState().error).toMatch(/cuota de almacenamiento llena/i);
+    expect(saved).toEqual([]);
+
+    // Reintento con SecurityError -> sigue en español y conserva el snapshot
+    mode = 'security';
+    await scheduler.flush();
+    expect(scheduler.getState().status).toBe('error');
+    expect(scheduler.getState().error).toMatch(/indexeddb no está disponible/i);
+
+    // Al liberarse el espacio, flush() persiste el snapshot conservado en memoria
+    mode = 'ok';
+    await scheduler.flush();
+    expect(saved).toEqual(['snapshot-cuota']);
+    expect(scheduler.getState().status).toBe('saved');
+    expect(scheduler.getState().error).toBeNull();
+  });
 });

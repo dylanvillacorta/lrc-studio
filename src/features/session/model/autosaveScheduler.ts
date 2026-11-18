@@ -1,3 +1,5 @@
+import { formatStorageErrorMessage } from '@/features/session/model/storageError';
+
 /**
  * Estado actual del programador de autoguardado.
  */
@@ -53,6 +55,7 @@ export function createAutosaveScheduler<T>(
   let pendingSnapshot: T | null = null;
   let hasPending = false;
   let inFlightPromise: Promise<void> | null = null;
+  let isExecuting = false;
   let generation = 0;
 
   let state: AutosaveState = {
@@ -80,7 +83,9 @@ export function createAutosaveScheduler<T>(
   async function drain(): Promise<void> {
     if (inFlightPromise !== null) {
       await inFlightPromise;
-      return;
+      if (!hasPending) {
+        return;
+      }
     }
 
     if (!hasPending) {
@@ -88,50 +93,61 @@ export function createAutosaveScheduler<T>(
     }
 
     const run = async (): Promise<void> => {
-      while (hasPending) {
-        const snapshot = pendingSnapshot as T;
-        const runGeneration = generation;
-        pendingSnapshot = null;
-        hasPending = false;
-
-        emit({
-          status: 'saving',
-          lastSavedAt: state.lastSavedAt,
-          error: null,
-        });
-
-        try {
-          await save(snapshot);
-          // Si `cancel()` se ejecutó mientras estaba en vuelo, no marcamos como saved sobre un estado cancelado
-          if (generation !== runGeneration && !hasPending) {
-            continue;
-          }
-          if (!hasPending) {
-            emit({
-              status: 'saved',
-              lastSavedAt: now(),
-              error: null,
-            });
-          }
-        } catch (err) {
-          const message =
-            err instanceof Error && err.message.length > 0
-              ? err.message
-              : 'Error al guardar los cambios.';
-
-          // Conservar el snapshot fallido para reintentar si no llegó uno más nuevo.
-          if (!hasPending) {
-            pendingSnapshot = snapshot;
-            hasPending = true;
-          }
+      isExecuting = true;
+      try {
+        while (hasPending) {
+          clearTimer();
+          const snapshot = pendingSnapshot as T;
+          const runGeneration = generation;
+          pendingSnapshot = null;
+          hasPending = false;
 
           emit({
-            status: 'error',
+            status: 'saving',
             lastSavedAt: state.lastSavedAt,
-            error: message,
+            error: null,
           });
-          break;
+
+          try {
+            await save(snapshot);
+            // Si `cancel()` se ejecutó mientras estaba en vuelo, volvemos a idle sin marcar saved
+            if (generation !== runGeneration && !hasPending) {
+              emit({
+                status: 'idle',
+                lastSavedAt: state.lastSavedAt,
+                error: null,
+              });
+              break;
+            }
+            if (!hasPending) {
+              emit({
+                status: 'saved',
+                lastSavedAt: now(),
+                error: null,
+              });
+            }
+          } catch (err) {
+            const message = formatStorageErrorMessage(
+              err,
+              'Error al guardar los cambios.',
+            );
+
+            // Conservar el snapshot fallido para reintentar si no llegó uno más nuevo.
+            if (!hasPending) {
+              pendingSnapshot = snapshot;
+              hasPending = true;
+            }
+
+            emit({
+              status: 'error',
+              lastSavedAt: state.lastSavedAt,
+              error: message,
+            });
+            break;
+          }
         }
+      } finally {
+        isExecuting = false;
       }
     };
 
@@ -147,7 +163,7 @@ export function createAutosaveScheduler<T>(
     hasPending = true;
     clearTimer();
 
-    if (inFlightPromise === null) {
+    if (!isExecuting) {
       emit({
         status: 'pending',
         lastSavedAt: state.lastSavedAt,
@@ -176,7 +192,7 @@ export function createAutosaveScheduler<T>(
     generation += 1;
     pendingSnapshot = null;
     hasPending = false;
-    if (inFlightPromise === null) {
+    if (!isExecuting) {
       emit({
         status: 'idle',
         lastSavedAt: state.lastSavedAt,
