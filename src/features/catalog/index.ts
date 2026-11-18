@@ -18,6 +18,7 @@ export {
   deleteCatalogProject,
   duplicateCatalogProject,
   exportCatalogProjectBackup,
+  importCatalogBackupFromJson,
   loadCatalogProjects,
   type ProjectBackupExport,
 } from './model/catalogOperations';

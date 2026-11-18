@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import type { ProjectSummary } from '@/types';
 import { Icon, IconButton, RaisedButton, WellPanel } from '@/ui';
 import { filterProjectsByQuery } from '../model/catalogModel';
@@ -10,16 +10,18 @@ export interface CatalogPanelProps {
   loading?: boolean;
   error?: string | null;
   now?: number;
+  headingLevel?: 1 | 2;
   onOpen: (projectId: string) => void;
   onCreate: () => void;
   onDuplicate: (projectId: string) => void;
   onExportBackup: (projectId: string) => void;
+  onImportBackup?: (jsonString: string) => Promise<boolean> | boolean | void;
   onDelete: (projectId: string) => void;
   onClose?: () => void;
 }
 
 /**
- * Pantalla del catálogo «Mis transcripciones» con buscador, creación y lista de tarjetas.
+ * Pantalla del catálogo «Mis transcripciones» con buscador, creación, respaldo y lista de tarjetas.
  */
 export function CatalogPanel({
   projects,
@@ -27,14 +29,18 @@ export function CatalogPanel({
   loading = false,
   error = null,
   now,
+  headingLevel = 1,
   onOpen,
   onCreate,
   onDuplicate,
   onExportBackup,
+  onImportBackup,
   onDelete,
   onClose,
 }: CatalogPanelProps) {
   const [query, setQuery] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  const backupInputRef = useRef<HTMLInputElement | null>(null);
 
   const filteredProjects = useMemo(
     () => filterProjectsByQuery(projects, query),
@@ -43,6 +49,24 @@ export function CatalogPanel({
 
   const countLabel =
     projects.length === 1 ? '1 canción' : `${projects.length} canciones`;
+
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !onImportBackup) {
+      return;
+    }
+    setImportError(null);
+    try {
+      const jsonText = await file.text();
+      await onImportBackup(jsonText);
+    } catch {
+      setImportError('No se pudo leer el archivo de respaldo seleccionado.');
+    }
+  };
+
+  const HeadingTag = headingLevel === 2 ? 'h2' : 'h1';
+  const displayError = error ?? importError;
 
   return (
     <section
@@ -58,13 +82,34 @@ export function CatalogPanel({
           <Icon name="back" size={22} />
         </IconButton>
         <div className="flex-1 min-w-0">
-          <h1 className="m-0 text-lg font-extrabold text-ink truncate">
+          <HeadingTag className="m-0 text-lg font-extrabold text-ink truncate">
             Mis transcripciones
-          </h1>
+          </HeadingTag>
           <p className="m-0 text-xs font-semibold text-mute truncate">
             {countLabel} · todo guardado en este dispositivo
           </p>
         </div>
+        {onImportBackup ? (
+          <>
+            <input
+              ref={backupInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={handleImportFile}
+              aria-label="Seleccionar respaldo .json"
+              className="sr-only"
+            />
+            <RaisedButton
+              size="sm"
+              aria-label="Importar respaldo .json"
+              onClick={() => backupInputRef.current?.click()}
+              className="min-h-12 rounded-[16px] px-3 flex-none"
+            >
+              <Icon name="export" size={18} />
+              <span>Importar</span>
+            </RaisedButton>
+          </>
+        ) : null}
       </header>
 
       <div className="flex items-center gap-3">
@@ -92,9 +137,9 @@ export function CatalogPanel({
         </RaisedButton>
       </div>
 
-      {error ? (
+      {displayError ? (
         <WellPanel role="alert" className="text-sm font-bold text-acc">
-          {error}
+          {displayError}
         </WellPanel>
       ) : null}
 

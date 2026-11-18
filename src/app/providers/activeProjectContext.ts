@@ -61,6 +61,7 @@ export interface ActiveProjectContextValue {
   updateProjectMetadata: (
     patch: Partial<Pick<ProjectFullData, 'title' | 'artist' | 'settings'>>,
   ) => void;
+  clearActiveProject: () => Promise<void>;
   flushPendingSave: () => Promise<void>;
 }
 

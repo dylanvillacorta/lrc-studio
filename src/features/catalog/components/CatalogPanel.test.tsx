@@ -75,6 +75,7 @@ describe('CatalogPanel y ProjectCard', () => {
         onCreate={noop}
         onDuplicate={noop}
         onExportBackup={noop}
+        onImportBackup={noop}
         onDelete={noop}
       />,
     );
@@ -83,6 +84,7 @@ describe('CatalogPanel y ProjectCard', () => {
     expect(html).toContain('2 canciones');
     expect(html).toContain('Buscar título o artista');
     expect(html).toContain('aria-label="Nueva transcripción"');
+    expect(html).toContain('aria-label="Importar respaldo .json"');
     expect(html).toContain('Noches de Verano');
     expect(html).toContain('Costa Norte');
     expect(html).toContain('NUEVA');

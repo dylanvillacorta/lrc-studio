@@ -107,3 +107,14 @@ export async function exportCatalogProjectBackup(
 
   return { json, blob, fileName };
 }
+
+/**
+ * Importa un respaldo JSON (`CatalogBackup`) en el almacenamiento local.
+ */
+export async function importCatalogBackupFromJson(
+  adapter: IStorageAdapter,
+  jsonString: string,
+): Promise<void> {
+  await adapter.init();
+  await adapter.importCatalogBackup(jsonString);
+}

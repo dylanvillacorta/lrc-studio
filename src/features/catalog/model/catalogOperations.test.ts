@@ -7,6 +7,7 @@ import {
   deleteCatalogProject,
   duplicateCatalogProject,
   exportCatalogProjectBackup,
+  importCatalogBackupFromJson,
   loadCatalogProjects,
 } from './catalogOperations';
 
@@ -67,6 +68,12 @@ describe('catalogOperations con WebIndexedDBAdapter', () => {
     const list2 = await loadCatalogProjects(adapter);
     expect(list2).toHaveLength(1);
     expect(list2[0]?.id).toBe('copy-id-1');
+
+    const freshAdapter = createIsolatedAdapter();
+    await importCatalogBackupFromJson(freshAdapter, exported.json);
+    const importedList = await loadCatalogProjects(freshAdapter);
+    expect(importedList).toHaveLength(1);
+    expect(importedList[0]?.title).toBe('Costa Norte');
   });
 
   it('lanza error en español al intentar duplicar o exportar un proyecto inexistente', async () => {

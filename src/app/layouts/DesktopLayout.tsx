@@ -23,6 +23,7 @@ import {
   DEFAULT_PRE_ROLL_MS,
   getActiveLineWindow,
 } from '@/features/sync';
+import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { NoAudioCard } from '@/features/sync/components/NoAudioCard';
 import {
   createDemoAudioFile,
@@ -59,6 +60,7 @@ export function DesktopLayout() {
     createProject,
     attachAudio,
     updateProjectMetadata,
+    clearActiveProject,
     flushPendingSave,
   } = useActiveProject();
 
@@ -68,7 +70,7 @@ export function DesktopLayout() {
     flush: flushPendingSave,
   });
 
-  const [burstActive, setBurstActive] = useState(false);
+  const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
   const [liveNotice, setLiveNotice] = useState('');
@@ -77,6 +79,8 @@ export function DesktopLayout() {
   useEffect(() => {
     playerTimeRef.current = player.currentTime;
   }, [player.currentTime]);
+
+  const getCurrentTimeMs = useCallback(() => playerTimeRef.current, []);
 
   const durationMs =
     player.duration > 0
@@ -88,6 +92,7 @@ export function DesktopLayout() {
       : DEFAULT_PRE_ROLL_MS;
   const sniperMode = project?.settings.sniperMode ?? true;
   const subMode: WordSyncSubMode = sniperMode ? 'sniper' : holdMode ? 'hold' : 'tap';
+  const burstActive = syncSubView === 'burst';
 
   const centerView: DesktopCenterView =
     activeTab === 'lyrics' ||
@@ -97,11 +102,13 @@ export function DesktopLayout() {
       ? activeTab
       : 'editor';
 
-  const syncMode: DesktopSyncMode = burstActive
+  const syncMode: DesktopSyncMode = syncSubView === 'burst'
     ? 'burst'
-    : activeTab === 'word'
-      ? 'word'
-      : 'line';
+    : syncSubView === 'karaoke'
+      ? 'karaoke'
+      : activeTab === 'word'
+        ? 'word'
+        : 'line';
 
   const burstWindow = useMemo(() => {
     if (!burstActive || sync.lines.length === 0) return null;
@@ -118,8 +125,16 @@ export function DesktopLayout() {
   }, [burstActive, burstWindow, player]);
 
   useEffect(() => {
-    void refreshCatalog();
-  }, [refreshCatalog, project?.id, project?.updatedAt]);
+    if (activeTab === 'catalog') {
+      void flushPendingSave().then(() => refreshCatalog());
+    }
+  }, [activeTab, flushPendingSave, refreshCatalog]);
+
+  useEffect(() => {
+    if (saveStatus === 'saved') {
+      void refreshCatalog();
+    }
+  }, [project?.id, refreshCatalog, saveStatus]);
 
   const activeLine = sync.lines[sync.activeLineIndex];
   const targetWord = activeLine?.words[sync.activeWordIndex];
@@ -127,14 +142,17 @@ export function DesktopLayout() {
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
       if (mode === 'line') {
-        setBurstActive(false);
+        setSyncSubView('default');
         setActiveTab('sync');
       } else if (mode === 'word') {
-        setBurstActive(false);
+        setSyncSubView('default');
         setActiveTab('word');
+      } else if (mode === 'karaoke') {
+        setSyncSubView('karaoke');
+        setActiveTab('sync');
       } else if (mode === 'burst' && sync.lines.length > 0) {
         const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
-        setBurstActive(true);
+        setSyncSubView('burst');
         setActiveTab('sync');
         player.seekTo(win.windowStartMs);
         void player.play();
@@ -281,7 +299,7 @@ export function DesktopLayout() {
 
   const handleOpenLoupe = () => {
     if (!activeLine) return;
-    setBurstActive(false);
+    setSyncSubView('default');
     setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
     setActiveTab('loupe');
   };
@@ -337,6 +355,12 @@ export function DesktopLayout() {
               loupeReturnTab={loupeReturnTab}
               onOpenProject={openProject}
               onCreateProject={createProject}
+              onDeleteProject={async (id) => {
+                if (id === project?.id) {
+                  await clearActiveProject();
+                }
+                await catalog.deleteProject(id);
+              }}
               onUpdateMetadata={updateProjectMetadata}
               onReplaceLines={sync.replaceLines}
               onLoadDemo={handleUseDemo}
@@ -351,6 +375,24 @@ export function DesktopLayout() {
             />
           ) : !audioUrl ? (
             <NoAudioCard onUploadAudio={handleUploadAudio} onUseDemo={handleUseDemo} />
+          ) : syncSubView === 'karaoke' ? (
+            <div className="relieve rounded-[26px] p-5 flex-1 min-h-0 flex flex-col">
+              <KaraokePreview
+                hasAudio={Boolean(audioUrl)}
+                durationMs={durationMs}
+                isPlaying={player.isPlaying}
+                lines={sync.lines}
+                syncMode="karaoke"
+                pausedTimeMs={player.isPlaying ? -1 : player.currentTime}
+                hideModeSegmented
+                getCurrentTimeMs={getCurrentTimeMs}
+                onSelectMode={handleSelectMode}
+                onTogglePlay={player.togglePlay}
+                onSeek={player.seekTo}
+                onUploadAudio={handleUploadAudio}
+                onUseDemo={handleUseDemo}
+              />
+            </div>
           ) : (
             <>
               <DesktopWaveformCard
@@ -382,7 +424,7 @@ export function DesktopLayout() {
                   <RaisedButton
                     size="sm"
                     onClick={() => {
-                      setBurstActive(false);
+                      setSyncSubView('default');
                       player.pause();
                     }}
                     className="min-h-12 px-3 text-xs font-extrabold"

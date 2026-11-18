@@ -52,6 +52,7 @@ export function MobileLayout() {
     createProject,
     attachAudio,
     updateProjectMetadata,
+    clearActiveProject,
     flushPendingSave,
   } = useActiveProject();
 
@@ -106,9 +107,9 @@ export function MobileLayout() {
 
   useEffect(() => {
     if (activeTab === 'catalog') {
-      void refreshCatalog();
+      void flushPendingSave().then(() => refreshCatalog());
     }
-  }, [activeTab, refreshCatalog]);
+  }, [activeTab, flushPendingSave, refreshCatalog]);
 
   const { seekTo, play, togglePlay } = player;
   const { lines: syncLines, activeLineIndex: syncActiveLineIndex, replaceLines } = sync;
@@ -275,7 +276,11 @@ export function MobileLayout() {
                   );
                 }
               }}
+              onImportBackup={catalog.importBackup}
               onDelete={async (id) => {
+                if (id === project?.id) {
+                  await clearActiveProject();
+                }
                 await catalog.deleteProject(id);
               }}
               onClose={() => setActiveTab('sync')}

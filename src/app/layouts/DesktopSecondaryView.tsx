@@ -22,6 +22,7 @@ export interface DesktopSecondaryViewProps {
   loupeReturnTab: 'sync' | 'word';
   onOpenProject: (id: string) => Promise<void>;
   onCreateProject: (input?: { title?: string; artist?: string }) => Promise<unknown>;
+  onDeleteProject: (id: string) => Promise<void>;
   onUpdateMetadata: (
     patch: Partial<Pick<ProjectFullData, 'title' | 'artist' | 'settings'>>,
   ) => void;
@@ -50,6 +51,7 @@ export function DesktopSecondaryView({
   loupeReturnTab,
   onOpenProject,
   onCreateProject,
+  onDeleteProject,
   onUpdateMetadata,
   onReplaceLines,
   onLoadDemo,
@@ -66,6 +68,7 @@ export function DesktopSecondaryView({
           activeProjectId={project?.id ?? null}
           loading={catalog.loading}
           error={catalog.error}
+          headingLevel={2}
           onOpen={async (id) => {
             await onOpenProject(id);
             onSetActiveTab('sync');
@@ -85,7 +88,8 @@ export function DesktopSecondaryView({
               );
             }
           }}
-          onDelete={(id) => void catalog.deleteProject(id)}
+          onImportBackup={catalog.importBackup}
+          onDelete={(id) => void onDeleteProject(id)}
           onClose={() => onSetActiveTab('sync')}
         />
       </div>
