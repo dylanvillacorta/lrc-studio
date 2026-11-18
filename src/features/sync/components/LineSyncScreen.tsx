@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
+import type { PlaybackTimeStore } from '@/features/sync/hooks/playbackTimeStore';
 import { formatDisplayTime, formatTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
 import {
@@ -24,7 +25,9 @@ export type { SyncSegmentedMode };
 export interface LineSyncScreenProps {
   hasAudio: boolean;
   peaks: readonly number[];
-  currentTimeMs: number;
+  timeStore?: PlaybackTimeStore | null;
+  getCurrentTimeMs?: () => number;
+  currentTimeMs?: number;
   durationMs: number;
   isPlaying: boolean;
   playbackRate: number;
@@ -49,10 +52,12 @@ export interface LineSyncScreenProps {
 /**
  * Pantalla móvil de sincronización por línea y modo ráfaga de línea aislada.
  */
-export function LineSyncScreen({
+export const LineSyncScreen = memo(function LineSyncScreen({
   hasAudio,
   peaks,
-  currentTimeMs,
+  timeStore = null,
+  getCurrentTimeMs,
+  currentTimeMs = 0,
   durationMs,
   isPlaying,
   playbackRate,
@@ -110,11 +115,14 @@ export function LineSyncScreen({
   const hasLines = lines.length > 0;
   const lineNumber = Math.min(lines.length, activeLineIndex + 1);
 
+  const readCurrentTimeMs = () =>
+    getCurrentTimeMs ? getCurrentTimeMs() : timeStore ? timeStore.getTimeMs() : currentTimeMs;
+
   const handleStampPointerDown = () => {
     if (!hasLines) {
       return;
     }
-    const stampMs = currentTimeMs;
+    const stampMs = readCurrentTimeMs();
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       navigator.vibrate(10);
     }
@@ -137,6 +145,7 @@ export function LineSyncScreen({
 
       <WaveformStrip
         peaks={peaks}
+        timeStore={timeStore}
         currentTimeMs={currentTimeMs}
         durationMs={durationMs}
         lines={lines}
@@ -175,7 +184,7 @@ export function LineSyncScreen({
         <IconButton
           round
           aria-label="Retroceder 5 segundos"
-          onClick={() => onSeek(Math.max(0, currentTimeMs - 5000))}
+          onClick={() => onSeek(Math.max(0, readCurrentTimeMs() - 5000))}
         >
           <Icon name="rewind" size={20} />
         </IconButton>
@@ -193,7 +202,7 @@ export function LineSyncScreen({
         <IconButton
           round
           aria-label="Adelantar 5 segundos"
-          onClick={() => onSeek(Math.min(durationMs, currentTimeMs + 5000))}
+          onClick={() => onSeek(Math.min(durationMs, readCurrentTimeMs() + 5000))}
         >
           <Icon name="forward" size={20} />
         </IconButton>
@@ -272,4 +281,4 @@ export function LineSyncScreen({
       </div>
     </section>
   );
-}
+});

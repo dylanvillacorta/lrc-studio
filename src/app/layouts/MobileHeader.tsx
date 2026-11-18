@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { SaveStatus } from '@/features/session';
 import { Icon, IconButton, Pill } from '@/ui';
 
@@ -12,7 +13,7 @@ export interface MobileHeaderProps {
 /**
  * Cabecera móvil con acceso al catálogo, metadatos del proyecto e indicador de autoguardado.
  */
-export function MobileHeader({
+export const MobileHeader = memo(function MobileHeader({
   title,
   subtitle,
   saveStatus,
@@ -59,4 +60,4 @@ export function MobileHeader({
       )}
     </header>
   );
-}
+});

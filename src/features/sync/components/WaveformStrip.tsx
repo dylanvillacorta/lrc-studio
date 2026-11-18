@@ -1,4 +1,8 @@
-import type { PointerEvent } from 'react';
+import { memo, useMemo, type PointerEvent } from 'react';
+import {
+  usePlaybackTime,
+  type PlaybackTimeStore,
+} from '@/features/sync/hooks/playbackTimeStore';
 import { formatTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
 import { Icon, RaisedButton, WellPanel } from '@/ui';
@@ -6,7 +10,8 @@ import { downsampleWaveformBars } from './syncViewHelpers';
 
 export interface WaveformStripProps {
   peaks: readonly number[];
-  currentTimeMs: number;
+  timeStore?: PlaybackTimeStore | null;
+  currentTimeMs?: number;
   durationMs: number;
   lines?: readonly LyricLine[];
   compact?: boolean;
@@ -16,12 +21,15 @@ export interface WaveformStripProps {
   canOpenLoupe?: boolean;
 }
 
+const VIEW_WIDTH = 304;
+
 /**
  * Franja de forma de onda con picos, cabezal, marcas de línea, búsqueda táctil y acceso a Lupa.
  */
-export function WaveformStrip({
+export const WaveformStrip = memo(function WaveformStrip({
   peaks,
-  currentTimeMs,
+  timeStore = null,
+  currentTimeMs = 0,
   durationMs,
   lines = [],
   compact = false,
@@ -30,12 +38,78 @@ export function WaveformStrip({
   onOpenLoupe,
   canOpenLoupe = true,
 }: WaveformStripProps) {
-  const bars = downsampleWaveformBars(peaks, 48);
+  const effectiveTimeMs = usePlaybackTime(timeStore, currentTimeMs, 33);
+  const bars = useMemo(() => downsampleWaveformBars(peaks, 48), [peaks]);
+  const stepX = VIEW_WIDTH / bars.length;
+
+  const baseBarLines = useMemo(
+    () =>
+      bars.map((amp, i) => {
+        const x = i * stepX + stepX * 0.5;
+        const halfH = Math.max(6, amp * 46);
+        return (
+          <line
+            key={i}
+            x1={x}
+            y1={50 - halfH}
+            x2={x}
+            y2={50 + halfH}
+            stroke="var(--color-mute)"
+            strokeOpacity={0.35}
+            strokeWidth={3.2}
+            strokeLinecap="round"
+          />
+        );
+      }),
+    [bars, stepX],
+  );
+
+  const playedBarLines = useMemo(
+    () =>
+      bars.map((amp, i) => {
+        const x = i * stepX + stepX * 0.5;
+        const halfH = Math.max(6, amp * 46);
+        return (
+          <line
+            key={i}
+            x1={x}
+            y1={50 - halfH}
+            x2={x}
+            y2={50 + halfH}
+            stroke="var(--color-ink)"
+            strokeWidth={3.2}
+            strokeLinecap="round"
+          />
+        );
+      }),
+    [bars, stepX],
+  );
+
+  const lineMarkers = useMemo(() => {
+    if (durationMs <= 0) {
+      return null;
+    }
+    return lines.map((line) => {
+      if (line.startMs === null) {
+        return null;
+      }
+      const leftPct = Math.max(0, Math.min(100, (line.startMs / durationMs) * 100));
+      return (
+        <span
+          key={line.id}
+          aria-hidden="true"
+          className="absolute inset-y-1 w-[2px] bg-ok/70 rounded-full pointer-events-none"
+          style={{ left: `${leftPct}%` }}
+        />
+      );
+    });
+  }, [durationMs, lines]);
+
   const progressPct =
     durationMs > 0
-      ? Math.max(0, Math.min(100, (currentTimeMs / durationMs) * 100))
+      ? Math.max(0, Math.min(100, (effectiveTimeMs / durationMs) * 100))
       : 0;
-  const remainingMs = Math.max(0, durationMs - currentTimeMs);
+  const remainingMs = Math.max(0, durationMs - effectiveTimeMs);
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (durationMs <= 0) {
@@ -48,9 +122,6 @@ export function WaveformStrip({
     const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
     onSeek(Math.round(ratio * durationMs));
   };
-
-  const viewWidth = 304;
-  const stepX = viewWidth / bars.length;
 
   return (
     <WellPanel
@@ -66,15 +137,16 @@ export function WaveformStrip({
         aria-label="Posición en la forma de onda"
         aria-valuemin={0}
         aria-valuemax={Math.max(0, Math.round(durationMs))}
-        aria-valuenow={Math.round(currentTimeMs)}
+        aria-valuenow={Math.round(effectiveTimeMs)}
         onPointerDown={handlePointerDown}
         onKeyDown={(e) => {
+          const nowMs = timeStore ? timeStore.getTimeMs() : currentTimeMs;
           if (e.key === 'ArrowLeft') {
             e.preventDefault();
-            onSeek(Math.max(0, currentTimeMs - 1000));
+            onSeek(Math.max(0, nowMs - 1000));
           } else if (e.key === 'ArrowRight') {
             e.preventDefault();
-            onSeek(Math.min(durationMs, currentTimeMs + 1000));
+            onSeek(Math.min(durationMs, nowMs + 1000));
           }
         }}
         className={`relative w-full overflow-hidden rounded-[12px] cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
@@ -86,28 +158,12 @@ export function WaveformStrip({
       >
         {/* Onda base */}
         <svg
-          viewBox={`0 0 ${viewWidth} 100`}
+          viewBox={`0 0 ${VIEW_WIDTH} 100`}
           preserveAspectRatio="none"
           aria-hidden="true"
           className="w-full h-full block"
         >
-          {bars.map((amp, i) => {
-            const x = i * stepX + stepX * 0.5;
-            const halfH = Math.max(6, amp * 46);
-            return (
-              <line
-                key={i}
-                x1={x}
-                y1={50 - halfH}
-                x2={x}
-                y2={50 + halfH}
-                stroke="var(--color-mute)"
-                strokeOpacity={0.35}
-                strokeWidth={3.2}
-                strokeLinecap="round"
-              />
-            );
-          })}
+          {baseBarLines}
         </svg>
 
         {/* Onda reproducida */}
@@ -117,47 +173,17 @@ export function WaveformStrip({
           style={{ width: `${progressPct}%` }}
         >
           <svg
-            viewBox={`0 0 ${viewWidth} 100`}
+            viewBox={`0 0 ${VIEW_WIDTH} 100`}
             preserveAspectRatio="none"
             className="h-full block"
             style={{ width: progressPct > 0 ? `${(100 / progressPct) * 100}%` : '100%' }}
           >
-            {bars.map((amp, i) => {
-              const x = i * stepX + stepX * 0.5;
-              const halfH = Math.max(6, amp * 46);
-              return (
-                <line
-                  key={i}
-                  x1={x}
-                  y1={50 - halfH}
-                  x2={x}
-                  y2={50 + halfH}
-                  stroke="var(--color-ink)"
-                  strokeWidth={3.2}
-                  strokeLinecap="round"
-                />
-              );
-            })}
+            {playedBarLines}
           </svg>
         </div>
 
         {/* Marcas de líneas sincronizadas */}
-        {durationMs > 0
-          ? lines.map((line) => {
-              if (line.startMs === null) {
-                return null;
-              }
-              const leftPct = Math.max(0, Math.min(100, (line.startMs / durationMs) * 100));
-              return (
-                <span
-                  key={line.id}
-                  aria-hidden="true"
-                  className="absolute inset-y-1 w-[2px] bg-ok/70 rounded-full pointer-events-none"
-                  style={{ left: `${leftPct}%` }}
-                />
-              );
-            })
-          : null}
+        {lineMarkers}
 
         {/* Cabezal */}
         <span
@@ -168,7 +194,7 @@ export function WaveformStrip({
       </div>
 
       <div className="flex items-center justify-between gap-2 text-xs font-bold text-mute font-mono tabular-nums">
-        <span>{formatTime(currentTimeMs)}</span>
+        <span>{formatTime(effectiveTimeMs)}</span>
         <div className="flex items-center gap-2 min-w-0">
           <span className="truncate font-sans text-[11px] font-bold">
             {statusText ?? `-${formatTime(remainingMs)}`}
@@ -189,4 +215,4 @@ export function WaveformStrip({
       </div>
     </WellPanel>
   );
-}
+});

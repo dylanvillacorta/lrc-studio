@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { computePreRollStartMs, DEFAULT_PRE_ROLL_MS } from '@/features/sync';
+import {
+  usePlaybackTime,
+  type PlaybackTimeStore,
+} from '@/features/sync/hooks/playbackTimeStore';
 import { formatTime } from '@/lib/time';
 import type { LyricLine, WordSyncSubMode } from '@/types';
 import {
@@ -30,7 +34,9 @@ export interface WordStampFeedback {
 export interface WordSyncScreenProps {
   hasAudio: boolean;
   peaks: readonly number[];
-  currentTimeMs: number;
+  timeStore?: PlaybackTimeStore | null;
+  getCurrentTimeMs?: () => number;
+  currentTimeMs?: number;
   durationMs: number;
   isPlaying: boolean;
   lines: readonly LyricLine[];
@@ -63,14 +69,53 @@ export interface WordSyncScreenProps {
   onUseDemo: () => Promise<void>;
 }
 
+interface MobilePreRollPanelProps {
+  targetStartMs: number | null;
+  timeStore: PlaybackTimeStore | null;
+  fallbackTimeMs: number;
+  preRollMs: number;
+}
+
+const MobilePreRollPanel = memo(function MobilePreRollPanel({
+  targetStartMs,
+  timeStore,
+  fallbackTimeMs,
+  preRollMs,
+}: MobilePreRollPanelProps) {
+  const effectiveTimeMs = usePlaybackTime(timeStore, fallbackTimeMs, 50);
+  const preRoll = computePreRollStatus(targetStartMs, effectiveTimeMs, preRollMs);
+
+  return (
+    <div className="boton rounded-[18px] px-3 py-1.5 flex items-center gap-2.5 shrink-0 [@media(max-height:720px)]:px-2.5 [@media(max-height:720px)]:py-1 [@media(max-height:720px)]:gap-2">
+      <Lamps
+        lit={preRoll.light}
+        className="shrink-0 [@media(max-height:720px)]:scale-90 [@media(max-height:720px)]:origin-left"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="font-extrabold text-sm text-ink leading-tight [@media(max-height:720px)]:text-xs">
+          {preRoll.label}
+        </div>
+        <div className="text-xs font-semibold text-mute truncate [@media(max-height:720px)]:text-[11px]">
+          cuenta regresiva del Pre-Roll
+        </div>
+      </div>
+      <div className="font-mono text-[20px] [@media(max-height:720px)]:text-base font-bold tabular-nums text-ink shrink-0">
+        {preRoll.countdownText}
+      </div>
+    </div>
+  );
+});
+
 /**
  * Pantalla móvil de sincronización palabra por palabra con Pre-Roll, semáforo,
  * modo Francotirador y modo mantener.
  */
-export function WordSyncScreen({
+export const WordSyncScreen = memo(function WordSyncScreen({
   hasAudio,
   peaks,
-  currentTimeMs,
+  timeStore = null,
+  getCurrentTimeMs,
+  currentTimeMs = 0,
   durationMs,
   isPlaying,
   lines,
@@ -118,7 +163,8 @@ export function WordSyncScreen({
     activeWordIndex + 1 < words.length ? words[activeWordIndex + 1] : undefined;
 
   const targetStartMs = resolveWordTargetStartMs(activeLine, activeWordIndex);
-  const preRoll = computePreRollStatus(targetStartMs, currentTimeMs, preRollMs);
+  const readCurrentTimeMs = () =>
+    getCurrentTimeMs ? getCurrentTimeMs() : timeStore ? timeStore.getTimeMs() : currentTimeMs;
   const subMode: WordSyncSubMode = sniperMode
     ? 'sniper'
     : holdMode
@@ -130,7 +176,7 @@ export function WordSyncScreen({
       onPause();
     } else if (feedback.shouldRewindPreRoll) {
       const nextTarget = resolveWordTargetStartMs(activeLine, activeWordIndex + 1);
-      onSeek(computePreRollStartMs(nextTarget ?? currentTimeMs, preRollMs));
+      onSeek(computePreRollStartMs(nextTarget ?? readCurrentTimeMs(), preRollMs));
       void onPlay();
     }
   };
@@ -146,7 +192,7 @@ export function WordSyncScreen({
     if (!targetWord) {
       return;
     }
-    const nowMs = currentTimeMs;
+    const nowMs = readCurrentTimeMs();
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       navigator.vibrate(10);
     }
@@ -173,7 +219,7 @@ export function WordSyncScreen({
       return;
     }
     setIsHolding(false);
-    const nowMs = currentTimeMs;
+    const nowMs = readCurrentTimeMs();
     const feedback = onStampWordEnd({
       nowMs,
       subMode,
@@ -200,6 +246,7 @@ export function WordSyncScreen({
 
       <WaveformStrip
         peaks={peaks}
+        timeStore={timeStore}
         currentTimeMs={currentTimeMs}
         durationMs={durationMs}
         lines={lines}
@@ -277,23 +324,12 @@ export function WordSyncScreen({
           </Pill>
         </div>
 
-        <div className="boton rounded-[18px] px-3 py-1.5 flex items-center gap-2.5 shrink-0 [@media(max-height:720px)]:px-2.5 [@media(max-height:720px)]:py-1 [@media(max-height:720px)]:gap-2">
-          <Lamps
-            lit={preRoll.light}
-            className="shrink-0 [@media(max-height:720px)]:scale-90 [@media(max-height:720px)]:origin-left"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="font-extrabold text-sm text-ink leading-tight [@media(max-height:720px)]:text-xs">
-              {preRoll.label}
-            </div>
-            <div className="text-xs font-semibold text-mute truncate [@media(max-height:720px)]:text-[11px]">
-              cuenta regresiva del Pre-Roll
-            </div>
-          </div>
-          <div className="font-mono text-[20px] [@media(max-height:720px)]:text-base font-bold tabular-nums text-ink shrink-0">
-            {preRoll.countdownText}
-          </div>
-        </div>
+        <MobilePreRollPanel
+          targetStartMs={targetStartMs}
+          timeStore={timeStore}
+          fallbackTimeMs={currentTimeMs}
+          preRollMs={preRollMs}
+        />
       </WellPanel>
 
       <RaisedButton
@@ -326,4 +362,4 @@ export function WordSyncScreen({
       </div>
     </section>
   );
-}
+});

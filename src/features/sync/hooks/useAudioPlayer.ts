@@ -7,8 +7,12 @@
  * `currentTime` y `duration` se expresan en milisegundos.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import {
+  createPlaybackTimeStore,
+  type PlaybackTimeStore,
+} from '@/features/sync/hooks/playbackTimeStore';
 
 export interface UseAudioPlayerOptions {
   /** Referencia opcional a un `<audio>` montado externamente. */
@@ -23,6 +27,8 @@ export interface UseAudioPlayerOptions {
 
 export interface UseAudioPlayerReturn {
   currentTime: number;
+  timeStore?: PlaybackTimeStore;
+  getCurrentTimeMs?: () => number;
   duration: number;
   isPlaying: boolean;
   playbackRate: number;
@@ -47,10 +53,15 @@ export function useAudioPlayer(
   const rafRef = useRef<number | null>(null);
   const playbackRateRef = useRef(initialPlaybackRate);
   const pendingSeekMsRef = useRef<number | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [timeStore] = useState<PlaybackTimeStore>(() => createPlaybackTimeStore(0));
   const [duration, setDuration] = useState(initialDurationMs);
+  const durationRef = useRef(initialDurationMs);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRateState] = useState(initialPlaybackRate);
+
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
 
   const getAudioElement = useCallback((): HTMLAudioElement | null => {
     if (externalRef) {
@@ -98,12 +109,13 @@ export function useAudioPlayer(
     const handleLoadedMetadata = () => {
       if (Number.isFinite(audio.duration) && audio.duration > 0) {
         const durMs = Math.round(audio.duration * 1000);
+        durationRef.current = durMs;
         setDuration(durMs);
         if (pendingSeekMsRef.current !== null) {
           const clampedPending = Math.max(0, Math.min(durMs, pendingSeekMsRef.current));
           pendingSeekMsRef.current = null;
           audio.currentTime = clampedPending / 1000;
-          setCurrentTime(Math.round(clampedPending));
+          timeStore.setTimeMs(clampedPending);
         }
       }
     };
@@ -111,7 +123,7 @@ export function useAudioPlayer(
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => {
       setIsPlaying(false);
-      setCurrentTime(Math.round(audio.currentTime * 1000));
+      timeStore.setTimeMs(audio.currentTime * 1000);
     };
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -127,7 +139,7 @@ export function useAudioPlayer(
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [getAudioElement, src]);
+  }, [getAudioElement, src, timeStore]);
 
   // Bucle 60 FPS con requestAnimationFrame mientras reproduce.
   useEffect(() => {
@@ -142,7 +154,7 @@ export function useAudioPlayer(
     const updateClock = () => {
       const audio = getAudioElement();
       if (audio && !audio.paused) {
-        setCurrentTime(Math.round(audio.currentTime * 1000));
+        timeStore.setTimeMs(audio.currentTime * 1000);
         rafRef.current = requestAnimationFrame(updateClock);
       }
     };
@@ -154,26 +166,27 @@ export function useAudioPlayer(
         rafRef.current = null;
       }
     };
-  }, [isPlaying, getAudioElement]);
+  }, [isPlaying, getAudioElement, timeStore]);
 
   const play = useCallback(async () => {
     const audio = getAudioElement();
     if (!audio) return;
-    audio.playbackRate = playbackRate;
+    audio.playbackRate = playbackRateRef.current;
     try {
       await audio.play();
       setIsPlaying(true);
     } catch {
       setIsPlaying(false);
     }
-  }, [getAudioElement, playbackRate]);
+  }, [getAudioElement]);
 
   const pause = useCallback(() => {
     const audio = getAudioElement();
     if (!audio) return;
     audio.pause();
+    timeStore.setTimeMs(audio.currentTime * 1000);
     setIsPlaying(false);
-  }, [getAudioElement]);
+  }, [getAudioElement, timeStore]);
 
   const togglePlay = useCallback(() => {
     const audio = getAudioElement();
@@ -187,7 +200,8 @@ export function useAudioPlayer(
 
   const seekTo = useCallback(
     (targetMs: number) => {
-      const maxMs = duration > 0 ? duration : Number.MAX_SAFE_INTEGER;
+      const currentDuration = durationRef.current;
+      const maxMs = currentDuration > 0 ? currentDuration : Number.MAX_SAFE_INTEGER;
       const clampedMs = Math.max(0, Math.min(maxMs, Number(targetMs) || 0));
       const audio = getAudioElement();
       if (audio) {
@@ -200,9 +214,9 @@ export function useAudioPlayer(
       } else {
         pendingSeekMsRef.current = clampedMs;
       }
-      setCurrentTime(Math.round(clampedMs));
+      timeStore.setTimeMs(clampedMs);
     },
-    [duration, getAudioElement],
+    [getAudioElement, timeStore],
   );
 
   const setPlaybackRate = useCallback(
@@ -219,15 +233,35 @@ export function useAudioPlayer(
     [getAudioElement],
   );
 
-  return {
-    currentTime,
-    duration,
-    isPlaying,
-    playbackRate,
-    play,
-    pause,
-    togglePlay,
-    seekTo,
-    setPlaybackRate,
-  };
+  const getCurrentTimeMs = useCallback(() => timeStore.getTimeMs(), [timeStore]);
+
+  return useMemo<UseAudioPlayerReturn>(
+    () => ({
+      get currentTime() {
+        return timeStore.getTimeMs();
+      },
+      timeStore,
+      getCurrentTimeMs,
+      duration,
+      isPlaying,
+      playbackRate,
+      play,
+      pause,
+      togglePlay,
+      seekTo,
+      setPlaybackRate,
+    }),
+    [
+      duration,
+      getCurrentTimeMs,
+      isPlaying,
+      pause,
+      play,
+      playbackRate,
+      seekTo,
+      setPlaybackRate,
+      timeStore,
+      togglePlay,
+    ],
+  );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MobileHeader } from '@/app/layouts/MobileHeader';
 import { useActiveProject, useStorage } from '@/app/providers';
 import { CatalogPanel, useCatalog } from '@/features/catalog';
@@ -19,11 +19,16 @@ import {
 } from '@/features/sync/components/syncViewHelpers';
 import { WordSyncScreen } from '@/features/sync/components/WordSyncScreen';
 import {
+  usePlaybackTime,
+  type PlaybackTimeStore,
+} from '@/features/sync/hooks/playbackTimeStore';
+import {
   UpdateBanner,
   VersionFooter,
   useVersionCheck,
 } from '@/features/version';
 import { downloadTextFile } from '@/lib/download';
+import type { LyricLine } from '@/types';
 import { NavBar, type NavBarItem } from '@/ui';
 
 const NAV_ITEMS: readonly NavBarItem<'catalog' | 'lyrics' | 'sync' | 'export'>[] = [
@@ -32,6 +37,51 @@ const NAV_ITEMS: readonly NavBarItem<'catalog' | 'lyrics' | 'sync' | 'export'>[]
   { id: 'sync', label: 'Sincronizar', icon: 'sync' },
   { id: 'export', label: 'Exportar', icon: 'export' },
 ];
+
+const MobileLoupeBridge = memo(function MobileLoupeBridge({
+  peaks,
+  durationMs,
+  timeStore,
+  fallbackTimeMs,
+  line,
+  lineIndex,
+  lines,
+  isSaved,
+  onChange,
+  onPlayBurst,
+  onApply,
+  onBack,
+}: {
+  peaks: number[];
+  durationMs: number;
+  timeStore: PlaybackTimeStore | null;
+  fallbackTimeMs: number;
+  line: LyricLine;
+  lineIndex: number;
+  lines: LyricLine[];
+  isSaved: boolean;
+  onChange: (bounds: LineBounds) => void;
+  onPlayBurst: () => void;
+  onApply: (bounds: LineBounds) => void;
+  onBack: () => void;
+}) {
+  const effectiveTimeMs = usePlaybackTime(timeStore, fallbackTimeMs, 33);
+  return (
+    <LoupeScreen
+      peaks={peaks}
+      durationMs={durationMs}
+      currentTimeMs={effectiveTimeMs}
+      line={line}
+      lineIndex={lineIndex}
+      lines={lines}
+      isSaved={isSaved}
+      onChange={onChange}
+      onPlayBurst={onPlayBurst}
+      onApply={onApply}
+      onBack={onBack}
+    />
+  );
+});
 
 /**
  * Contenedor principal móvil («Estudio táctil» 390×844) que conecta las 6 vistas.
@@ -64,13 +114,16 @@ export function MobileLayout() {
   const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
-  const playerTimeRef = useRef(player.currentTime);
+  const playerRef = useRef(player);
 
   useEffect(() => {
-    playerTimeRef.current = player.currentTime;
-  }, [player.currentTime]);
+    playerRef.current = player;
+  }, [player]);
 
-  const getCurrentTimeMs = useCallback(() => playerTimeRef.current, []);
+  const getCurrentTimeMs = useCallback(
+    () => playerRef.current.getCurrentTimeMs?.() ?? playerRef.current.currentTime,
+    [],
+  );
 
   const durationMs =
     player.duration > 0
@@ -100,9 +153,20 @@ export function MobileLayout() {
     if (!burstActive || !burstWindow || !player.isPlaying) {
       return;
     }
-    if (player.currentTime >= burstWindow.windowEndMs) {
-      player.seekTo(burstWindow.windowStartMs);
+    const timeStore = player.timeStore;
+    if (!timeStore) {
+      if (player.currentTime >= burstWindow.windowEndMs) {
+        player.seekTo(burstWindow.windowStartMs);
+      }
+      return;
     }
+    const checkBurstEnd = () => {
+      if (timeStore.getTimeMs() >= burstWindow.windowEndMs) {
+        player.seekTo(burstWindow.windowStartMs);
+      }
+    };
+    checkBurstEnd();
+    return timeStore.subscribe(checkBurstEnd);
   }, [burstActive, burstWindow, player]);
 
   useEffect(() => {
@@ -167,53 +231,128 @@ export function MobileLayout() {
     }
   }, [attachAudio, createProject, project, replaceLines, syncLines.length]);
 
-  const handleOpenLoupe = () => {
+  const handleOpenLoupe = useCallback(() => {
     if (!sync.lines[sync.activeLineIndex]) {
       return;
     }
     setSyncSubView('default');
     setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
     setActiveTab('loupe');
-  };
+  }, [activeTab, setActiveTab, sync.activeLineIndex, sync.lines]);
 
-  const handleLoupeBoundsChange = (bounds: LineBounds) => {
-    const line = sync.lines[sync.activeLineIndex];
-    if (!line) {
-      return;
-    }
-    const nextLines = sync.lines.map((item, idx) =>
-      idx === sync.activeLineIndex
-        ? { ...item, startMs: bounds.startMs, endMs: bounds.endMs }
-        : item,
-    );
-    sync.replaceLines(nextLines, false);
-  };
+  const handleLoupeBoundsChange = useCallback(
+    (bounds: LineBounds) => {
+      const line = sync.lines[sync.activeLineIndex];
+      if (!line) {
+        return;
+      }
+      const nextLines = sync.lines.map((item, idx) =>
+        idx === sync.activeLineIndex
+          ? { ...item, startMs: bounds.startMs, endMs: bounds.endMs }
+          : item,
+      );
+      sync.replaceLines(nextLines, false);
+    },
+    [sync],
+  );
 
-  const handleLoupePlayBurst = () => {
+  const handleLoupePlayBurst = useCallback(() => {
     const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, {
       preRollMs,
       durationMs,
     });
     player.seekTo(win.windowStartMs);
     void player.play();
-  };
+  }, [durationMs, player, preRollMs, sync.activeLineIndex, sync.lines]);
 
-  const handleImportJson = async (parsed: ParsedProjectJson) => {
-    const title = parsed.metadata.title ?? 'Sin título';
-    const artist = parsed.metadata.artist ?? '';
-    if (!project) {
-      await createProject({ title, artist });
-    } else {
-      updateProjectMetadata({ title, artist });
-    }
-    sync.replaceLines(parsed.lines);
-    setActiveTab('sync');
-  };
+  const handleImportJson = useCallback(
+    async (parsed: ParsedProjectJson) => {
+      const title = parsed.metadata.title ?? 'Sin título';
+      const artist = parsed.metadata.artist ?? '';
+      if (!project) {
+        await createProject({ title, artist });
+      } else {
+        updateProjectMetadata({ title, artist });
+      }
+      sync.replaceLines(parsed.lines);
+      setActiveTab('sync');
+    },
+    [createProject, project, setActiveTab, sync, updateProjectMetadata],
+  );
 
-  const handleNavSelect = (tab: 'catalog' | 'lyrics' | 'sync' | 'export') => {
+  const handleNavSelect = useCallback(
+    (tab: 'catalog' | 'lyrics' | 'sync' | 'export') => {
+      setSyncSubView('default');
+      setActiveTab(tab);
+    },
+    [setActiveTab],
+  );
+
+  const handleOpenCatalogFromHeader = useCallback(() => {
+    handleNavSelect('catalog');
+  }, [handleNavSelect]);
+
+  const handleRetrySave = useCallback(() => {
+    void flushPendingSave();
+  }, [flushPendingSave]);
+
+  const handleChangePlaybackRate = useCallback(
+    (rate: number) => {
+      player.setPlaybackRate(rate);
+      if (project) {
+        updateProjectMetadata({
+          settings: { ...project.settings, playbackRate: rate },
+        });
+      }
+    },
+    [player, project, updateProjectMetadata],
+  );
+
+  const handleSelectLine = useCallback(
+    (index: number) => {
+      sync.setActiveLineIndex(index);
+      sync.setActiveWordIndex(0);
+    },
+    [sync],
+  );
+
+  const handleStampLine = useCallback(
+    (nowMs: number) => {
+      sync.stampLineStart(nowMs, false);
+    },
+    [sync],
+  );
+
+  const handleStopBurst = useCallback(() => {
     setSyncSubView('default');
-    setActiveTab(tab);
-  };
+    player.pause();
+  }, [player]);
+
+  const handleToggleSniper = useCallback(() => {
+    if (project) {
+      updateProjectMetadata({
+        settings: { ...project.settings, sniperMode: !sniperMode },
+      });
+    }
+  }, [project, sniperMode, updateProjectMetadata]);
+
+  const handleToggleHold = useCallback(() => {
+    setHoldMode((prev) => !prev);
+  }, []);
+
+  const handleLoupeApply = useCallback(
+    (bounds: LineBounds) => {
+      handleLoupeBoundsChange(bounds);
+      setActiveTab(loupeReturnTab);
+    },
+    [handleLoupeBoundsChange, loupeReturnTab, setActiveTab],
+  );
+
+  const handleLoupeBack = useCallback(() => {
+    setActiveTab(loupeReturnTab);
+  }, [loupeReturnTab, setActiveTab]);
+
+  const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
 
   const activeLine = sync.lines[sync.activeLineIndex];
   const lineNumber = sync.lines.length > 0 ? sync.activeLineIndex + 1 : 0;
@@ -243,8 +382,8 @@ export function MobileLayout() {
             title={project?.title || 'LyricSync Studio'}
             subtitle={subtitle}
             saveStatus={saveStatus}
-            onOpenCatalog={() => handleNavSelect('catalog')}
-            onRetrySave={() => void flushPendingSave()}
+            onOpenCatalog={handleOpenCatalogFromHeader}
+            onRetrySave={handleRetrySave}
           />
         ) : null}
 
@@ -325,7 +464,8 @@ export function MobileLayout() {
               isPlaying={player.isPlaying}
               lines={sync.lines}
               syncMode="karaoke"
-              pausedTimeMs={player.isPlaying ? -1 : player.currentTime}
+              timeStore={player.timeStore}
+              pausedTimeMs={player.timeStore ? -1 : player.currentTime}
               getCurrentTimeMs={getCurrentTimeMs}
               onSelectMode={handleSelectMode}
               onTogglePlay={togglePlay}
@@ -339,7 +479,9 @@ export function MobileLayout() {
             <LineSyncScreen
               hasAudio={Boolean(audioUrl)}
               peaks={waveformPeaks}
-              currentTimeMs={player.currentTime}
+              timeStore={player.timeStore}
+              getCurrentTimeMs={getCurrentTimeMs}
+              currentTimeMs={fallbackCurrentTimeMs}
               durationMs={durationMs}
               isPlaying={player.isPlaying}
               playbackRate={player.playbackRate}
@@ -351,29 +493,12 @@ export function MobileLayout() {
               onSelectMode={handleSelectMode}
               onSeek={player.seekTo}
               onTogglePlay={player.togglePlay}
-              onChangePlaybackRate={(rate) => {
-                player.setPlaybackRate(rate);
-                if (project) {
-                  updateProjectMetadata({
-                    settings: { ...project.settings, playbackRate: rate },
-                  });
-                }
-              }}
-              onUndo={() => {
-                sync.undo();
-              }}
-              onSelectLine={(index) => {
-                sync.setActiveLineIndex(index);
-                sync.setActiveWordIndex(0);
-              }}
-              onStampLine={(nowMs) => {
-                sync.stampLineStart(nowMs, false);
-              }}
+              onChangePlaybackRate={handleChangePlaybackRate}
+              onUndo={sync.undo}
+              onSelectLine={handleSelectLine}
+              onStampLine={handleStampLine}
               onOpenLoupe={handleOpenLoupe}
-              onStopBurst={() => {
-                setSyncSubView('default');
-                player.pause();
-              }}
+              onStopBurst={handleStopBurst}
               onUploadAudio={handleUploadAudio}
               onUseDemo={handleUseDemo}
             />
@@ -383,7 +508,9 @@ export function MobileLayout() {
             <WordSyncScreen
               hasAudio={Boolean(audioUrl)}
               peaks={waveformPeaks}
-              currentTimeMs={player.currentTime}
+              timeStore={player.timeStore}
+              getCurrentTimeMs={getCurrentTimeMs}
+              currentTimeMs={fallbackCurrentTimeMs}
               durationMs={durationMs}
               isPlaying={player.isPlaying}
               lines={sync.lines}
@@ -394,14 +521,8 @@ export function MobileLayout() {
               holdMode={holdMode}
               syncMode={burstActive ? 'burst' : 'word'}
               onSelectMode={handleSelectMode}
-              onToggleSniper={() => {
-                if (project) {
-                  updateProjectMetadata({
-                    settings: { ...project.settings, sniperMode: !sniperMode },
-                  });
-                }
-              }}
-              onToggleHold={() => setHoldMode((prev) => !prev)}
+              onToggleSniper={handleToggleSniper}
+              onToggleHold={handleToggleHold}
               onSeek={player.seekTo}
               onPlay={player.play}
               onPause={player.pause}
@@ -414,21 +535,19 @@ export function MobileLayout() {
           ) : null}
 
           {activeTab === 'loupe' && activeLine ? (
-            <LoupeScreen
+            <MobileLoupeBridge
               peaks={waveformPeaks}
               durationMs={durationMs}
-              currentTimeMs={player.currentTime}
+              timeStore={player.timeStore ?? null}
+              fallbackTimeMs={fallbackCurrentTimeMs}
               line={activeLine}
               lineIndex={sync.activeLineIndex}
               lines={sync.lines}
               isSaved={saveStatus === 'saved' || saveStatus === 'idle'}
               onChange={handleLoupeBoundsChange}
               onPlayBurst={handleLoupePlayBurst}
-              onApply={(bounds) => {
-                handleLoupeBoundsChange(bounds);
-                setActiveTab(loupeReturnTab);
-              }}
-              onBack={() => setActiveTab(loupeReturnTab)}
+              onApply={handleLoupeApply}
+              onBack={handleLoupeBack}
             />
           ) : null}
 

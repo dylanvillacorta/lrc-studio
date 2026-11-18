@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { INITIAL_DEMO_LYRICS } from '@/features/lyrics/model/lyricsParser';
 import {
   countLyricsStats,
@@ -24,7 +24,7 @@ const INPUT_CLASS =
 /**
  * Pantalla de edición y pegado de letra con preservación de marcas temporales.
  */
-export function LyricsScreen({
+export const LyricsScreen = memo(function LyricsScreen({
   title,
   artist,
   rawText,
@@ -43,8 +43,11 @@ export function LyricsScreen({
   }
 
   const hasUnsavedChanges = draftText !== rawText;
-  const stats = countLyricsStats(draftText);
-  const impact = estimateLyricsApplyImpact(draftText, existingLines);
+  const stats = useMemo(() => countLyricsStats(draftText), [draftText]);
+  const impact = useMemo(
+    () => estimateLyricsApplyImpact(draftText, existingLines),
+    [draftText, existingLines],
+  );
 
   const handleLoadDemo = () => {
     if (onLoadDemo) {
@@ -150,4 +153,4 @@ export function LyricsScreen({
       </div>
     </section>
   );
-}
+});
