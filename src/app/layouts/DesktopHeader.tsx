@@ -2,13 +2,14 @@ import type { SaveStatus } from '@/features/session';
 import type { SyncSegmentedMode } from '@/features/sync/components/syncViewHelpers';
 import { Icon, Pill, RaisedButton, Segmented, type SegmentedOption } from '@/ui';
 
-export type DesktopSyncMode = 'line' | 'word' | 'burst';
+export type DesktopSyncMode = 'line' | 'word' | 'burst' | 'karaoke';
 export type DesktopCenterView = 'editor' | 'lyrics' | 'export' | 'catalog' | 'loupe';
 
 const DESKTOP_MODE_OPTIONS: readonly SegmentedOption<DesktopSyncMode>[] = [
   { value: 'line', label: 'Línea' },
   { value: 'word', label: 'Palabra' },
   { value: 'burst', label: 'Ráfaga' },
+  { value: 'karaoke', label: 'Karaoke' },
 ];
 
 export interface DesktopHeaderProps {
@@ -57,7 +58,7 @@ export function DesktopHeader({
         value={syncMode}
         onChange={(mode) => onSelectSyncMode(mode)}
         aria-label="Modo de sincronización"
-        className="w-[260px] sm:w-[300px] max-w-full"
+        className="w-[300px] sm:w-[340px] max-w-full"
       />
 
       <RaisedButton
