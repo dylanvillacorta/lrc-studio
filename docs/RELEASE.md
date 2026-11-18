@@ -61,7 +61,7 @@
 
 ### Stack local de pruebas desde código fuente (`docker-compose.dev.yml`)
 
-- Compila el build de producción desde el `Dockerfile` (`lrc-studio:local`) y lo sirve con `nginx` (sin `vite dev` ni volúmenes de código) escuchando en `0.0.0.0:8080` (configurable vía `.env` tomando como plantilla `.env.example`).
+- Compila el build de producción desde el `Dockerfile` (`lrc-studio:local`) y lo sirve con `nginx` (sin `vite dev` ni volúmenes de código) escuchando en `0.0.0.0:30601` (configurable vía `.env` tomando como plantilla `.env.example`).
 - Comandos principales mediante `scripts/dev-stack.sh`:
   ```bash
   bash scripts/dev-stack.sh up      # Compila, levanta, espera healthy y muestra URLs local y LAN
@@ -75,11 +75,11 @@
 - `nginx` escucha en todas las interfaces (`listen 8080;`) y la aplicación opera por HTTP en la LAN (`crypto.randomUUID` y `navigator.clipboard` cuentan con respaldos sin requerir HTTPS, y no se usa Service Worker).
 - Para permitir conexiones entrantes desde el segmento `10.1.10.0/24` en el perfil de red **Privado**, ejecutar en **PowerShell como Administrador**:
   ```powershell
-  New-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 8080)" -Direction Inbound -Protocol TCP -LocalPort 8080 -RemoteAddress 10.1.10.0/24 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 30601)" -Direction Inbound -Protocol TCP -LocalPort 30601 -RemoteAddress 10.1.10.0/24 -Profile Private -Action Allow
   ```
 - Para eliminar la regla cuando terminen las pruebas:
   ```powershell
-  Remove-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 8080)"
+  Remove-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 30601)"
   ```
 
 ## 5. SEO
