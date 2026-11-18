@@ -19,13 +19,18 @@ export {
 export {
   DEFAULT_POST_ROLL_MS,
   DEFAULT_PRE_ROLL_MS,
+  DEFAULT_WORD_SWEEP_MS,
+  computeKaraokeState,
   computePreRollStartMs,
   computeSyncProgress,
+  computeWordProgressPct,
   findActiveLineIndex,
   findActiveWordIndex,
   getActiveLineWindow,
   getPreRollTrafficLight,
   type ActiveLineWindowOptions,
+  type KaraokeLineState,
+  type KaraokePlaybackState,
 } from '@/features/sync/model/playbackAnalysis';
 export {
   MAX_SYNC_HISTORY,

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  computeKaraokeState,
   computePreRollStartMs,
   computeSyncProgress,
+  computeWordProgressPct,
   findActiveLineIndex,
   findActiveWordIndex,
   getActiveLineWindow,
@@ -139,6 +141,55 @@ describe('playbackAnalysis', () => {
       syncedWords: 0,
       lineProgress: 0,
       wordProgress: 0,
+    });
+  });
+
+  it('calcula el barrido de progreso de palabra (0 a 100%) en computeWordProgressPct', () => {
+    const word = { id: 'w1', text: 'Luces', startMs: 1000, endMs: 2000 };
+    expect(computeWordProgressPct(word, 900)).toBe(0);
+    expect(computeWordProgressPct(word, 1000)).toBe(0);
+    expect(computeWordProgressPct(word, 1250)).toBe(25);
+    expect(computeWordProgressPct(word, 1500)).toBe(50);
+    expect(computeWordProgressPct(word, 2000)).toBe(100);
+    expect(computeWordProgressPct(word, 2500)).toBe(100);
+
+    // Palabra sin endMs usa duración por defecto (350 ms)
+    const openWord = { id: 'w2', text: 'de', startMs: 2000, endMs: null };
+    expect(computeWordProgressPct(openWord, 2175)).toBe(50);
+    expect(computeWordProgressPct(openWord, 2400)).toBe(100);
+
+    // Palabra sin startMs solo se ilumina al 100% si la línea está activa sin desglose
+    const unsyncedWord = { id: 'w3', text: 'neón', startMs: null, endMs: null };
+    expect(computeWordProgressPct(unsyncedWord, 2000, false)).toBe(0);
+    expect(computeWordProgressPct(unsyncedWord, 2000, true)).toBe(100);
+  });
+
+  it('calcula computeKaraokeState con línea activa, pasada, progreso por palabra y aviso de sin sincronizar', () => {
+    const stateAt2900 = computeKaraokeState(sampleLines, 2900);
+    expect(stateAt2900.activeLineIndex).toBe(0);
+    expect(stateAt2900.activeWordIndex).toBe(1);
+    expect(stateAt2900.syncedLinesCount).toBe(2);
+    expect(stateAt2900.unsyncedLinesCount).toBe(1);
+    expect(stateAt2900.hasUnsyncedLines).toBe(true);
+    expect(stateAt2900.lines[0]).toEqual({
+      lineIndex: 0,
+      isActive: true,
+      isPast: false,
+      wordProgressPct: [100, 50],
+    });
+    expect(stateAt2900.lines[1]?.isPast).toBe(false);
+    expect(stateAt2900.lines[2]?.isPast).toBe(false);
+
+    // En la segunda línea (solo marca de línea, sin palabras sincronizadas), la palabra se ilumina al 100%
+    const stateAt5200 = computeKaraokeState(sampleLines, 5200);
+    expect(stateAt5200.activeLineIndex).toBe(1);
+    expect(stateAt5200.activeWordIndex).toBe(-1);
+    expect(stateAt5200.lines[0]?.isPast).toBe(true);
+    expect(stateAt5200.lines[1]).toEqual({
+      lineIndex: 1,
+      isActive: true,
+      isPast: false,
+      wordProgressPct: [100],
     });
   });
 });
