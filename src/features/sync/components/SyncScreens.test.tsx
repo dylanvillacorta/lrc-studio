@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LyricLine } from '@/types';
 import { KaraokePreview } from './KaraokePreview';
 import { LineSyncScreen } from './LineSyncScreen';
+import { WaveformStrip } from './WaveformStrip';
 import { WordSyncScreen } from './WordSyncScreen';
 
 afterEach(() => {
@@ -45,6 +46,7 @@ describe('LineSyncScreen', () => {
         playbackRate={1}
         lines={SAMPLE_LINES}
         activeLineIndex={1}
+        playingLineIndex={0}
         canUndo
         syncMode="line"
         onSelectMode={vi.fn()}
@@ -57,7 +59,6 @@ describe('LineSyncScreen', () => {
         onOpenLoupe={vi.fn()}
         onStopBurst={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
@@ -67,7 +68,12 @@ describe('LineSyncScreen', () => {
     expect(html).toContain('Adelantar 5 segundos');
     expect(html).toContain('Deshacer última marca');
     expect(html).toContain('Abrir ajuste fino en lupa');
-    expect(html).toContain('esperando marca');
+    expect(html).not.toContain('esperando marca');
+    expect(html).toContain('--:--.--');
+    expect(html).toContain('aria-label="Sin marca de tiempo"');
+    expect(html).toContain('w-[8ch]');
+    expect(html).toContain('text-acc/70');
+    expect(html).toContain('data-playing="true"');
     expect(html).toContain('Karaoke');
   });
 
@@ -94,12 +100,11 @@ describe('LineSyncScreen', () => {
         onOpenLoupe={vi.fn()}
         onStopBurst={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
     expect(html).toContain('Subir audio');
-    expect(html).toContain('Usar demo');
+    expect(html).not.toContain('Usar demo');
     expect(html).not.toContain('accept=');
     expect(html).toContain('FLAC');
     expect(html).toContain('iCloud, Google Drive');
@@ -127,7 +132,6 @@ describe('LineSyncScreen', () => {
         onOpenLoupe={vi.fn()}
         onStopBurst={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
     expect(ssrHtml).not.toContain('accept=');
@@ -169,7 +173,6 @@ describe('WordSyncScreen', () => {
         }))}
         onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
@@ -199,7 +202,6 @@ describe('KaraokePreview', () => {
         onTogglePlay={vi.fn()}
         onSeek={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
@@ -226,11 +228,51 @@ describe('KaraokePreview', () => {
         onTogglePlay={vi.fn()}
         onSeek={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
-        onUseDemo={vi.fn(async () => {})}
       />,
     );
 
     expect(html).toContain('Subir audio');
-    expect(html).toContain('Usar demo');
+    expect(html).not.toContain('Usar demo');
+  });
+});
+
+describe('WaveformStrip', () => {
+  it('renderiza la barra compacta por defecto con touch-action none', () => {
+    const html = renderToString(
+      <WaveformStrip
+        peaks={[0.2, 0.8, 0.5]}
+        currentTimeMs={14_000}
+        durationMs={120_000}
+        lines={SAMPLE_LINES}
+        compact
+        onSeek={vi.fn()}
+        onOpenLoupe={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('data-expanded="false"');
+    expect(html).toContain('data-testid="timeline-compact-time"');
+    expect(html).toContain('touch-action:none');
+    expect(html).toContain('00:14');
+    expect(html).toContain('02:00');
+  });
+
+  it('renderiza la barra expandida con tiempo grande e indicador flotante', () => {
+    const html = renderToString(
+      <WaveformStrip
+        peaks={[0.2, 0.8, 0.5]}
+        currentTimeMs={14_000}
+        durationMs={120_000}
+        lines={SAMPLE_LINES}
+        forceExpanded
+        onSeek={vi.fn()}
+        onOpenLoupe={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('data-expanded="true"');
+    expect(html).toContain('data-testid="timeline-expanded-time"');
+    expect(html).toContain('data-testid="timeline-floating-indicator"');
+    expect(html).toContain('00:14');
   });
 });

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   selectSyncMode,
   tapOrPointerDown,
   trackErrors,
@@ -15,7 +15,8 @@ test.describe('Flujo de sincronización completo', () => {
     const isMobile = isMobileProject(testInfo);
 
     await page.goto('/');
-    await loadDemoProject(page);
+    await expect(page.getByRole('button', { name: 'Usar demo' })).toHaveCount(0);
+    await createProjectWithLyricsAndWav(page, isMobile);
 
     // Verificar letra de demo cargada (línea 5 sin sincronizar inicialmente)
     const line5Btn = page.getByRole('button', {
@@ -26,7 +27,8 @@ test.describe('Flujo de sincronización completo', () => {
 
     // Seleccionar línea 5 y adelantar 5s para tener una marca clara
     await line5Btn.click();
-    await expect(line5Btn).toContainText('esperando marca');
+    await expect(line5Btn).toHaveAttribute('aria-current', 'true');
+    await expect(line5Btn).toContainText('--:--.--');
     await page.getByRole('button', { name: 'Adelantar 5 segundos' }).click();
 
     // Marcar línea 5 con toque real en móvil o pointerdown en escritorio
@@ -38,7 +40,7 @@ test.describe('Flujo de sincronización completo', () => {
 
     // Deshacer revierte la marca
     await page.getByRole('button', { name: 'Deshacer última marca' }).click();
-    await expect(line5Btn).toContainText('esperando marca');
+    await expect(line5Btn).toContainText('--:--.--');
     await expect(page.getByRole('button', { name: /MARCAR LÍNEA 5/i })).toBeVisible();
 
     // Cambiar a modo Palabra

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createProjectWithLyricsAndWav,
   isMobileProject,
-  loadDemoProject,
   openCatalog,
   selectSyncMode,
   tapOrPointerDown,
@@ -14,7 +14,7 @@ test.describe('Persistencia crítica, autoguardado y restauración', () => {
   }, testInfo) => {
     const isMobile = isMobileProject(testInfo);
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
 
     // Ir a línea 5 y marcar en 00:05.000
     const line5 = page.getByRole('button', {
@@ -66,10 +66,10 @@ test.describe('Persistencia crítica, autoguardado y restauración', () => {
       page.getByRole('button', { name: /Subimos el volumen hasta el amanecer/i }),
     ).toContainText('00:05.00');
 
-    // Verificar porcentajes en Catálogo tras recargar (6/6 líneas sincronizadas)
+    // Verificar porcentajes en Catálogo tras recargar (2/6 líneas sincronizadas)
     await openCatalog(page, isMobile);
     const card = page.getByRole('article', { name: 'Noches de Verano' });
-    await expect(card).toContainText('6/6 · 100%');
+    await expect(card).toContainText('2/6 · 33%');
     await expect(card).toContainText(/Palabras\s*[1-9]\d*%/);
   });
 
@@ -78,7 +78,7 @@ test.describe('Persistencia crítica, autoguardado y restauración', () => {
   }, testInfo) => {
     const isMobile = isMobileProject(testInfo);
     await page.goto('/');
-    await loadDemoProject(page);
+    await createProjectWithLyricsAndWav(page, isMobile);
     await waitForSaved(page);
 
     const line5 = page.getByRole('button', {
@@ -117,7 +117,7 @@ test.describe('Persistencia crítica, autoguardado y restauración', () => {
     const isMobile = isMobileProject(testInfo);
     const page1 = await context.newPage();
     await page1.goto('/');
-    await loadDemoProject(page1);
+    await createProjectWithLyricsAndWav(page1, isMobile);
 
     const line5 = page1.getByRole('button', {
       name: /Subimos el volumen hasta el amanecer/i,

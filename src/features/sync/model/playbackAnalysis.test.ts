@@ -8,6 +8,7 @@ import {
   findActiveWordIndex,
   getActiveLineWindow,
   getPreRollTrafficLight,
+  resolvePlaybackTracking,
 } from '@/features/sync/model/playbackAnalysis';
 import type { LyricLine } from '@/types';
 
@@ -191,5 +192,52 @@ describe('playbackAnalysis', () => {
       isPast: false,
       wordProgressPct: [100],
     });
+  });
+
+  it('coordina seguimiento automático de reproducción y selección manual en resolvePlaybackTracking', () => {
+    // Al avanzar la reproducción a otra línea con marca, acompaña la selección y limpia override
+    const step1 = resolvePlaybackTracking({
+      lines: sampleLines,
+      currentTimeMs: 5200,
+      isPlaying: true,
+      activeLineIndex: 0,
+      lastPlayingLineIndex: 0,
+      manualOverrideAtPlayingIndex: null,
+    });
+    expect(step1).toEqual({
+      playingLineIndex: 1,
+      trackedListIndex: 1,
+      nextActiveLineIndex: 1,
+      nextManualOverride: null,
+    });
+
+    // Selección manual manda mientras la reproducción siga en la misma línea
+    const manual = resolvePlaybackTracking({
+      lines: sampleLines,
+      currentTimeMs: 5500,
+      isPlaying: true,
+      activeLineIndex: 2,
+      lastPlayingLineIndex: 1,
+      manualOverrideAtPlayingIndex: 1,
+    });
+    expect(manual).toEqual({
+      playingLineIndex: 1,
+      trackedListIndex: 2,
+      nextActiveLineIndex: null,
+      nextManualOverride: 1,
+    });
+
+    // Si la línea activa está sin marca (esperando ser marcada), no sobreescribe activeLineIndex
+    const waitingUnsynced = resolvePlaybackTracking({
+      lines: sampleLines,
+      currentTimeMs: 1600,
+      isPlaying: true,
+      activeLineIndex: 2,
+      lastPlayingLineIndex: -1,
+      manualOverrideAtPlayingIndex: null,
+    });
+    expect(waitingUnsynced.playingLineIndex).toBe(0);
+    expect(waitingUnsynced.trackedListIndex).toBe(0);
+    expect(waitingUnsynced.nextActiveLineIndex).toBeNull();
   });
 });

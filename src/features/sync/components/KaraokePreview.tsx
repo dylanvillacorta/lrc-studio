@@ -29,7 +29,6 @@ export interface KaraokePreviewProps {
   onTogglePlay: () => void;
   onSeek: (targetMs: number) => void;
   onUploadAudio: (file: File) => Promise<void>;
-  onUseDemo: () => Promise<void>;
 }
 
 function prefersReducedMotion(): boolean {
@@ -56,7 +55,6 @@ export const KaraokePreview = memo(function KaraokePreview({
   onTogglePlay,
   onSeek,
   onUploadAudio,
-  onUseDemo,
 }: KaraokePreviewProps) {
   const lineRefs = useRef<(HTMLElement | null)[]>([]);
   const wordFillRefs = useRef<(HTMLSpanElement | null)[][]>([]);
@@ -176,7 +174,7 @@ export const KaraokePreview = memo(function KaraokePreview({
           aria-label="Modo de sincronización"
           className={SYNC_SEGMENTED_CLASS}
         />
-        <NoAudioCard onUploadAudio={onUploadAudio} onUseDemo={onUseDemo} />
+        <NoAudioCard onUploadAudio={onUploadAudio} />
       </div>
     );
   }

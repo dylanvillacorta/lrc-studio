@@ -19,9 +19,14 @@ import {
   INITIAL_DEMO_LYRICS,
 } from '@/features/lyrics';
 import {
+  computeBurstEnterState,
+  computeBurstExitState,
   computePreRollStartMs,
   DEFAULT_PRE_ROLL_MS,
+  findActiveLineIndex,
   getActiveLineWindow,
+  getBurstLoopSeekTargetMs,
+  resolvePlaybackTracking,
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { NoAudioCard } from '@/features/sync/components/NoAudioCard';
@@ -75,6 +80,10 @@ export function DesktopLayout() {
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
   const [liveNotice, setLiveNotice] = useState('');
+  const [manualOverrideAtPlayingIndex, setManualOverrideAtPlayingIndex] = useState<number | null>(
+    null,
+  );
+  const lastPlayingLineRef = useRef<number>(-1);
   const playerTimeRef = useRef(player.currentTime);
 
   useEffect(() => {
@@ -117,10 +126,21 @@ export function DesktopLayout() {
   }, [burstActive, durationMs, preRollMs, sync.activeLineIndex, sync.lines]);
 
   useEffect(() => {
-    if (burstActive && burstWindow && player.isPlaying && player.currentTime >= burstWindow.windowEndMs) {
-      player.seekTo(burstWindow.windowStartMs);
+    if (!burstWindow) {
+      return;
     }
-  }, [burstActive, burstWindow, player]);
+    const targetMs = getBurstLoopSeekTargetMs({
+      burstActive,
+      isPlaying: player.isPlaying,
+      isEditing: centerView === 'editor' && burstActive,
+      currentTimeMs: player.currentTime,
+      windowStartMs: burstWindow.windowStartMs,
+      windowEndMs: burstWindow.windowEndMs,
+    });
+    if (targetMs !== null) {
+      player.seekTo(targetMs);
+    }
+  }, [burstActive, burstWindow, centerView, player]);
 
   useEffect(() => {
     if (activeTab === 'catalog') {
@@ -136,31 +156,75 @@ export function DesktopLayout() {
 
   const activeLine = sync.lines[sync.activeLineIndex];
   const targetWord = activeLine?.words[sync.activeWordIndex];
+  const playingLineIndex = player.isPlaying
+    ? findActiveLineIndex(sync.lines, player.currentTime)
+    : -1;
+  const isManualOverrideActive =
+    manualOverrideAtPlayingIndex !== null &&
+    manualOverrideAtPlayingIndex === playingLineIndex;
+  const trackedListIndex =
+    isManualOverrideActive || playingLineIndex < 0
+      ? sync.activeLineIndex
+      : playingLineIndex;
+  const { setActiveLineIndex: setSyncActiveLineIndex } = sync;
+
+  useEffect(() => {
+    const res = resolvePlaybackTracking({
+      lines: sync.lines,
+      currentTimeMs: player.currentTime,
+      isPlaying: player.isPlaying,
+      activeLineIndex: sync.activeLineIndex,
+      lastPlayingLineIndex: lastPlayingLineRef.current,
+      manualOverrideAtPlayingIndex: isManualOverrideActive
+        ? manualOverrideAtPlayingIndex
+        : null,
+    });
+    lastPlayingLineRef.current = res.playingLineIndex;
+    if (res.nextActiveLineIndex !== null && res.nextActiveLineIndex !== sync.activeLineIndex) {
+      setSyncActiveLineIndex(res.nextActiveLineIndex);
+    }
+  }, [
+    isManualOverrideActive,
+    manualOverrideAtPlayingIndex,
+    player.currentTime,
+    player.isPlaying,
+    setSyncActiveLineIndex,
+    sync.activeLineIndex,
+    sync.lines,
+  ]);
 
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
       if (mode === 'line') {
+        const exit = computeBurstExitState(burstActive);
+        if (exit.shouldPause) player.pause();
         setKaraokeActive(false);
         setBurstActive(false);
         setActiveTab('sync');
       } else if (mode === 'word') {
+        const exit = computeBurstExitState(burstActive);
+        if (exit.shouldPause) player.pause();
         setKaraokeActive(false);
         setBurstActive(false);
         setActiveTab('word');
-      } else if (mode === 'burst' && sync.lines.length > 0) {
-        const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
+      } else if (mode === 'burst') {
+        const enter = computeBurstEnterState();
         setKaraokeActive(false);
-        setBurstActive(true);
+        setBurstActive(enter.burstActive);
         setActiveTab('sync');
-        player.seekTo(win.windowStartMs);
-        void player.play();
+        if (sync.lines.length > 0 && enter.shouldPlay === false) {
+          const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
+          player.seekTo(win.windowStartMs);
+        }
       } else if (mode === 'karaoke') {
+        const exit = computeBurstExitState(burstActive);
+        if (exit.shouldPause) player.pause();
         setBurstActive(false);
         setKaraokeActive(true);
         setActiveTab('sync');
       }
     },
-    [durationMs, player, preRollMs, setActiveTab, sync.activeLineIndex, sync.lines],
+    [burstActive, durationMs, player, preRollMs, setActiveTab, sync.activeLineIndex, sync.lines],
   );
 
   const handleUploadAudio = useCallback(
@@ -377,7 +441,7 @@ export function DesktopLayout() {
               onSetActiveTab={setActiveTab}
             />
           ) : !audioUrl ? (
-            <NoAudioCard onUploadAudio={handleUploadAudio} onUseDemo={handleUseDemo} />
+            <NoAudioCard onUploadAudio={handleUploadAudio} />
           ) : (
             <>
               <DesktopWaveformCard
@@ -390,6 +454,8 @@ export function DesktopLayout() {
                 canUndo={sync.canUndo}
                 canOpenLoupe={Boolean(activeLine)}
                 onSeek={player.seekTo}
+                onSeekStart={() => player.setSeeking(true)}
+                onSeekEnd={() => player.setSeeking(false)}
                 onTogglePlay={player.togglePlay}
                 onChangePlaybackRate={(rate) => {
                   player.setPlaybackRate(rate);
@@ -431,7 +497,6 @@ export function DesktopLayout() {
                   onTogglePlay={player.togglePlay}
                   onSeek={player.seekTo}
                   onUploadAudio={handleUploadAudio}
-                  onUseDemo={handleUseDemo}
                 />
               ) : (
                 <>
@@ -455,9 +520,16 @@ export function DesktopLayout() {
                   <DesktopLineList
                     lines={sync.lines}
                     activeLineIndex={sync.activeLineIndex}
+                    playingLineIndex={playingLineIndex}
+                    trackedListIndex={trackedListIndex}
                     onSelectLine={(index) => {
+                      setManualOverrideAtPlayingIndex(player.isPlaying ? playingLineIndex : null);
                       sync.setActiveLineIndex(index);
                       sync.setActiveWordIndex(0);
+                      const selected = sync.lines[index];
+                      if (selected && selected.startMs !== null) {
+                        player.seekTo(selected.startMs);
+                      }
                     }}
                   />
                   {syncMode !== 'word' ? (
