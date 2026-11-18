@@ -327,8 +327,10 @@ Jerarquía ante conflicto: `AGENTS.md` > `docs/`.
 
 ## 6. Concreciones de la Parte I
 
-- **Manifiesto de dependencias (G3):** `package.json` (`dependencies` y `devDependencies`) y `package-lock.json`. `Dockerfile` y `nginx.conf` no son dependencias. Las dependencias iniciales serán aprobadas por el usuario tras ser listadas por el coordinador en la tarea `T1`; cualquier dependencia nueva o actualización mayor posterior requiere G3.
-- **Archivos compartidos que obligan a secuenciar worktrees:** `src/storage/**`, `src/ui/**`, `src/types/**`, `tailwind.config.*`, `package.json`, `index.html`, `nginx.conf`, `Dockerfile`.
+- **Gestor de paquetes:** solo `pnpm` `12.21.0`, fijado con el campo `packageManager` de `package.json` y activado con `corepack`; prohibido usar `npm`, `npx`, `yarn` o `bun`; no se versiona `package-lock.json`, `yarn.lock` ni `bun.lock`. Node mínimo `22.12` (se usa Node `24` en Docker y CI). Se instalan versiones exactas (sin caret) mediante `save-exact=true` en `.npmrc`, y el lockfile se versiona.
+- **Manifiesto de dependencias (G3):** `package.json` (`dependencies` y `devDependencies`), `pnpm-lock.yaml` y `.npmrc`. `Dockerfile` y `nginx.conf` no son dependencias. Las dependencias iniciales ya están aprobadas por el usuario y listadas en [docs/DEPENDENCIAS.md](docs/DEPENDENCIAS.md); cualquier otra dependencia nueva o salto de versión mayor requiere G3.
+- **Organización del código:** regla obligatoria según [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) §2 (`app` → `features` → `ui`/`storage`/`lib`/`types`, sin lógica de negocio en `app` ni acceso directo a `localStorage`/`IndexedDB`).
+- **Archivos compartidos que obligan a secuenciar worktrees:** `src/storage/**`, `src/ui/**`, `src/types/**`, `tailwind.config.*`, `package.json`, `pnpm-lock.yaml`, `.npmrc`, `index.html`, `nginx.conf`, `Dockerfile`.
 - **Pruebas con puertos fijos:** las pruebas E2E con Playwright usan puertos fijos; ejecutar E2E en **un worktree a la vez**.
 - **Servicios locales:** `vite dev server` (puerto `5173`) y `vite preview` (puerto `4173`). Vaciar `IndexedDB` del navegador de prueba es autónomo.
 - **Scripts que escriben en producción:** ninguno hoy. Publicar la imagen en GHCR es puerta **G1**.
@@ -337,11 +339,11 @@ Jerarquía ante conflicto: `AGENTS.md` > `docs/`.
 
 En orden, todo en verde antes de integrar a `develop`:
 
-1. `npm run typecheck` (`tsc --noEmit`)
-2. `npm run lint`
-3. `npm run test` (Vitest, incluye `fake-indexeddb` para el adaptador, lógica de sincronización y exportadores LRC, ELRC y JSON)
-4. `npm run build` (`vite build`)
-5. `npm run test:e2e` (Playwright en viewport móvil `390x844` y escritorio `1280x800`: restaurar sesión tras recarga, autoguardado, catálogo, botón de sincronización con `pointerdown`, atajos de teclado y meta etiquetas SEO)
+1. `pnpm typecheck` (`tsc --noEmit`)
+2. `pnpm lint`
+3. `pnpm test` (Vitest, incluye `fake-indexeddb` para el adaptador, lógica de sincronización y exportadores LRC, ELRC y JSON)
+4. `pnpm build` (`vite build`)
+5. `pnpm test:e2e` (Playwright en viewport móvil `390x844` y escritorio `1280x800`: restaurar sesión tras recarga, autoguardado, catálogo, botón de sincronización con `pointerdown`, atajos de teclado y meta etiquetas SEO)
 
 Para cambios exclusivos de documentación (`docs/` o `AGENTS.md`) basta con revisar el `git diff`.
 
