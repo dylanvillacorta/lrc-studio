@@ -31,8 +31,7 @@ LABEL org.opencontainers.image.title="LyricSync Studio" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.revision="${APP_COMMIT}" \
       org.opencontainers.image.source="https://github.com/dylanvillacorta/lrc-studio" \
-      org.opencontainers.image.created="${CREATED}" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.created="${CREATED}"
 
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
