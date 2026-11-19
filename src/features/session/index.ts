@@ -1,0 +1,55 @@
+export {
+  DEFAULT_AUTOSAVE_DELAY_MS,
+  DEFAULT_SESSION_AUTOSAVE_DELAY_MS,
+  classifyAutosaveChange,
+  createAutosaveScheduler,
+  createDualAutosaveCoordinator,
+  hasProjectChanged,
+  hasSessionChanged,
+  type AutosaveKind,
+  type AutosaveScheduler,
+  type AutosaveSchedulerOptions,
+  type AutosaveState,
+  type DualAutosaveCoordinator,
+  type DualAutosaveCoordinatorOptions,
+  type DualAutosaveSnapshot,
+  type SaveStatus,
+} from '@/features/session/model/autosaveScheduler';
+export {
+  buildSessionState,
+  durationMsToSec,
+  durationSecToMs,
+  planRestore,
+  resolveAudioDurationSec,
+  type BuildSessionStateInput,
+  type RestorePlan,
+} from '@/features/session/model/sessionPlanner';
+export { formatStorageErrorMessage } from '@/features/session/model/storageError';
+export {
+  PLAYBACK_SAVE_INTERVAL_MS,
+  evaluatePlaybackSaveTick,
+  registerAutosaveLifecycleListeners,
+  shouldSchedulePlaybackSave,
+  useAutosave,
+  type AutosaveLifecycleTargets,
+  type AutosaveSnapshot,
+  type EventTargetLike,
+  type PlaybackSaveTrackerState,
+  type PlaybackTimeSource,
+  type UseAutosaveOptions,
+  type UseAutosaveReturn,
+  type VisibilityDocumentLike,
+} from '@/features/session/hooks/useAutosave';
+export {
+  createAudioObjectUrl,
+  restoreSessionFromAdapter,
+  revokeAudioObjectUrl,
+  useSessionRestore,
+  type RestoreAdapterResult,
+  type SessionRestoreStatus,
+  type UseSessionRestoreReturn,
+} from '@/features/session/hooks/useSessionRestore';
+export {
+  useDeviceLatency,
+  type UseDeviceLatencyReturn,
+} from '@/features/session/hooks/useDeviceLatency';

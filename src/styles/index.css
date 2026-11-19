@@ -1,0 +1,91 @@
+@import "tailwindcss";
+@import "@fontsource-variable/manrope";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/700.css";
+
+@theme {
+  --color-bg: #E6E2DC;
+  --color-hi: #FFFFFF;
+  --color-lo: #C4BEB4;
+  --color-ink: #25232B;
+  --color-mute: #5C5964;
+  --color-acc: #B53A22;
+  --color-ok: #1F7A6D;
+  --color-warn: #9A6400;
+
+  --shadow-relieve: 7px 7px 16px #C4BEB4, -7px -7px 16px #FFFFFF;
+  --shadow-boton: 3px 3px 7px #C4BEB4, -3px -3px 7px #FFFFFF;
+  --shadow-boton-xl: 5px 5px 12px #C4BEB4, -5px -5px 12px #FFFFFF;
+  --shadow-hundido: inset 4px 4px 9px #C4BEB4, inset -4px -4px 9px #FFFFFF;
+  --shadow-hundido-sm: inset 2px 2px 5px #C4BEB4, inset -2px -2px 5px #FFFFFF;
+  --shadow-sync: 8px 8px 18px #C4BEB4, -6px -6px 14px #FFFFFF;
+
+  --radius-panel: 26px;
+  --radius-well: 22px;
+  --radius-btn: 20px;
+  --radius-sync: 34px;
+  --radius-pill: 10px;
+
+  --font-sans: "Manrope Variable", "Manrope", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@utility relieve {
+  background-color: var(--color-bg);
+  box-shadow: var(--shadow-relieve);
+}
+
+@utility boton {
+  background-color: var(--color-bg);
+  box-shadow: var(--shadow-boton);
+}
+
+@utility hundido {
+  background-color: var(--color-bg);
+  box-shadow: var(--shadow-hundido);
+}
+
+@utility selectable {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+@layer base {
+  html,
+  body,
+  *,
+  *::before,
+  *::after {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+  }
+
+  button,
+  [role="button"],
+  a {
+    touch-action: manipulation;
+  }
+
+  input[type="range"] {
+    touch-action: none;
+  }
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
