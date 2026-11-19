@@ -161,6 +161,7 @@ export interface IStorageAdapter {
 - **Debounce:** `300 ms` ante cualquier cambio de letra, marca de línea, captura de palabra o ajuste de milisegundos (únicos cambios que muestran `Guardando` → `Guardado`).
 - **Guardado silencioso de sesión:** cambios exclusivos de `SessionState` (pestaña/modo activo, línea/palabra activa y `currentTime`) se persisten solo vía `saveSessionState` con debounce más largo (`800 ms`, deduplicados y sin alterar el indicador ni escribir el proyecto).
 - **Store externo de tiempo:** `PlaybackTimeStore` (`useSyncExternalStore` con throttle en componentes hoja) desacopla `currentTime` del contexto principal para que la reproducción a 60 FPS no re-renderice el árbol de la aplicación.
+- **Reloj único al marcar y compensación de latencia:** toda acción de marcado (táctil o teclado) lee `player.getCurrentTimeMs()` (`audio.currentTime` directo) en el instante del evento y resta `latencyMs` (0–500 ms, persistido por dispositivo en `meta`/`IStorageAdapter`) mediante `computeCompensatedStampMs`.
 - **Guardado inmediato (flush):** en eventos `visibilitychange` (al ocultarse la pestaña), `pagehide` y `beforeunload`.
 - **Actualización de versión:** antes de recargar por una nueva versión disponible, se debe ejecutar `flush()` del autoguardado.
 - **Restauración al abrir:** recupera `SessionState`, carga la canción activa (`getProject` + `getAudioBinary`), reconstruye el `ObjectURL` desde el binario, restaura `waveformPeaks` y posiciona exactamente en `currentTimeMs`, `activeLineIndex` y `activeWordIndex`.
