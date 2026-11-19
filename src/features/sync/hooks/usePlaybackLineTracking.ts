@@ -22,12 +22,14 @@ export interface UsePlaybackLineTrackingOptions {
   setActiveLineIndex: (index: number) => void;
   setActiveWordIndex: (index: number) => void;
   seekTo: (targetMs: number) => void;
+  play?: () => Promise<void> | void;
 }
 
 export interface UsePlaybackLineTrackingReturn {
   playingLineIndex: number;
   trackedListIndex: number;
   selectLine: (index: number) => void;
+  playFromLine: (index: number) => void;
 }
 
 /**
@@ -44,6 +46,7 @@ export function usePlaybackLineTracking({
   setActiveLineIndex,
   setActiveWordIndex,
   seekTo,
+  play,
 }: UsePlaybackLineTrackingOptions): UsePlaybackLineTrackingReturn {
   const [manualOverrideAtPlayingIndex, setManualOverrideAtPlayingIndex] =
     useState<number | null>(null);
@@ -114,12 +117,23 @@ export function usePlaybackLineTracking({
       setManualOverrideAtPlayingIndex(isPlaying ? playingLineIndex : null);
       setActiveLineIndex(index);
       setActiveWordIndex(0);
-      const selected = lines[index];
-      if (selected && selected.startMs !== null) {
-        seekTo(selected.startMs);
-      }
     },
-    [isPlaying, lines, playingLineIndex, seekTo, setActiveLineIndex, setActiveWordIndex],
+    [isPlaying, playingLineIndex, setActiveLineIndex, setActiveWordIndex],
+  );
+
+  const playFromLine = useCallback(
+    (index: number) => {
+      const selected = lines[index];
+      if (!selected || selected.startMs === null) {
+        return;
+      }
+      setManualOverrideAtPlayingIndex(null);
+      setActiveLineIndex(index);
+      setActiveWordIndex(0);
+      seekTo(selected.startMs);
+      void play?.();
+    },
+    [lines, play, seekTo, setActiveLineIndex, setActiveWordIndex],
   );
 
   return useMemo(
@@ -127,7 +141,8 @@ export function usePlaybackLineTracking({
       playingLineIndex,
       trackedListIndex,
       selectLine,
+      playFromLine,
     }),
-    [playingLineIndex, selectLine, trackedListIndex],
+    [playFromLine, playingLineIndex, selectLine, trackedListIndex],
   );
 }

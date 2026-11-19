@@ -1,11 +1,22 @@
 export {
+  clearLineMark,
+  clearMarksFromLine,
   nudgeLineTime,
+  setLineStartTime,
   stampLineEnd,
   stampLineStart,
   undoLineSync,
   type LineSyncResult,
   type UndoLineSyncResult,
 } from '@/features/sync/model/lineSync';
+export {
+  formatEditableTimestamp,
+  nudgeTimestampDraft,
+  parseTimestampInput,
+  validateLineTimeInput,
+  type ParseTimestampResult,
+  type ValidateLineTimeResult,
+} from '@/features/sync/model/lineTimeEdit';
 export {
   distributeWordsEvenlyInLine,
   nudgeWordTime,

@@ -169,3 +169,73 @@ export function nudgeLineTime(
 
   return updated;
 }
+
+function clearLineTimestamps(line: LyricLine): LyricLine {
+  return {
+    ...line,
+    startMs: null,
+    endMs: null,
+    words: line.words.map((word) => ({
+      ...word,
+      startMs: null,
+      endMs: null,
+    })),
+  };
+}
+
+/**
+ * Limpia `startMs`, `endMs` y los tiempos de palabras de la línea indicada,
+ * dejándola como línea objetivo a marcar.
+ */
+export function clearLineMark(
+  lines: readonly LyricLine[],
+  lineIndex: number,
+): LineSyncResult {
+  if (lineIndex < 0 || lineIndex >= lines.length) {
+    return { lines: [...lines], nextLineIndex: Math.max(0, lineIndex) };
+  }
+  const updated = lines.map((line, idx) =>
+    idx === lineIndex ? clearLineTimestamps(line) : line,
+  );
+  return { lines: updated, nextLineIndex: lineIndex };
+}
+
+/**
+ * Limpia las marcas de la línea indicada y todas las posteriores para rehacer un tramo completo.
+ */
+export function clearMarksFromLine(
+  lines: readonly LyricLine[],
+  fromLineIndex: number,
+): LineSyncResult {
+  if (fromLineIndex < 0 || fromLineIndex >= lines.length) {
+    return { lines: [...lines], nextLineIndex: Math.max(0, fromLineIndex) };
+  }
+  const updated = lines.map((line, idx) =>
+    idx >= fromLineIndex ? clearLineTimestamps(line) : line,
+  );
+  return { lines: updated, nextLineIndex: fromLineIndex };
+}
+
+/**
+ * Fija manualmente `startMs` en una línea sin alterar otras líneas; limpia `endMs` si queda <= `startMs`.
+ */
+export function setLineStartTime(
+  lines: readonly LyricLine[],
+  lineIndex: number,
+  startMs: number,
+): LyricLine[] {
+  const line = lines[lineIndex];
+  if (!line) {
+    return [...lines];
+  }
+  const safeStartMs = Math.max(0, Math.round(startMs));
+  return lines.map((item, idx) =>
+    idx === lineIndex
+      ? {
+          ...item,
+          startMs: safeStartMs,
+          endMs: item.endMs !== null && item.endMs > safeStartMs ? item.endMs : null,
+        }
+      : item,
+  );
+}
