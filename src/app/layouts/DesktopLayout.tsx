@@ -612,13 +612,10 @@ export function DesktopLayout() {
                     activeLineIndex={sync.activeLineIndex}
                     playingLineIndex={playingLineIndex}
                     trackedListIndex={trackedListIndex}
-                    durationMs={durationMs}
                     autoCenter={syncMode !== 'word'}
                     onSelectLine={handleSelectLine}
                     onPlayFromLine={handlePlayFromLine}
-                    onEditLineTime={sync.setLineStartTime}
                     onClearLineMark={sync.clearLineMark}
-                    onClearMarksFromLine={sync.clearMarksFromLine}
                   />
                   {syncMode !== 'word' ? (
                     <SyncButton

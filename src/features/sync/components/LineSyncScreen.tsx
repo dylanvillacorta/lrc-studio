@@ -16,7 +16,7 @@ import {
   SyncButton,
   WellPanel,
 } from '@/ui';
-import { LineRowActionBar, LineTimeEditor } from './LineRowActions';
+import { LineRowActionBar } from './LineRowActions';
 import { NoAudioCard } from './NoAudioCard';
 import {
   getNextPlaybackRate,
@@ -27,6 +27,18 @@ import {
 import { WaveformStrip } from './WaveformStrip';
 
 export type { SyncSegmentedMode };
+
+/**
+ * Devuelve el índice de la última línea con marca de tiempo (`startMs !== null`), o `-1` si no hay ninguna.
+ */
+export function findLastMarkedLineIndex(lines: readonly LyricLine[]): number {
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    if (lines[i]?.startMs !== null) {
+      return i;
+    }
+  }
+  return -1;
+}
 
 export interface LineSyncScreenProps {
   hasAudio: boolean;
@@ -42,7 +54,6 @@ export interface LineSyncScreenProps {
   activeLineIndex: number;
   playingLineIndex?: number;
   trackedListIndex?: number;
-  canUndo: boolean;
   syncMode: SyncSegmentedMode;
   burstWindow?: { windowStartMs: number; windowEndMs: number } | null;
   onSelectMode: (mode: SyncSegmentedMode) => void;
@@ -51,12 +62,9 @@ export interface LineSyncScreenProps {
   onSeekEnd?: () => void;
   onTogglePlay: () => void;
   onChangePlaybackRate: (rate: number) => void;
-  onUndo: () => void;
   onSelectLine: (index: number) => void;
   onPlayFromLine?: (index: number) => void;
-  onEditLineTime?: (index: number, startMs: number) => void;
   onClearLineMark?: (index: number) => void;
-  onClearMarksFromLine?: (index: number) => void;
   onStampLine: (nowMs: number) => void;
   onOpenLoupe: () => void;
   onStopBurst: () => void;
@@ -80,7 +88,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   activeLineIndex,
   playingLineIndex = -1,
   trackedListIndex = activeLineIndex,
-  canUndo,
   syncMode,
   burstWindow = null,
   onSelectMode,
@@ -89,19 +96,15 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   onSeekEnd,
   onTogglePlay,
   onChangePlaybackRate,
-  onUndo,
   onSelectLine,
   onPlayFromLine,
-  onEditLineTime,
   onClearLineMark,
-  onClearMarksFromLine,
   onStampLine,
   onOpenLoupe,
   onStopBurst,
   onUploadAudio,
 }: LineSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
-  const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const lineRowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -131,6 +134,8 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   const activeLine = lines[activeLineIndex];
   const hasLines = lines.length > 0;
   const lineNumber = Math.min(lines.length, activeLineIndex + 1);
+  const lastMarkedLineIndex = findLastMarkedLineIndex(lines);
+  const hasAnyMarkedLine = lastMarkedLineIndex >= 0;
 
   const readNowMs = () =>
     readCurrentTimeMs({ getCurrentTimeMs, timeStore, currentTimeMs });
@@ -145,6 +150,14 @@ export const LineSyncScreen = memo(function LineSyncScreen({
     }
     onStampLine(stampMs);
     setLiveNotice(`Línea ${lineNumber} marcada en ${formatTime(stampMs)}`);
+  };
+
+  const handleUndoLastLineMark = () => {
+    if (lastMarkedLineIndex < 0 || !onClearLineMark) {
+      return;
+    }
+    onClearLineMark(lastMarkedLineIndex);
+    setLiveNotice(`Marca de línea ${lastMarkedLineIndex + 1} borrada`);
   };
 
   return (
@@ -227,34 +240,7 @@ export const LineSyncScreen = memo(function LineSyncScreen({
         >
           <Icon name="forward" size={18} />
         </IconButton>
-
-        <IconButton
-          aria-label="Deshacer última marca"
-          disabled={!canUndo}
-          onClick={onUndo}
-          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
-        >
-          <Icon name="undo" size={18} />
-        </IconButton>
       </div>
-
-      {editingLineIndex !== null && lines[editingLineIndex] ? (
-        <LineTimeEditor
-          key={`${editingLineIndex}-${lines[editingLineIndex]?.id ?? ''}`}
-          lineIndex={editingLineIndex}
-          initialStartMs={lines[editingLineIndex]?.startMs ?? null}
-          prevLineStartMs={
-            editingLineIndex > 0 ? (lines[editingLineIndex - 1]?.startMs ?? null) : null
-          }
-          durationMs={durationMs}
-          onAccept={(idx, startMs) => {
-            onEditLineTime?.(idx, startMs);
-            setEditingLineIndex(null);
-            setLiveNotice(`Tiempo de línea ${idx + 1} actualizado a ${formatTime(startMs)}`);
-          }}
-          onCancel={() => setEditingLineIndex(null)}
-        />
-      ) : null}
 
       <WellPanel
         ref={listRef}
@@ -266,9 +252,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
             const isCurrent = index === activeLineIndex;
             const isPlayingLine = index === playingLineIndex;
             const isSynced = line.startMs !== null;
-            const hasSyncedFromHereDown = lines
-              .slice(index)
-              .some((item) => item.startMs !== null);
             return (
               <div
                 key={line.id}
@@ -322,34 +305,16 @@ export const LineSyncScreen = memo(function LineSyncScreen({
                   <div className="pr-1 shrink-0">
                     <LineRowActionBar
                       isSynced={isSynced}
-                      hasSyncedFromHereDown={hasSyncedFromHereDown}
                       onPlayFromHere={
                         isSynced && onPlayFromLine
                           ? () => onPlayFromLine(index)
-                          : undefined
-                      }
-                      onEditTime={
-                        onEditLineTime
-                          ? () => setEditingLineIndex(index)
                           : undefined
                       }
                       onClearMark={
                         isSynced && onClearLineMark
                           ? () => {
                               onClearLineMark(index);
-                              setEditingLineIndex(null);
                               setLiveNotice(`Marca de línea ${index + 1} borrada`);
-                            }
-                          : undefined
-                      }
-                      onClearMarksFromHere={
-                        hasSyncedFromHereDown && onClearMarksFromLine
-                          ? () => {
-                              onClearMarksFromLine(index);
-                              setEditingLineIndex(null);
-                              setLiveNotice(
-                                `Marcas borradas desde la línea ${index + 1} hacia abajo`,
-                              );
                             }
                           : undefined
                       }
@@ -366,19 +331,30 @@ export const LineSyncScreen = memo(function LineSyncScreen({
         )}
       </WellPanel>
 
-      <SyncButton
-        title={hasLines ? `MARCAR LÍNEA ${lineNumber}` : 'SIN LETRA PARA MARCAR'}
-        hint={
-          hasLines
-            ? 'Toca justo al empezar a cantarla'
-            : 'Ve a Letra para pegar o cargar la canción'
-        }
-        disabled={!hasLines}
-        onPointerDown={handleStampPointerDown}
-        onContextMenu={(e) => e.preventDefault()}
-        className="min-h-[84px] rounded-[28px] [@media(max-height:720px)]:min-h-[68px] [@media(max-height:720px)]:rounded-[24px]"
-        style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none' }}
-      />
+      <div className="flex items-center gap-2 flex-none">
+        <IconButton
+          aria-label="Deshacer última marca de línea"
+          disabled={!hasAnyMarkedLine}
+          onClick={handleUndoLastLineMark}
+          className="min-h-11 min-w-11 shrink-0"
+        >
+          <Icon name="undo" size={18} />
+        </IconButton>
+
+        <SyncButton
+          title={hasLines ? `MARCAR LÍNEA ${lineNumber}` : 'SIN LETRA PARA MARCAR'}
+          hint={
+            hasLines
+              ? 'Toca justo al empezar a cantarla'
+              : 'Ve a Letra para pegar o cargar la canción'
+          }
+          disabled={!hasLines}
+          onPointerDown={handleStampPointerDown}
+          onContextMenu={(e) => e.preventDefault()}
+          className="flex-1 min-w-0 w-auto min-h-[84px] rounded-[28px] [@media(max-height:720px)]:min-h-[68px] [@media(max-height:720px)]:rounded-[24px]"
+          style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none' }}
+        />
+      </div>
 
       <div aria-live="polite" className="sr-only">
         {liveNotice}

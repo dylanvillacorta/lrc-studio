@@ -8,11 +8,8 @@ import { Icon, IconButton, RaisedButton } from '@/ui';
 
 export interface LineRowActionBarProps {
   isSynced: boolean;
-  hasSyncedFromHereDown: boolean;
   onPlayFromHere?: () => void;
-  onEditTime?: () => void;
   onClearMark?: () => void;
-  onClearMarksFromHere?: () => void;
 }
 
 /**
@@ -20,11 +17,8 @@ export interface LineRowActionBarProps {
  */
 export const LineRowActionBar = memo(function LineRowActionBar({
   isSynced,
-  hasSyncedFromHereDown,
   onPlayFromHere,
-  onEditTime,
   onClearMark,
-  onClearMarksFromHere,
 }: LineRowActionBarProps) {
   return (
     <div
@@ -42,16 +36,6 @@ export const LineRowActionBar = memo(function LineRowActionBar({
         </IconButton>
       ) : null}
 
-      {onEditTime ? (
-        <IconButton
-          aria-label="Editar tiempo"
-          onClick={onEditTime}
-          className="min-h-11 min-w-11 h-11 w-11 rounded-[10px] text-ink shrink-0"
-        >
-          <Icon name="edit" size={16} />
-        </IconButton>
-      ) : null}
-
       {isSynced && onClearMark ? (
         <IconButton
           aria-label="Borrar marca"
@@ -59,16 +43,6 @@ export const LineRowActionBar = memo(function LineRowActionBar({
           className="min-h-11 min-w-11 h-11 w-11 rounded-[10px] text-ink shrink-0"
         >
           <Icon name="trash" size={16} />
-        </IconButton>
-      ) : null}
-
-      {hasSyncedFromHereDown && onClearMarksFromHere ? (
-        <IconButton
-          aria-label="Borrar marcas desde esta línea hacia abajo"
-          onClick={onClearMarksFromHere}
-          className="min-h-11 min-w-11 h-11 w-11 rounded-[10px] text-ink shrink-0"
-        >
-          <Icon name="clearDown" size={16} />
         </IconButton>
       ) : null}
     </div>
