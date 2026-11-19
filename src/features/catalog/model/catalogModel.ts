@@ -1,3 +1,4 @@
+import type { ParsedProjectJson } from '@/features/export';
 import { inferAudioMime } from '@/lib/audioFormats';
 import { arrayBufferToBase64 } from '@/lib/base64';
 import {
@@ -145,6 +146,36 @@ export function createEmptyProject(
     lineProgress: 0,
     wordProgress: 0,
     lines: [],
+    waveformPeaks: [],
+    settings: { ...DEFAULT_PROJECT_SETTINGS },
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Construye un proyecto nuevo sin binario de audio a partir de un proyecto JSON migrado.
+ * Calcula el progreso de líneas/palabras y asigna un identificador único.
+ */
+export function createProjectFromImportedJson(
+  imported: ParsedProjectJson,
+  newId: string = createProjectId(),
+  now: number = Date.now(),
+): ProjectFullData {
+  const cleanTitle = (imported.metadata.title ?? '').trim() || 'Sin título';
+  const cleanArtist = (imported.metadata.artist ?? '').trim();
+  const cleanAudioFileName = (imported.audioFileName ?? '').trim();
+  const cleanLines = imported.lines.map(sanitizeLyricLine);
+  const counts = computeProgressCounts(cleanLines);
+
+  return {
+    id: newId,
+    title: cleanTitle,
+    artist: cleanArtist,
+    audioFileName: cleanAudioFileName,
+    durationMs: 0,
+    ...counts,
+    lines: cleanLines,
     waveformPeaks: [],
     settings: { ...DEFAULT_PROJECT_SETTINGS },
     createdAt: now,

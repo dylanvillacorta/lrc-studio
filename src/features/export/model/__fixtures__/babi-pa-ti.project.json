@@ -1,0 +1,3433 @@
+{
+  "schemaVersion": "2.0-musixmatch-richsync",
+  "metadata": {
+    "title": "Pa ti",
+    "artist": "Babi",
+    "album": "",
+    "audioFileName": "Grind – Pa Ti.mp3",
+    "durationSeconds": 167.143,
+    "timeUnit": "seconds",
+    "offsetMs": 0,
+    "exportedAt": "2026-11-19T01:16:29.865Z"
+  },
+  "lines": [
+    {
+      "index": 0,
+      "id": "line-0-00bq",
+      "text": "El combo Bonnie & Clyde",
+      "startTime": 7.153,
+      "endTime": 8.482,
+      "duration": 1.329,
+      "words": [
+        {
+          "index": 0,
+          "text": "El",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "combo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "Bonnie",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "&",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "Clyde",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "id": "line-1-9xlx",
+      "text": "Se me olvida la ruina que hay",
+      "startTime": 8.522,
+      "endTime": 10.297,
+      "duration": 1.775,
+      "words": [
+        {
+          "index": 0,
+          "text": "Se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "me",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "olvida",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "ruina",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "hay",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "id": "line-2-3t3i",
+      "text": "Siempre llega aunque necesita su high",
+      "startTime": 10.337,
+      "endTime": 12.031,
+      "duration": 1.694,
+      "words": [
+        {
+          "index": 0,
+          "text": "Siempre",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "llega",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "aunque",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "necesita",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "su",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "high",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "id": "line-3-tofy",
+      "text": "Yo le tengo preparado el may",
+      "startTime": 12.071,
+      "endTime": 13.884,
+      "duration": 1.813,
+      "words": [
+        {
+          "index": 0,
+          "text": "Yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "le",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "tengo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "preparado",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "may",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "id": "line-4-7xay",
+      "text": "El combo Bonnie & Clyde",
+      "startTime": 13.924,
+      "endTime": 15.416,
+      "duration": 1.492,
+      "words": [
+        {
+          "index": 0,
+          "text": "El",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "combo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "Bonnie",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "&",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "Clyde",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "id": "line-5-263v",
+      "text": "Se me olvida la ruina que hay",
+      "startTime": 15.456,
+      "endTime": 17.131,
+      "duration": 1.675,
+      "words": [
+        {
+          "index": 0,
+          "text": "Se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "me",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "olvida",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "ruina",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "hay",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "id": "line-6-vcz3",
+      "text": "Siempre llega aunque necesita su high",
+      "startTime": 17.171,
+      "endTime": 18.831,
+      "duration": 1.66,
+      "words": [
+        {
+          "index": 0,
+          "text": "Siempre",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "llega",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "aunque",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "necesita",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "su",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "high",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "id": "line-7-h9ng",
+      "text": "Yo le tengo preparado el may",
+      "startTime": 18.871,
+      "endTime": 20.732,
+      "duration": 1.861,
+      "words": [
+        {
+          "index": 0,
+          "text": "Yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "le",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "tengo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "preparado",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "may",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "id": "line-8-w4ct",
+      "text": "Somos los dos nocturnos",
+      "startTime": 20.772,
+      "endTime": 21.865,
+      "duration": 1.093,
+      "words": [
+        {
+          "index": 0,
+          "text": "Somos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "dos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "nocturnos",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "id": "line-9-xx8m",
+      "text": "Quiere que se lo mueva como mueve el producto",
+      "startTime": 21.905,
+      "endTime": 23.917,
+      "duration": 2.012,
+      "words": [
+        {
+          "index": 0,
+          "text": "Quiere",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "lo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "mueva",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "como",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "mueve",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "producto",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "id": "line-10-mm3t",
+      "text": "Siempre juntos, no pregunto",
+      "startTime": 23.957,
+      "endTime": 25.517,
+      "duration": 1.56,
+      "words": [
+        {
+          "index": 0,
+          "text": "Siempre",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "juntos,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "pregunto",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "id": "line-11-vw0d",
+      "text": "Le pisa al auto y cerramos el asunto",
+      "startTime": 25.557,
+      "endTime": 27.353,
+      "duration": 1.796,
+      "words": [
+        {
+          "index": 0,
+          "text": "Le",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "pisa",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "al",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "auto",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "cerramos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "asunto",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "id": "line-12-4ljz",
+      "text": "Hoy te tengo cerca, mañana quién sabe",
+      "startTime": 27.393,
+      "endTime": 30.534,
+      "duration": 3.141,
+      "words": [
+        {
+          "index": 0,
+          "text": "Hoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "te",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "tengo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "cerca,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "mañana",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "quién",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "sabe",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "id": "line-13-weuj",
+      "text": "Pero no lo pienso o el mañana me come",
+      "startTime": 30.574,
+      "endTime": 34.134,
+      "duration": 3.56,
+      "words": [
+        {
+          "index": 0,
+          "text": "Pero",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "lo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "pienso",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "o",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "mañana",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "me",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "come",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "id": "line-14-bwop",
+      "text": "Y en el fondo sé que tú tienes la clave",
+      "startTime": 34.174,
+      "endTime": 37.452,
+      "duration": 3.278,
+      "words": [
+        {
+          "index": 0,
+          "text": "Y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "en",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "fondo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "sé",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "tú",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "tienes",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 9,
+          "text": "clave",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "id": "line-15-jk7x",
+      "text": "Por eso es por ti que me lanzo a los leones",
+      "startTime": 37.492,
+      "endTime": 41.019,
+      "duration": 3.527,
+      "words": [
+        {
+          "index": 0,
+          "text": "Por",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "eso",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "es",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "por",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "me",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "lanzo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "a",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 9,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 10,
+          "text": "leones",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "id": "line-16-1h01",
+      "text": "Cuando las cuentas no salen, yo estoy pa' ti",
+      "startTime": 41.059,
+      "endTime": 44.519,
+      "duration": 3.46,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "las",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "cuentas",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "salen,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "id": "line-17-369a",
+      "text": "Y se clavan los puñales, yo estoy pa' ti",
+      "startTime": 44.559,
+      "endTime": 47.935,
+      "duration": 3.376,
+      "words": [
+        {
+          "index": 0,
+          "text": "Y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "clavan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "puñales,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "id": "line-18-s914",
+      "text": "Cuando no quedan reales, yo estoy pa' ti",
+      "startTime": 47.975,
+      "endTime": 51.187,
+      "duration": 3.212,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "quedan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "reales,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "id": "line-19-9vrp",
+      "text": "Se han empañado los cristales",
+      "startTime": 51.227,
+      "endTime": 52.436,
+      "duration": 1.209,
+      "words": [
+        {
+          "index": 0,
+          "text": "Se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "han",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "empañado",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "cristales",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "id": "line-20-m1jv",
+      "text": "Somos animales sin pedigrí, eh",
+      "startTime": 52.476,
+      "endTime": 54.802,
+      "duration": 2.326,
+      "words": [
+        {
+          "index": 0,
+          "text": "Somos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "animales",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "sin",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "pedigrí,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "eh",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "id": "line-21-t6oe",
+      "text": "Cuando las cuentas no salen, yo estoy pa' ti",
+      "startTime": 54.842,
+      "endTime": 58.203,
+      "duration": 3.361,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "las",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "cuentas",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "salen,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "id": "line-22-uexp",
+      "text": "Y se clavan los puñales, yo estoy pa' ti",
+      "startTime": 58.243,
+      "endTime": 61.588,
+      "duration": 3.345,
+      "words": [
+        {
+          "index": 0,
+          "text": "Y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "clavan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "puñales,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "id": "line-23-6mtm",
+      "text": "Cuando no quedan reales, yo estoy pa' ti",
+      "startTime": 61.628,
+      "endTime": 64.856,
+      "duration": 3.228,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "quedan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "reales,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "id": "line-24-p1d8",
+      "text": "Se han empañado los cristales",
+      "startTime": 64.896,
+      "endTime": 66.218,
+      "duration": 1.322,
+      "words": [
+        {
+          "index": 0,
+          "text": "Se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "han",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "empañado",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "cristales",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "id": "line-25-auzq",
+      "text": "Somos animales sin pedigrí, eh",
+      "startTime": 66.258,
+      "endTime": 68.618,
+      "duration": 2.36,
+      "words": [
+        {
+          "index": 0,
+          "text": "Somos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "animales",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "sin",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "pedigrí,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "eh",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "id": "line-26-5mkj",
+      "text": "Tú y yo como Bonnie and Clyde",
+      "startTime": 68.658,
+      "endTime": 70.287,
+      "duration": 1.629,
+      "words": [
+        {
+          "index": 0,
+          "text": "Tú",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "como",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "Bonnie",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "and",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "Clyde",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 27,
+      "id": "line-27-98ou",
+      "text": "Viviendo la criminal life",
+      "startTime": 70.327,
+      "endTime": 72.002,
+      "duration": 1.675,
+      "words": [
+        {
+          "index": 0,
+          "text": "Viviendo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "criminal",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "life",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "id": "line-28-6325",
+      "text": "Yo sí que te quiero en mi side",
+      "startTime": 72.042,
+      "endTime": 73.269,
+      "duration": 1.227,
+      "words": [
+        {
+          "index": 0,
+          "text": "Yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "sí",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "te",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "quiero",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "en",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "mi",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "side",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 29,
+      "id": "line-29-adh5",
+      "text": "For life, bebe appelle moi pour la night",
+      "startTime": 73.309,
+      "endTime": 75.471,
+      "duration": 2.162,
+      "words": [
+        {
+          "index": 0,
+          "text": "For",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "life,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "bebe",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "appelle",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "moi",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "pour",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "night",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "id": "line-30-owk9",
+      "text": "Y avísame si te caes, para ir y caer",
+      "startTime": 75.511,
+      "endTime": 78.985,
+      "duration": 3.474,
+      "words": [
+        {
+          "index": 0,
+          "text": "Y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "avísame",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "si",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "te",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "caes,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "para",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "ir",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "caer",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 31,
+      "id": "line-31-8aip",
+      "text": "Si fallas, yo fallo, si fallo, tú fallas, así debe ser",
+      "startTime": 79.025,
+      "endTime": 82.253,
+      "duration": 3.228,
+      "words": [
+        {
+          "index": 0,
+          "text": "Si",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "fallas,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "fallo,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "si",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "fallo,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "tú",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "fallas,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "así",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 9,
+          "text": "debe",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 10,
+          "text": "ser",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "id": "line-32-z8kh",
+      "text": "Cuando estoy contigo yo siento paz",
+      "startTime": 82.293,
+      "endTime": 84.042,
+      "duration": 1.749,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "contigo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "siento",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "paz",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 33,
+      "id": "line-33-4clw",
+      "text": "Tú me haces sentir normal",
+      "startTime": 84.082,
+      "endTime": 85.709,
+      "duration": 1.627,
+      "words": [
+        {
+          "index": 0,
+          "text": "Tú",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "me",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "haces",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "sentir",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "normal",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 34,
+      "id": "line-34-ydyd",
+      "text": "Me haces olvidar que tengo el estrés de mover el material",
+      "startTime": 85.749,
+      "endTime": 89.194,
+      "duration": 3.445,
+      "words": [
+        {
+          "index": 0,
+          "text": "Me",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "haces",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "olvidar",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "tengo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "estrés",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "de",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "mover",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 9,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 10,
+          "text": "material",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 35,
+      "id": "line-35-6v03",
+      "text": "Y hablan de mí esos testigos, como si un animal",
+      "startTime": 89.234,
+      "endTime": 92.452,
+      "duration": 3.218,
+      "words": [
+        {
+          "index": 0,
+          "text": "Y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "hablan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "de",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "mí",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "esos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "testigos,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "como",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "si",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "un",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 9,
+          "text": "animal",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 36,
+      "id": "line-36-wvx6",
+      "text": "Ninguno me ayuda cuando estoy mal",
+      "startTime": 92.492,
+      "endTime": 94.344,
+      "duration": 1.852,
+      "words": [
+        {
+          "index": 0,
+          "text": "Ninguno",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "me",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "ayuda",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "mal",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 37,
+      "id": "line-37-l6x1",
+      "text": "Yo nunca tuve un \"¿Qué tal?\"",
+      "startTime": 94.406,
+      "endTime": 96.02,
+      "duration": 1.614,
+      "words": [
+        {
+          "index": 0,
+          "text": "Yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "nunca",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "tuve",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "un",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "\"¿Qué",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "tal?\"",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 38,
+      "id": "line-38-6afa",
+      "text": "Cuando quiero alejarme de lo malo",
+      "startTime": 96.06,
+      "endTime": 97.386,
+      "duration": 1.326,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "quiero",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "alejarme",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "de",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "lo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "malo",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 39,
+      "id": "line-39-ykl6",
+      "text": "Todos los caminos me llevan a tus brazos",
+      "startTime": 97.426,
+      "endTime": 99.319,
+      "duration": 1.893,
+      "words": [
+        {
+          "index": 0,
+          "text": "Todos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "caminos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "me",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "llevan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "a",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "tus",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "brazos",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "id": "line-40-u2ox",
+      "text": "Porque sé que sabes que estoy loco",
+      "startTime": 99.442,
+      "endTime": 100.884,
+      "duration": 1.442,
+      "words": [
+        {
+          "index": 0,
+          "text": "Porque",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "sé",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "sabes",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "loco",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 41,
+      "id": "line-41-jgb9",
+      "text": "Y aun así te quedas pa' juntar los pedazos",
+      "startTime": 100.924,
+      "endTime": 102.737,
+      "duration": 1.813,
+      "words": [
+        {
+          "index": 0,
+          "text": "Y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "aun",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "así",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "te",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "quedas",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "juntar",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "pedazos",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 42,
+      "id": "line-42-41zl",
+      "text": "Baby gyal, solo dime qué tal",
+      "startTime": 102.777,
+      "endTime": 104.037,
+      "duration": 1.26,
+      "words": [
+        {
+          "index": 0,
+          "text": "Baby",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "gyal,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "solo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "dime",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "qué",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "tal",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 43,
+      "id": "line-43-kqzx",
+      "text": "No hace falta que pregunte, que aquí todo da igual",
+      "startTime": 104.077,
+      "endTime": 106.154,
+      "duration": 2.077,
+      "words": [
+        {
+          "index": 0,
+          "text": "No",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "hace",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "falta",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "pregunte,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "que",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "aquí",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "todo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "da",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 9,
+          "text": "igual",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 44,
+      "id": "line-44-0s2i",
+      "text": "Yo loco por ti, tú loca por mí, vámonos hasta el final",
+      "startTime": 106.194,
+      "endTime": 109.62,
+      "duration": 3.426,
+      "words": [
+        {
+          "index": 0,
+          "text": "Yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "loco",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "por",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "ti,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "tú",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "loca",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "por",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "mí,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "vámonos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 9,
+          "text": "hasta",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 10,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 11,
+          "text": "final",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 45,
+      "id": "line-45-7o0j",
+      "text": "Ando con la Babi, fuck life",
+      "startTime": 109.66,
+      "endTime": 111.319,
+      "duration": 1.659,
+      "words": [
+        {
+          "index": 0,
+          "text": "Ando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "con",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "Babi,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "fuck",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "life",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 46,
+      "id": "line-46-td6a",
+      "text": "La vida no es fácil",
+      "startTime": 111.359,
+      "endTime": 113.152,
+      "duration": 1.793,
+      "words": [
+        {
+          "index": 0,
+          "text": "La",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "vida",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "es",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "fácil",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 47,
+      "id": "line-47-opiz",
+      "text": "Bajo la moonlight, moonlight",
+      "startTime": 113.192,
+      "endTime": 114.653,
+      "duration": 1.461,
+      "words": [
+        {
+          "index": 0,
+          "text": "Bajo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "moonlight,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "moonlight",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 48,
+      "id": "line-48-jbyq",
+      "text": "Rezo por la fami",
+      "startTime": 114.693,
+      "endTime": 116.537,
+      "duration": 1.844,
+      "words": [
+        {
+          "index": 0,
+          "text": "Rezo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "por",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "fami",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 49,
+      "id": "line-49-qtwp",
+      "text": "Ando con la Babi, fuck life",
+      "startTime": 116.577,
+      "endTime": 118.171,
+      "duration": 1.594,
+      "words": [
+        {
+          "index": 0,
+          "text": "Ando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "con",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "Babi,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "fuck",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "life",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 50,
+      "id": "line-50-k279",
+      "text": "La vida no es fácil",
+      "startTime": 118.211,
+      "endTime": 119.905,
+      "duration": 1.694,
+      "words": [
+        {
+          "index": 0,
+          "text": "La",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "vida",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "es",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "fácil",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 51,
+      "id": "line-51-gef6",
+      "text": "Bajo la moonlight, moonlight",
+      "startTime": 119.945,
+      "endTime": 121.64,
+      "duration": 1.695,
+      "words": [
+        {
+          "index": 0,
+          "text": "Bajo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "moonlight,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "moonlight",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 52,
+      "id": "line-52-1baf",
+      "text": "Rezo por la fami, fami",
+      "startTime": 121.68,
+      "endTime": 123.372,
+      "duration": 1.692,
+      "words": [
+        {
+          "index": 0,
+          "text": "Rezo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "por",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "la",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "fami,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "fami",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 53,
+      "id": "line-53-ywr3",
+      "text": "Cuando las cuentas no salen, yo estoy pa' ti",
+      "startTime": 123.412,
+      "endTime": 125.455,
+      "duration": 2.043,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "las",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "cuentas",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "salen,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 54,
+      "id": "line-54-yckp",
+      "text": "Y se clavan los puñales, yo estoy pa' ti",
+      "startTime": 126.767,
+      "endTime": 130.125,
+      "duration": 3.358,
+      "words": [
+        {
+          "index": 0,
+          "text": "Y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "clavan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "puñales,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 55,
+      "id": "line-55-47g3",
+      "text": "Cuando no quedan reales, yo estoy pa' ti",
+      "startTime": 130.165,
+      "endTime": 133.394,
+      "duration": 3.229,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "quedan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "reales,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 56,
+      "id": "line-56-u6xv",
+      "text": "Se han empañado los cristales",
+      "startTime": 133.434,
+      "endTime": 134.611,
+      "duration": 1.177,
+      "words": [
+        {
+          "index": 0,
+          "text": "Se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "han",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "empañado",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "cristales",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 57,
+      "id": "line-57-rkkm",
+      "text": "Somos animales sin pedigrí, eh",
+      "startTime": 134.651,
+      "endTime": 136.98,
+      "duration": 2.329,
+      "words": [
+        {
+          "index": 0,
+          "text": "Somos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "animales",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "sin",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "pedigrí,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "eh",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 58,
+      "id": "line-58-2okr",
+      "text": "Cuando las cuentas no salen, yo estoy pa' ti",
+      "startTime": 137.02,
+      "endTime": 140.395,
+      "duration": 3.375,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "las",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "cuentas",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "salen,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 59,
+      "id": "line-59-pug2",
+      "text": "Y se clavan los puñales, yo estoy pa' ti",
+      "startTime": 140.435,
+      "endTime": 143.78,
+      "duration": 3.345,
+      "words": [
+        {
+          "index": 0,
+          "text": "Y",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "clavan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "puñales,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 8,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 60,
+      "id": "line-60-42cc",
+      "text": "Cuando no quedan reales, yo estoy pa' ti",
+      "startTime": 143.82,
+      "endTime": 147.08,
+      "duration": 3.26,
+      "words": [
+        {
+          "index": 0,
+          "text": "Cuando",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "no",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "quedan",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "reales,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "yo",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 5,
+          "text": "estoy",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 6,
+          "text": "pa'",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 7,
+          "text": "ti",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 61,
+      "id": "line-61-hna3",
+      "text": "Se han empañado los cristales",
+      "startTime": 147.12,
+      "endTime": 148.529,
+      "duration": 1.409,
+      "words": [
+        {
+          "index": 0,
+          "text": "Se",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "han",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "empañado",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "los",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "cristales",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 62,
+      "id": "line-62-e8lh",
+      "text": "Somos animales sin pedigrí, eh",
+      "startTime": 148.569,
+      "endTime": 149.383,
+      "duration": 0.814,
+      "words": [
+        {
+          "index": 0,
+          "text": "Somos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "animales",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "sin",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "pedigrí,",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 4,
+          "text": "eh",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 63,
+      "id": "line-63-mzb6",
+      "text": "Somos animales sin pedigrí",
+      "startTime": 152.846,
+      "endTime": 156.2,
+      "duration": 3.354,
+      "words": [
+        {
+          "index": 0,
+          "text": "Somos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "animales",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "sin",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "pedigrí",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 64,
+      "id": "line-64-yawc",
+      "text": "Somos animales sin pedigrí",
+      "startTime": 156.24,
+      "endTime": 160.348,
+      "duration": 4.108,
+      "words": [
+        {
+          "index": 0,
+          "text": "Somos",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "animales",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "sin",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "pedigrí",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 65,
+      "id": "line-65-p9py",
+      "text": "Babi con el Grind",
+      "startTime": 160.388,
+      "endTime": 161.916,
+      "duration": 1.528,
+      "words": [
+        {
+          "index": 0,
+          "text": "Babi",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "con",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "Grind",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    },
+    {
+      "index": 66,
+      "id": "line-66-tpbk",
+      "text": "Babi con el Grind",
+      "startTime": 161.956,
+      "endTime": null,
+      "duration": null,
+      "words": [
+        {
+          "index": 0,
+          "text": "Babi",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 1,
+          "text": "con",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 2,
+          "text": "el",
+          "startTime": null,
+          "endTime": null
+        },
+        {
+          "index": 3,
+          "text": "Grind",
+          "startTime": null,
+          "endTime": null
+        }
+      ]
+    }
+  ]
+}
