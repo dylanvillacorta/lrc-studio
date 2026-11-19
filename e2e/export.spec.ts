@@ -89,7 +89,7 @@ test.describe('Exportación LRC, ELRC, JSON e importación', () => {
       schemaVersion: string;
       lines: { startTime: number | null }[];
     };
-    expect(parsed.schemaVersion).toBe('2.0-musixmatch-richsync');
+    expect(parsed.schemaVersion).toBe('lrc-studio.1');
     expect(parsed.lines[4]?.startTime).toBe(5);
 
     // Importar JSON inválido muestra error en español
@@ -107,7 +107,7 @@ test.describe('Exportación LRC, ELRC, JSON e importación', () => {
       makeFilePayload(
         'sin-lineas.json',
         'application/json',
-        JSON.stringify({ schemaVersion: '2.0-musixmatch-richsync' }),
+        JSON.stringify({ schemaVersion: 'lrc-studio.1' }),
       ),
     );
     await expect(exportRegion.getByRole('alert')).toHaveText(

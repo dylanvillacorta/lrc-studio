@@ -129,7 +129,7 @@ export interface IStorageAdapter {
 
 El botón **Importar** del catálogo acepta dos formatos JSON distintos:
 - **Respaldo de catálogo (`CatalogBackup`, `schemaVersion: 1`):** incluye arreglos `projects` y `audios` con binarios en base64; se restaura completo en el adaptador.
-- **Proyecto JSON individual (`exportJson`, `2.0-musixmatch-richsync` o anterior):** incluye arreglo `lines` sin `projects`; se normaliza mediante el migrador paso a paso `migrateProjectJson` (`src/features/export/model/projectMigrations.ts`, que acepta versiones `sin schemaVersion`, `1`/`1.0`, `2.0` y `2.0-musixmatch-richsync`, y rechaza versiones futuras o desconocidas) y crea un proyecto nuevo con `id` único y sin binario de audio.
+- **Proyecto JSON individual (`exportJson`, esquema actual `lrc-studio.1`):** incluye arreglo `lines` sin `projects`; se normaliza mediante el migrador paso a paso `migrateProjectJson` (`src/features/export/model/projectMigrations.ts`, que acepta versiones legadas `sin schemaVersion`, `1`/`1.0`, `2.0` y `2.0-musixmatch-richsync`, además de `lrc-studio.1`, y rechaza versiones futuras como `lrc-studio.N` o desconocidas) y crea un proyecto nuevo con `id` único y sin binario de audio.
 
 ### Selector de adaptador (`src/storage/index.ts`)
 

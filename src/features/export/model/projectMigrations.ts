@@ -3,7 +3,7 @@ import type { LyricLine, SongMetadata, WordTiming } from '@/types';
 /**
  * Versión de esquema usada al exportar e importar proyectos JSON individuales.
  */
-export const PROJECT_JSON_SCHEMA_VERSION = '2.0-musixmatch-richsync' as const;
+export const PROJECT_JSON_SCHEMA_VERSION = 'lrc-studio.1' as const;
 
 /**
  * Versiones de esquema reconocidas por el migrador, ordenadas de la más antigua a la actual.
@@ -11,6 +11,7 @@ export const PROJECT_JSON_SCHEMA_VERSION = '2.0-musixmatch-richsync' as const;
 export const KNOWN_PROJECT_SCHEMA_VERSIONS = [
   '1.0',
   '2.0',
+  '2.0-musixmatch-richsync',
   PROJECT_JSON_SCHEMA_VERSION,
 ] as const;
 
@@ -45,6 +46,13 @@ const MIGRATION_STEPS: Partial<Record<KnownProjectSchemaVersion, MigrationStep>>
     }),
   },
   '2.0': {
+    nextVersion: '2.0-musixmatch-richsync',
+    migrate: (doc) => ({
+      ...doc,
+      schemaVersion: '2.0-musixmatch-richsync',
+    }),
+  },
+  '2.0-musixmatch-richsync': {
     nextVersion: PROJECT_JSON_SCHEMA_VERSION,
     migrate: (doc) => ({
       ...doc,
@@ -73,6 +81,9 @@ function resolveSchemaVersion(rawVersion: unknown): KnownProjectSchemaVersion | 
   }
   if (rawVersion === 2 || rawVersion === '2' || rawVersion === '2.0') {
     return '2.0';
+  }
+  if (rawVersion === '2.0-musixmatch-richsync') {
+    return '2.0-musixmatch-richsync';
   }
   if (rawVersion === PROJECT_JSON_SCHEMA_VERSION) {
     return PROJECT_JSON_SCHEMA_VERSION;

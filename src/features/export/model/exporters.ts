@@ -103,7 +103,7 @@ export function exportElrc(
 }
 
 /**
- * Exporta el proyecto completo a JSON estructurado (`2.0-musixmatch-richsync`).
+ * Exporta el proyecto completo a JSON estructurado (`lrc-studio.1`).
  * Proviene de la rama `json` de `exportedOutput` en el archivo base.
  */
 export function exportJson(

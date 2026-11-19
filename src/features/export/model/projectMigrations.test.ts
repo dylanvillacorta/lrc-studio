@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import babiFixture from './__fixtures__/babi-pa-ti.project.json';
-import { parseProjectJson } from './exporters';
-import { migrateProjectJson } from './projectMigrations';
+import { exportJson, parseProjectJson } from './exporters';
+import {
+  PROJECT_JSON_SCHEMA_VERSION,
+  migrateProjectJson,
+} from './projectMigrations';
 
 describe('projectMigrations y parseProjectJson con fixture', () => {
   it('migra todas las versiones de esquema conocidas al formato actual', () => {
@@ -34,6 +37,7 @@ describe('projectMigrations y parseProjectJson con fixture', () => {
       2,
       '2.0',
       '2.0-musixmatch-richsync',
+      PROJECT_JSON_SCHEMA_VERSION,
     ];
 
     for (const schemaVersion of versions) {
@@ -89,19 +93,29 @@ describe('projectMigrations y parseProjectJson con fixture', () => {
     }
   });
 
-  it('rechaza versiones desconocidas o mayores con error claro en español', () => {
+  it('rechaza versiones desconocidas o mayores (incluido lrc-studio.N) con error claro en español', () => {
     const future = migrateProjectJson({
-      schemaVersion: '3.0',
+      schemaVersion: 'lrc-studio.2',
       lines: [],
     });
     expect(future.ok).toBe(false);
     if (!future.ok) {
-      expect(future.error).toContain('no reconoce el esquema "3.0"');
+      expect(future.error).toContain('no reconoce el esquema "lrc-studio.2"');
       expect(future.error).toContain('actualiza la app');
     }
+
+    const legacyInvalid = migrateProjectJson({
+      schemaVersion: '2.0-musixmatch-richsync',
+      metadata: { title: 'Sin líneas' },
+    });
+    expect(legacyInvalid).toEqual({
+      ok: false,
+      error: 'El proyecto JSON no contiene una lista válida de líneas.',
+    });
   });
 
-  it('parseProjectJson importa el fixture real babi-pa-ti.project.json', () => {
+  it('parseProjectJson migra el fixture babi-pa-ti.project.json (2.0-musixmatch-richsync) y al re-exportar escribe lrc-studio.1', () => {
+    expect(babiFixture.schemaVersion).toBe('2.0-musixmatch-richsync');
     const res = parseProjectJson(JSON.stringify(babiFixture));
     expect(res.ok).toBe(true);
     if (res.ok) {
@@ -111,6 +125,16 @@ describe('projectMigrations y parseProjectJson con fixture', () => {
       expect(res.data.lines.length).toBeGreaterThanOrEqual(40);
       expect(res.data.lines[0]?.startMs).toBe(7153);
       expect(res.data.lines[0]?.words[0]?.startMs).toBeNull();
+
+      const reExported = JSON.parse(
+        exportJson(res.data.lines, {
+          title: res.data.metadata.title ?? '',
+          artist: res.data.metadata.artist ?? '',
+          album: res.data.metadata.album ?? '',
+          offsetMs: res.data.metadata.offsetMs ?? 0,
+        }),
+      ) as { schemaVersion: string };
+      expect(reExported.schemaVersion).toBe('lrc-studio.1');
     }
   });
 });
