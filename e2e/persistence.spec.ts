@@ -53,7 +53,7 @@ test.describe('Persistencia crítica, autoguardado y restauración', () => {
       .toBeGreaterThan(20_000);
 
     // Verificar reproducción real del audio restaurado
-    const playBtn = page.getByRole('button', { name: 'Reproducir' });
+    const playBtn = page.getByRole('button', { name: 'Reproducir', exact: true });
     if (await playBtn.isVisible()) {
       await playBtn.click();
       await expect(page.getByRole('button', { name: 'Pausar' })).toBeVisible();
