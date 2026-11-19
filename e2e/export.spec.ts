@@ -76,7 +76,7 @@ test.describe('Exportación LRC, ELRC, JSON e importación', () => {
       .getByRole('group', { name: 'Formato de exportación' })
       .getByRole('button', { name: 'ELRC', exact: true })
       .click();
-    await expect(preview).toContainText('[by:LyricSync Studio Pro]');
+    await expect(preview).toContainText('[by:LRC Studio]');
     await expect(preview).toContainText(/<00:\d{2}\.\d{2}>Nada/);
 
     // Vista previa JSON

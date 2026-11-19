@@ -101,6 +101,18 @@ export const DesktopCatalogSidebar = memo(function DesktopCatalogSidebar({
         <Icon name="plus" size={20} />
         <span>Nueva transcripción</span>
       </RaisedButton>
+
+      <p className="m-0 text-center text-xs font-semibold text-mute leading-tight">
+        Creado por{' '}
+        <a
+          href="https://dylanvillacorta.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-bold text-ink underline decoration-acc/50 underline-offset-2 hover:text-acc focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc rounded"
+        >
+          Dylan Villacorta
+        </a>
+      </p>
     </aside>
   );
 });

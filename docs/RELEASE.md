@@ -1,4 +1,4 @@
-# Release, Caché, Docker y SEO — LyricSync Studio
+# Release, Caché, Docker y SEO — LRC Studio
 
 ## 1. Cache busting
 
@@ -75,11 +75,11 @@
 - `nginx` escucha en todas las interfaces (`listen 8080;`) y la aplicación opera por HTTP en la LAN (`crypto.randomUUID` y `navigator.clipboard` cuentan con respaldos sin requerir HTTPS, y no se usa Service Worker).
 - Para permitir conexiones entrantes desde el segmento `10.1.10.0/24` en el perfil de red **Privado**, ejecutar en **PowerShell como Administrador**:
   ```powershell
-  New-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 30601)" -Direction Inbound -Protocol TCP -LocalPort 30601 -RemoteAddress 10.1.10.0/24 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName "LRC Studio Dev (LAN 30601)" -Direction Inbound -Protocol TCP -LocalPort 30601 -RemoteAddress 10.1.10.0/24 -Profile Private -Action Allow
   ```
 - Para eliminar la regla cuando terminen las pruebas:
   ```powershell
-  Remove-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 30601)"
+  Remove-NetFirewallRule -DisplayName "LRC Studio Dev (LAN 30601)"
   ```
 
 ## 5. SEO

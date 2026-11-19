@@ -160,7 +160,7 @@ export function migrateProjectJson(parsed: unknown): ParseProjectJsonResult {
     const versionLabel = formatSchemaVersionLabel(parsed.schemaVersion);
     return {
       ok: false,
-      error: `Esta versión de LyricSync no reconoce el esquema "${versionLabel}", actualiza la app.`,
+      error: `Esta versión de LRC Studio no reconoce el esquema "${versionLabel}", actualiza la app.`,
     };
   }
 

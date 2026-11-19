@@ -20,6 +20,11 @@ test.describe('SEO, metadatos y endpoints estáticos', () => {
       (await descriptions.first().getAttribute('content'))?.trim().length,
     ).toBeGreaterThan(20);
 
+    await expect(page.locator('meta[name="author"]')).toHaveAttribute('content', 'Dylan Villacorta');
+    await expect(page.locator('link[rel="author"]')).toHaveAttribute(
+      'href',
+      'https://dylanvillacorta.com',
+    );
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       'href',
       'https://lrc.dirtykeras.com/',
@@ -60,13 +65,18 @@ test.describe('SEO, metadatos y endpoints estáticos', () => {
     expect(ldJsonRaw).toBeTruthy();
     const ldJson = JSON.parse(ldJsonRaw ?? '{}') as Record<string, unknown>;
     expect(ldJson['@type']).toBe('SoftwareApplication');
-    expect(ldJson['name']).toBe('LyricSync Studio');
+    expect(ldJson['name']).toBe('LRC Studio');
     expect(ldJson['inLanguage']).toBe('es');
+    expect(ldJson['author']).toEqual({
+      '@type': 'Person',
+      name: 'Dylan Villacorta',
+      url: 'https://dylanvillacorta.com',
+    });
 
     // <noscript> presente
     const noscript = page.locator('noscript');
     await expect(noscript).toHaveCount(1);
-    expect(await noscript.innerHTML()).toContain('LyricSync Studio');
+    expect(await noscript.innerHTML()).toContain('LRC Studio');
 
     // Manifest enlazado y accesible
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
@@ -75,9 +85,11 @@ test.describe('SEO, metadatos y endpoints estáticos', () => {
     expect(manifestRes.status()).toBe(200);
     const manifestJson = (await manifestRes.json()) as {
       name?: string;
+      short_name?: string;
       icons?: Array<{ src?: string; sizes?: string; type?: string; purpose?: string }>;
     };
-    expect(manifestJson.name).toBe('LyricSync Studio');
+    expect(manifestJson.name).toBe('LRC Studio');
+    expect(manifestJson.short_name).toBe('LRC Studio');
     expect(Array.isArray(manifestJson.icons) && manifestJson.icons.length).toBeGreaterThan(0);
 
     for (const icon of manifestJson.icons ?? []) {

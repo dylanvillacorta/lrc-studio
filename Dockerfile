@@ -26,7 +26,7 @@ ARG APP_VERSION=0.0.0
 ARG APP_COMMIT=dev
 ARG CREATED=1970-01-01T00:00:00Z
 
-LABEL org.opencontainers.image.title="LyricSync Studio" \
+LABEL org.opencontainers.image.title="LRC Studio" \
       org.opencontainers.image.description="Aplicación web local-first para sincronización de letras LRC/ELRC y karaoke a 60 FPS" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.revision="${APP_COMMIT}" \

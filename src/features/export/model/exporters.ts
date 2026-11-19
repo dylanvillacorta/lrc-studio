@@ -80,7 +80,7 @@ export function exportElrc(
     `[ti:${metadata.title}]`,
     `[ar:${metadata.artist}]`,
     `[al:${metadata.album}]`,
-    '[by:LyricSync Studio Pro]',
+    '[by:LRC Studio]',
     '',
   ];
 
@@ -154,7 +154,7 @@ export function exportJson(
 }
 
 /**
- * Valida e importa un archivo JSON de proyecto de LyricSync Studio.
+ * Valida e importa un archivo JSON de proyecto de LRC Studio.
  * Delega la normalización de versiones en `migrateProjectJson`.
  * Devuelve las líneas restauradas en milisegundos y metadatos, o un error en español.
  */

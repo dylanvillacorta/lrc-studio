@@ -1,1 +1,1 @@
-"# lrc-studio" 
+# LRC Studio

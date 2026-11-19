@@ -115,7 +115,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Importa un respaldo de catálogo (`CatalogBackup`) o un proyecto JSON individual de LyricSync.
+ * Importa un respaldo de catálogo (`CatalogBackup`) o un proyecto JSON individual de LRC Studio.
  * Si es un proyecto JSON individual, migra su esquema y crea un nuevo proyecto sin audio.
  */
 export async function importCatalogBackupFromJson(
@@ -135,7 +135,7 @@ export async function importCatalogBackupFromJson(
 
   if (!isRecord(parsed)) {
     throw new Error(
-      'El archivo JSON no tiene un formato válido: se esperaba un respaldo de catálogo o un proyecto JSON de LyricSync.',
+      'El archivo JSON no tiene un formato válido: se esperaba un respaldo de catálogo o un proyecto JSON de LRC Studio.',
     );
   }
 
@@ -157,6 +157,6 @@ export async function importCatalogBackupFromJson(
   }
 
   throw new Error(
-    'Formato JSON no reconocido: se esperaba un respaldo de catálogo o un proyecto JSON de LyricSync.',
+    'Formato JSON no reconocido: se esperaba un respaldo de catálogo o un proyecto JSON de LRC Studio.',
   );
 }

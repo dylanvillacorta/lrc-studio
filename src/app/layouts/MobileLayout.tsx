@@ -459,7 +459,7 @@ export function MobileLayout() {
         </div>
         {showTopHeader ? (
           <MobileHeader
-            title={project?.title || 'LyricSync Studio'}
+            title={project?.title || 'LRC Studio'}
             subtitle={subtitle}
             saveStatus={saveStatus}
             onOpenCatalog={handleOpenCatalogFromHeader}
