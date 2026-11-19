@@ -17,10 +17,14 @@ import { type LineBounds } from '@/features/loupe';
 import {
   computeBurstEnterState,
   computeBurstExitState,
+  computeCompensatedStampMs,
   computePreRollStartMs,
   DEFAULT_PRE_ROLL_MS,
   getActiveLineWindow,
   getBurstLoopSeekTargetMs,
+  readCurrentTimeMs,
+  shiftTimings,
+  SyncSettingsDialog,
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { NoAudioCard } from '@/features/sync/components/NoAudioCard';
@@ -55,6 +59,8 @@ export function DesktopLayout() {
     saveStatus,
     sync,
     player,
+    latencyMs,
+    setLatencyMs,
     openProject,
     createProject,
     attachAudio,
@@ -76,6 +82,7 @@ export function DesktopLayout() {
     flush: flushPendingSave,
   });
   const [infoOpen, setInfoOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [burstActive, setBurstActive] = useState(false);
   const [karaokeActive, setKaraokeActive] = useState(false);
@@ -89,7 +96,12 @@ export function DesktopLayout() {
   }, [player]);
 
   const getCurrentTimeMs = useCallback(
-    () => playerRef.current.getCurrentTimeMs?.() ?? playerRef.current.currentTime,
+    () =>
+      readCurrentTimeMs({
+        getCurrentTimeMs: playerRef.current.getCurrentTimeMs,
+        timeStore: playerRef.current.timeStore,
+        currentTimeMs: playerRef.current.currentTime,
+      }),
     [],
   );
 
@@ -138,7 +150,7 @@ export function DesktopLayout() {
         burstActive,
         isPlaying: player.isPlaying,
         isEditing: true,
-        currentTimeMs: player.currentTime,
+        currentTimeMs: getCurrentTimeMs(),
         windowStartMs: burstWindow.windowStartMs,
         windowEndMs: burstWindow.windowEndMs,
       });
@@ -152,7 +164,7 @@ export function DesktopLayout() {
         burstActive: true,
         isPlaying: true,
         isEditing: true,
-        currentTimeMs: timeStore.getTimeMs(),
+        currentTimeMs: getCurrentTimeMs(),
         windowStartMs: burstWindow.windowStartMs,
         windowEndMs: burstWindow.windowEndMs,
       });
@@ -162,7 +174,7 @@ export function DesktopLayout() {
     };
     checkBurstEnd();
     return timeStore.subscribe(checkBurstEnd);
-  }, [burstActive, burstWindow, centerView, player]);
+  }, [burstActive, burstWindow, centerView, getCurrentTimeMs, player]);
 
   useEffect(() => {
     if (activeTab === 'catalog') {
@@ -269,7 +281,7 @@ export function DesktopLayout() {
 
   const handleStampStart = useCallback(() => {
     if (syncMode === 'karaoke') return;
-    const nowMs = getCurrentTimeMs();
+    const nowMs = computeCompensatedStampMs(getCurrentTimeMs(), latencyMs);
     if (syncMode === 'word') {
       if (!targetWord) return;
       if (!player.isPlaying) void player.play();
@@ -286,11 +298,11 @@ export function DesktopLayout() {
     if (sync.lines.length === 0) return;
     sync.stampLineStart(nowMs, false);
     setLiveNotice(`Línea ${sync.activeLineIndex + 1} marcada`);
-  }, [applyWordFeedback, getCurrentTimeMs, holdMode, player, subMode, sync, syncMode, targetWord]);
+  }, [applyWordFeedback, getCurrentTimeMs, holdMode, latencyMs, player, subMode, sync, syncMode, targetWord]);
 
   const handleStampEnd = useCallback(() => {
     if (syncMode !== 'word' || !holdMode || !targetWord) return;
-    const nowMs = getCurrentTimeMs();
+    const nowMs = computeCompensatedStampMs(getCurrentTimeMs(), latencyMs);
     const feedback = sync.stampWordEnd({
       nowMs,
       subMode,
@@ -298,7 +310,7 @@ export function DesktopLayout() {
       sniperAutoAdvancePreRoll: true,
     });
     applyWordFeedback(feedback, nowMs);
-  }, [applyWordFeedback, getCurrentTimeMs, holdMode, subMode, sync, syncMode, targetWord]);
+  }, [applyWordFeedback, getCurrentTimeMs, holdMode, latencyMs, subMode, sync, syncMode, targetWord]);
 
   const handleNudge = useCallback(
     (deltaMs: -50 | -10 | 10 | 50) => {
@@ -312,7 +324,7 @@ export function DesktopLayout() {
   );
 
   useKeyboardShortcuts({
-    enabled: centerView === 'editor' && Boolean(audioUrl),
+    enabled: centerView === 'editor' && Boolean(audioUrl) && !settingsOpen && !infoOpen,
     onStampStart: handleStampStart,
     onStampEnd: handleStampEnd,
     onRepeatPreRoll: handleRepeatPreRoll,
@@ -465,6 +477,13 @@ export function DesktopLayout() {
     [catalog, clearActiveProject, project?.id],
   );
 
+  const handleShiftTimings = useCallback(
+    (deltaMs: number) => {
+      sync.replaceLines(shiftTimings(sync.lines, deltaMs, durationMs), true);
+    },
+    [durationMs, sync],
+  );
+
   return (
     <div className="min-h-dvh w-full bg-bg text-ink flex flex-col p-5 gap-4 overflow-x-hidden">
       <UpdateBanner updateAvailable={updateAvailable} onUpdate={applyUpdate} />
@@ -476,6 +495,7 @@ export function DesktopLayout() {
         onToggleLyrics={handleToggleLyrics}
         onToggleExport={handleToggleExport}
         onRetrySave={handleRetrySave}
+        onOpenSettings={() => setSettingsOpen(true)}
         onOpenInfo={() => setInfoOpen(true)}
       />
       <div className="flex-1 min-h-0 flex flex-col min-[1100px]:flex-row gap-5">
@@ -626,6 +646,16 @@ export function DesktopLayout() {
           onOpenLoupe={handleOpenLoupe}
         />
       </div>
+      <SyncSettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        latencyMs={latencyMs}
+        onChangeLatencyMs={setLatencyMs}
+        lines={sync.lines}
+        durationMs={durationMs}
+        onShiftTimings={handleShiftTimings}
+        onUndoShift={sync.undo}
+      />
       <InfoDialog
         open={infoOpen}
         onClose={() => setInfoOpen(false)}

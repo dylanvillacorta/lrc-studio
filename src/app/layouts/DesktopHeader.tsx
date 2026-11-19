@@ -28,6 +28,7 @@ export interface DesktopHeaderProps {
   onToggleLyrics: () => void;
   onToggleExport: () => void;
   onRetrySave: () => void;
+  onOpenSettings?: () => void;
   onOpenInfo?: () => void;
 }
 
@@ -43,6 +44,7 @@ export const DesktopHeader = memo(function DesktopHeader({
   onToggleLyrics,
   onToggleExport,
   onRetrySave,
+  onOpenSettings,
   onOpenInfo,
 }: DesktopHeaderProps) {
   const isSaving = saveStatus === 'saving' || saveStatus === 'pending';
@@ -111,6 +113,15 @@ export const DesktopHeader = memo(function DesktopHeader({
         <Icon name="export" size={18} />
         <span>Exportar LRC / ELRC / JSON</span>
       </RaisedButton>
+
+      {onOpenSettings ? (
+        <IconButton
+          aria-label="Ajustes de sincronización"
+          onClick={onOpenSettings}
+        >
+          <Icon name="settings" size={20} />
+        </IconButton>
+      ) : null}
 
       {onOpenInfo ? (
         <IconButton

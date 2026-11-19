@@ -79,3 +79,28 @@ export {
   type BurstLoopCheckParams,
   type BurstTransitionResult,
 } from '@/features/sync/model/burstLoop';
+export {
+  MAX_LATENCY_MS,
+  clampLatencyMs,
+  computeCompensatedStampMs,
+  readCurrentTimeMs,
+  type CurrentTimeSource,
+} from '@/features/sync/model/stampClock';
+export {
+  BEEP_COUNT,
+  BEEP_DURATION_S,
+  BEEP_FREQUENCY_HZ,
+  BEEP_INITIAL_DELAY_MS,
+  BEEP_INTERVAL_MS,
+  computeLatencyEstimateFromTaps,
+  computeMedian,
+} from '@/features/sync/model/latencyCalibration';
+export {
+  getShiftTimingsPreview,
+  shiftTimings,
+  type ShiftTimingsPreview,
+} from '@/features/sync/model/shiftTimings';
+export {
+  SyncSettingsDialog,
+  type SyncSettingsDialogProps,
+} from '@/features/sync/components/SyncSettingsDialog';
