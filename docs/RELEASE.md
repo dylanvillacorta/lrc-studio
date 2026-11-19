@@ -57,7 +57,6 @@
   ```bash
   docker compose up -d
   ```
-- **Nota previa a `v0.1.0`:** mientras no se haya publicado la primera release `v0.1.0` en GHCR, `docker compose up -d` o `docker compose pull` fallarán al descargar la imagen (comportamiento esperado hasta aprobar G1 de `v0.1.0`).
 
 ### Stack local de pruebas desde código fuente (`docker-compose.dev.yml`)
 
