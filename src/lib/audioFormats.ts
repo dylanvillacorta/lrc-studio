@@ -1,5 +1,5 @@
 /**
- * Fuente única de verdad para los formatos de audio soportados por LyricSync Studio.
+ * Fuente única de verdad para los formatos de audio soportados por LRC Studio.
  */
 
 export const SUPPORTED_AUDIO_EXTENSIONS = [

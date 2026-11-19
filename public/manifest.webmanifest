@@ -1,6 +1,6 @@
 {
-  "name": "LyricSync Studio",
-  "short_name": "LyricSync",
+  "name": "LRC Studio",
+  "short_name": "LRC Studio",
   "description": "Sincroniza letras LRC y ELRC para karaoke directamente en el navegador, sin subir archivos.",
   "start_url": "/",
   "display": "standalone",

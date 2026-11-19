@@ -156,7 +156,7 @@ export function InfoDialog({
               id={titleId}
               className="m-0 text-lg font-extrabold text-ink truncate"
             >
-              LyricSync Studio
+              LRC Studio
             </h2>
           </div>
 
@@ -196,6 +196,17 @@ export function InfoDialog({
               <span className="font-mono text-xs font-bold text-ink truncate">
                 {resolvedDomain}
               </span>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-sm pt-1 border-t border-lo/40">
+              <span className="font-bold text-mute">Creado por</span>
+              <a
+                href="https://dylanvillacorta.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center min-h-[44px] px-2 -mr-2 font-extrabold text-ink underline decoration-acc/60 underline-offset-4 hover:text-acc focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc rounded-[10px]"
+              >
+                Dylan Villacorta
+              </a>
             </div>
           </WellPanel>
 

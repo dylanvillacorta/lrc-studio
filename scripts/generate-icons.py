@@ -106,7 +106,7 @@ def make_og_image(source: Image.Image) -> Image.Image:
         return canvas
 
     draw = ImageDraw.Draw(canvas)
-    title = "LyricSync Studio"
+    title = "LRC Studio"
     text_bbox = draw.textbbox((0, 0), title, font=font)
     text_w = text_bbox[2] - text_bbox[0]
     text_h = text_bbox[3] - text_bbox[1]
@@ -172,7 +172,7 @@ def generate_all(source_path: Path, public_dir: Path) -> None:
 
 def main() -> None:
     repo_root = Path(__file__).resolve().parent.parent
-    parser = argparse.ArgumentParser(description="Genera los iconos WebP/ICO/PNG de LyricSync Studio.")
+    parser = argparse.ArgumentParser(description="Genera los iconos WebP/ICO/PNG de LRC Studio.")
     parser.add_argument(
         "--from-raw",
         type=Path,

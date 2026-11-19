@@ -1,5 +1,5 @@
 /**
- * Pestañas principales de la aplicación LyricSync Studio.
+ * Pestañas principales de la aplicación LRC Studio.
  */
 export type ActiveTab = 'sync' | 'word' | 'lyrics' | 'loupe' | 'export' | 'catalog';
 

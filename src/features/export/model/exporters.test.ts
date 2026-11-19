@@ -13,7 +13,7 @@ import type { SongMetadata } from '@/types';
 
 const demoMeta: SongMetadata = {
   title: 'Luces de Neón (Demo Synth)',
-  artist: 'LyricSync Studio Artist',
+  artist: 'LRC Studio Artist',
   album: 'Midnight Sessions',
   offsetMs: 0,
 };
@@ -25,7 +25,7 @@ describe('exporters', () => {
 
     const expectedStart = [
       '[ti:Luces de Neón (Demo Synth)]',
-      '[ar:LyricSync Studio Artist]',
+      '[ar:LRC Studio Artist]',
       '[al:Midnight Sessions]',
       '',
       '[00:01.50] Luces de neón brillan en la ciudad',
@@ -45,7 +45,7 @@ describe('exporters', () => {
 
     const outputLines = elrc.split('\n');
     expect(outputLines[0]).toBe('[ti:Luces de Neón (Demo Synth)]');
-    expect(outputLines[3]).toBe('[by:LyricSync Studio Pro]');
+    expect(outputLines[3]).toBe('[by:LRC Studio]');
     expect(outputLines[5]).toContain('[00:01.50] <00:01.50>Luces');
     expect(outputLines[7]).toBe(
       '[00:09.00] Cada latido marca nuestra canción',
@@ -99,7 +99,7 @@ describe('exporters', () => {
     );
     expect(unknownVersion.ok).toBe(false);
     if (!unknownVersion.ok) {
-      expect(unknownVersion.error).toContain('Versión de proyecto JSON no compatible');
+      expect(unknownVersion.error).toContain('no reconoce el esquema');
     }
 
     const noLines = parseProjectJson('{"metadata":{}}');

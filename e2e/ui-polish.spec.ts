@@ -67,7 +67,15 @@ test.describe('Pulido de interfaz (T22)', () => {
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText('LyricSync Studio');
+    await expect(dialog).toContainText('LRC Studio');
+    await expect(dialog).toContainText('Creado por');
+    const authorLink = dialog.getByRole('link', { name: 'Dylan Villacorta' });
+    await expect(authorLink).toHaveAttribute('href', 'https://dylanvillacorta.com');
+    await expect(authorLink).toHaveAttribute('target', '_blank');
+    await expect(authorLink).toHaveAttribute('rel', 'noopener noreferrer');
+    const authorBox = await authorLink.boundingBox();
+    expect(authorBox).not.toBeNull();
+    expect(authorBox!.height).toBeGreaterThanOrEqual(44);
     await expect(dialog).toContainText(/v\d+\.\d+\.\d+/);
     await expect(dialog).toContainText('Commit');
     await expect(

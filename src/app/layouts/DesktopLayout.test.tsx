@@ -154,7 +154,8 @@ describe('DesktopLayout y montaje de versión', () => {
       </StorageProvider>,
     );
 
-    expect(html).toContain('LyricSync Studio');
+    expect(html).toContain('LRC Studio');
+    expect(html).toContain('https://dylanvillacorta.com');
     expect(html).toContain('Línea');
     expect(html).toContain('Palabra');
     expect(html).toContain('Ráfaga');

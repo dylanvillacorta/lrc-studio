@@ -1,4 +1,4 @@
-# Dependencias aprobadas — LyricSync Studio
+# Dependencias aprobadas — LRC Studio
 
 Lista aprobada por el usuario (puerta G3) el **2026-11-18**. Cualquier dependencia nueva o actualización de versión mayor requiere aprobación explícita (G3).
 

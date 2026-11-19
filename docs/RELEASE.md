@@ -1,4 +1,4 @@
-# Release, Caché, Docker y SEO — LyricSync Studio
+# Release, Caché, Docker y SEO — LRC Studio
 
 ## 1. Cache busting
 
@@ -57,7 +57,6 @@
   ```bash
   docker compose up -d
   ```
-- **Nota previa a `v0.1.0`:** mientras no se haya publicado la primera release `v0.1.0` en GHCR, `docker compose up -d` o `docker compose pull` fallarán al descargar la imagen (comportamiento esperado hasta aprobar G1 de `v0.1.0`).
 
 ### Stack local de pruebas desde código fuente (`docker-compose.dev.yml`)
 
@@ -75,11 +74,11 @@
 - `nginx` escucha en todas las interfaces (`listen 8080;`) y la aplicación opera por HTTP en la LAN (`crypto.randomUUID` y `navigator.clipboard` cuentan con respaldos sin requerir HTTPS, y no se usa Service Worker).
 - Para permitir conexiones entrantes desde el segmento `10.1.10.0/24` en el perfil de red **Privado**, ejecutar en **PowerShell como Administrador**:
   ```powershell
-  New-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 30601)" -Direction Inbound -Protocol TCP -LocalPort 30601 -RemoteAddress 10.1.10.0/24 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName "LRC Studio Dev (LAN 30601)" -Direction Inbound -Protocol TCP -LocalPort 30601 -RemoteAddress 10.1.10.0/24 -Profile Private -Action Allow
   ```
 - Para eliminar la regla cuando terminen las pruebas:
   ```powershell
-  Remove-NetFirewallRule -DisplayName "LyricSync Studio Dev (LAN 30601)"
+  Remove-NetFirewallRule -DisplayName "LRC Studio Dev (LAN 30601)"
   ```
 
 ## 5. SEO

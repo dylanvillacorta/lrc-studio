@@ -59,7 +59,7 @@ export const DesktopHeader = memo(function DesktopHeader({
           <Icon name="sync" size={22} />
         </div>
         <h1 className="m-0 text-[18px] font-extrabold tracking-tight text-ink truncate">
-          LyricSync Studio
+          LRC Studio
         </h1>
       </div>
 

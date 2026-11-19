@@ -7,12 +7,20 @@
  */
 
 import { formatLrcTimestamp } from '@/lib/time';
-import type { JsonTimeUnit, LyricLine, SongMetadata, WordTiming } from '@/types';
+import type { JsonTimeUnit, LyricLine, SongMetadata } from '@/types';
+import {
+  PROJECT_JSON_SCHEMA_VERSION,
+  migrateProjectJson,
+  type ParseProjectJsonResult,
+  type ParsedProjectJson,
+} from './projectMigrations';
 
-/**
- * Versión de esquema usada al exportar e importar proyectos JSON individuales.
- */
-export const PROJECT_JSON_SCHEMA_VERSION = '2.0-musixmatch-richsync' as const;
+export {
+  PROJECT_JSON_SCHEMA_VERSION,
+  migrateProjectJson,
+  type ParseProjectJsonResult,
+  type ParsedProjectJson,
+};
 
 export interface ExportJsonOptions {
   audioFileName?: string;
@@ -20,15 +28,6 @@ export interface ExportJsonOptions {
   timeUnit?: JsonTimeUnit;
   exportedAt?: string;
 }
-
-export interface ParsedProjectJson {
-  lines: LyricLine[];
-  metadata: Partial<SongMetadata>;
-}
-
-export type ParseProjectJsonResult =
-  | { ok: true; data: ParsedProjectJson }
-  | { ok: false; error: string };
 
 function convertMsToExportUnit(
   ms: number | null,
@@ -81,7 +80,7 @@ export function exportElrc(
     `[ti:${metadata.title}]`,
     `[ar:${metadata.artist}]`,
     `[al:${metadata.album}]`,
-    '[by:LyricSync Studio Pro]',
+    '[by:LRC Studio]',
     '',
   ];
 
@@ -104,7 +103,7 @@ export function exportElrc(
 }
 
 /**
- * Exporta el proyecto completo a JSON estructurado (`2.0-musixmatch-richsync`).
+ * Exporta el proyecto completo a JSON estructurado (`lrc-studio.1`).
  * Proviene de la rama `json` de `exportedOutput` en el archivo base.
  */
 export function exportJson(
@@ -154,21 +153,10 @@ export function exportJson(
   return JSON.stringify(payload, null, 2);
 }
 
-function toMsOrNull(value: unknown, factorToMs: number): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return null;
-  }
-  return Math.max(0, Math.round(value * factorToMs));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 /**
- * Valida e importa un archivo JSON de proyecto de LyricSync Studio.
+ * Valida e importa un archivo JSON de proyecto de LRC Studio.
+ * Delega la normalización de versiones en `migrateProjectJson`.
  * Devuelve las líneas restauradas en milisegundos y metadatos, o un error en español.
- * Proviene de `handleImportJsonProject` en el archivo base.
  */
 export function parseProjectJson(rawJson: string): ParseProjectJsonResult {
   if (typeof rawJson !== 'string' || rawJson.trim().length === 0) {
@@ -182,82 +170,5 @@ export function parseProjectJson(rawJson: string): ParseProjectJsonResult {
     return { ok: false, error: 'El archivo no contiene un JSON válido.' };
   }
 
-  if (!isRecord(parsed)) {
-    return { ok: false, error: 'El JSON del proyecto debe ser un objeto.' };
-  }
-
-  if (
-    parsed.schemaVersion !== undefined &&
-    parsed.schemaVersion !== PROJECT_JSON_SCHEMA_VERSION
-  ) {
-    return {
-      ok: false,
-      error: `Versión de proyecto JSON no compatible: se esperaba "${PROJECT_JSON_SCHEMA_VERSION}".`,
-    };
-  }
-
-  if (!Array.isArray(parsed.lines)) {
-    return {
-      ok: false,
-      error: 'El proyecto JSON no contiene una lista válida de líneas.',
-    };
-  }
-
-  const rawMeta = isRecord(parsed.metadata) ? parsed.metadata : undefined;
-  const isMs = rawMeta?.timeUnit === 'ms';
-  const factorToMs = isMs ? 1 : 1000;
-
-  const restoredLines: LyricLine[] = [];
-  for (let idx = 0; idx < parsed.lines.length; idx++) {
-    const rawLine = parsed.lines[idx];
-    if (!isRecord(rawLine)) {
-      return {
-        ok: false,
-        error: `La línea #${idx + 1} del proyecto JSON no tiene un formato válido.`,
-      };
-    }
-
-    const rawWords = Array.isArray(rawLine.words) ? rawLine.words : [];
-    const words: WordTiming[] = rawWords.map((rawWord, wIdx) => {
-      const wRecord = isRecord(rawWord) ? rawWord : {};
-      return {
-        id:
-          typeof wRecord.id === 'string' && wRecord.id.length > 0
-            ? wRecord.id
-            : `w-${idx}-${wIdx}`,
-        text: typeof wRecord.text === 'string' ? wRecord.text : '',
-        startMs: toMsOrNull(wRecord.startTime, factorToMs),
-        endMs: toMsOrNull(wRecord.endTime, factorToMs),
-      };
-    });
-
-    restoredLines.push({
-      id:
-        typeof rawLine.id === 'string' && rawLine.id.length > 0
-          ? rawLine.id
-          : `line-${idx}`,
-      text: typeof rawLine.text === 'string' ? rawLine.text : '',
-      startMs: toMsOrNull(rawLine.startTime, factorToMs),
-      endMs: toMsOrNull(rawLine.endTime, factorToMs),
-      words,
-    });
-  }
-
-  const metadata: Partial<SongMetadata> = {};
-  if (rawMeta) {
-    if (typeof rawMeta.title === 'string') metadata.title = rawMeta.title;
-    if (typeof rawMeta.artist === 'string') metadata.artist = rawMeta.artist;
-    if (typeof rawMeta.album === 'string') metadata.album = rawMeta.album;
-    if (typeof rawMeta.offsetMs === 'number' && Number.isFinite(rawMeta.offsetMs)) {
-      metadata.offsetMs = rawMeta.offsetMs;
-    }
-  }
-
-  return {
-    ok: true,
-    data: {
-      lines: restoredLines,
-      metadata,
-    },
-  };
+  return migrateProjectJson(parsed);
 }

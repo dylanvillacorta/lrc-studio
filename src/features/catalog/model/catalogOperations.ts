@@ -1,9 +1,11 @@
+import { migrateProjectJson } from '@/features/export';
 import type { IStorageAdapter } from '@/storage';
 import type { ProjectFullData, ProjectSummary } from '@/types';
 import {
   buildBackupFileName,
   buildSingleProjectBackup,
   createEmptyProject,
+  createProjectFromImportedJson,
   createProjectId,
   duplicateProject,
   toSingleProjectAudioData,
@@ -108,13 +110,53 @@ export async function exportCatalogProjectBackup(
   return { json, blob, fileName };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
- * Importa un respaldo JSON (`CatalogBackup`) en el almacenamiento local.
+ * Importa un respaldo de catálogo (`CatalogBackup`) o un proyecto JSON individual de LRC Studio.
+ * Si es un proyecto JSON individual, migra su esquema y crea un nuevo proyecto sin audio.
  */
 export async function importCatalogBackupFromJson(
   adapter: IStorageAdapter,
   jsonString: string,
 ): Promise<void> {
-  await adapter.init();
-  await adapter.importCatalogBackup(jsonString);
+  if (typeof jsonString !== 'string' || jsonString.trim().length === 0) {
+    throw new Error('El archivo JSON está vacío.');
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonString);
+  } catch {
+    throw new Error('El archivo no contiene un JSON válido.');
+  }
+
+  if (!isRecord(parsed)) {
+    throw new Error(
+      'El archivo JSON no tiene un formato válido: se esperaba un respaldo de catálogo o un proyecto JSON de LRC Studio.',
+    );
+  }
+
+  if (Array.isArray(parsed.projects)) {
+    await adapter.init();
+    await adapter.importCatalogBackup(jsonString);
+    return;
+  }
+
+  if (Array.isArray(parsed.lines)) {
+    const migrated = migrateProjectJson(parsed);
+    if (!migrated.ok) {
+      throw new Error(migrated.error);
+    }
+    const project = createProjectFromImportedJson(migrated.data);
+    await adapter.init();
+    await adapter.saveProject(project);
+    return;
+  }
+
+  throw new Error(
+    'Formato JSON no reconocido: se esperaba un respaldo de catálogo o un proyecto JSON de LRC Studio.',
+  );
 }

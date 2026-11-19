@@ -6,7 +6,7 @@ describe('MobileLayout y App', () => {
   it('renderiza el shell móvil con cabecera, navegación inferior y estado vacío inicial', () => {
     const html = renderToString(<App />);
 
-    expect(html).toContain('LyricSync Studio');
+    expect(html).toContain('LRC Studio');
     expect(html).toContain('Abrir Mis transcripciones');
     expect(html).toContain('Guardado');
     expect(html).toContain('Catálogo');

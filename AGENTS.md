@@ -313,7 +313,7 @@ Reglas de monitoreo:
 
 # Parte II — Este repositorio
 
-Este repositorio implementa **LyricSync Studio**, una aplicación web local-first (preparada para Tauri v2) para sincronización de letras LRC/ELRC y karaoke a 60 FPS.
+Este repositorio implementa **LRC Studio**, una aplicación web local-first (preparada para Tauri v2) para sincronización de letras LRC/ELRC y karaoke a 60 FPS.
 
 ## 5. Fuentes de verdad
 

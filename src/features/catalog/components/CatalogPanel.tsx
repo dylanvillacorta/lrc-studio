@@ -102,6 +102,7 @@ export const CatalogPanel = memo(function CatalogPanel({
             <RaisedButton
               size="sm"
               aria-label="Importar respaldo .json"
+              title="Importar respaldo de catálogo o proyecto .json"
               onClick={() => backupInputRef.current?.click()}
               className="min-h-12 rounded-[16px] px-3 flex-none"
             >
@@ -179,6 +180,18 @@ export const CatalogPanel = memo(function CatalogPanel({
           ))
         )}
       </ScrollShadow>
+
+      <p className="m-0 flex-none text-center text-xs font-semibold text-mute">
+        Creado por{' '}
+        <a
+          href="https://dylanvillacorta.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center min-h-[44px] px-1 font-bold text-ink underline decoration-acc/50 underline-offset-2 hover:text-acc focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc rounded"
+        >
+          Dylan Villacorta
+        </a>
+      </p>
     </section>
   );
 });

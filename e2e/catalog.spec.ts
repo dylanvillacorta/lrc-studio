@@ -111,4 +111,30 @@ test.describe('Catálogo Mis transcripciones', () => {
     await expect(page.getByText('Aún no tienes transcripciones guardadas.')).toBeVisible();
     await expect(page.getByText(/0 canciones/)).toBeVisible();
   });
+
+  test('importa un proyecto JSON exportado (2.0-musixmatch-richsync) desde el Catálogo sin error', async ({
+    page,
+  }, testInfo) => {
+    const isMobile = isMobileProject(testInfo);
+    const fixturePath = 'src/features/export/model/__fixtures__/babi-pa-ti.project.json';
+
+    await page.goto('/');
+    await openCatalog(page, isMobile);
+
+    const catalogRegion = page.getByRole('region', { name: 'Mis transcripciones' });
+    await catalogRegion
+      .locator('input[aria-label="Seleccionar respaldo .json"]')
+      .setInputFiles(fixturePath);
+
+    const importedCard = catalogRegion.getByRole('article', {
+      name: 'Pa ti',
+      exact: true,
+    });
+    await expect(importedCard).toBeVisible();
+    await expect(importedCard).toContainText('Babi');
+    await expect(catalogRegion.getByRole('alert')).toHaveCount(0);
+
+    await importedCard.getByRole('button', { name: /Abrir|Continuar/ }).click();
+    await expect(page.getByRole('region', { name: 'Sin pista de audio' })).toBeVisible();
+  });
 });
