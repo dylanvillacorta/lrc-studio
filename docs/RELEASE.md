@@ -88,8 +88,8 @@ La app es una herramienta cliente (sin SSR). `index.html` y archivos estáticos 
 - `<html lang="es">`
 - `<title>` y `<meta name="description">` únicos.
 - `<link rel="canonical">` y URLs de Open Graph usando `VITE_SITE_URL=https://lrc.dirtykeras.com`.
-- Open Graph y Twitter Card con imagen `1200x630`.
-- `theme-color`, `viewport`, favicons, `apple-touch-icon` y `manifest.webmanifest`.
+- Open Graph y Twitter Card con imagen `og-image.webp` (`1200x630`).
+- `theme-color`, `viewport`, favicons (`favicon.ico` 16/32/48, `favicon-16x16.webp`, `favicon-32x32.webp`), `apple-touch-icon.png` (`180x180`), `logo.webp` (`256x256`), iconos PWA (`icon-192.webp`, `icon-512.webp`, `icon-maskable-512.webp`) y `manifest.webmanifest`.
 - `robots.txt` (apuntando a `https://lrc.dirtykeras.com/sitemap.xml`) y `sitemap.xml` (con `https://lrc.dirtykeras.com`).
 - Datos estructurados JSON-LD (`SoftwareApplication`).
 - HTML semántico (un único `<h1>`, landmarks `<main>`, `<nav>`, `<header>`).

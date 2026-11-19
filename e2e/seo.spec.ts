@@ -37,7 +37,7 @@ test.describe('SEO, metadatos y endpoints estáticos', () => {
     );
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
       'content',
-      'https://lrc.dirtykeras.com/og-image.png',
+      'https://lrc.dirtykeras.com/og-image.webp',
     );
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', /.+/);
     await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /.+/);
@@ -52,7 +52,7 @@ test.describe('SEO, metadatos y endpoints estáticos', () => {
     );
     await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute(
       'content',
-      'https://lrc.dirtykeras.com/og-image.png',
+      'https://lrc.dirtykeras.com/og-image.webp',
     );
 
     // JSON-LD SoftwareApplication válido
@@ -75,10 +75,51 @@ test.describe('SEO, metadatos y endpoints estáticos', () => {
     expect(manifestRes.status()).toBe(200);
     const manifestJson = (await manifestRes.json()) as {
       name?: string;
-      icons?: unknown[];
+      icons?: Array<{ src?: string; sizes?: string; type?: string; purpose?: string }>;
     };
     expect(manifestJson.name).toBe('LyricSync Studio');
     expect(Array.isArray(manifestJson.icons) && manifestJson.icons.length).toBeGreaterThan(0);
+
+    for (const icon of manifestJson.icons ?? []) {
+      expect(icon.src).toBeTruthy();
+      const iconRes = await request.get(icon.src ?? '');
+      expect(iconRes.status()).toBe(200);
+      if (icon.sizes && /^\d+x\d+$/.test(icon.sizes)) {
+        const [expectedW, expectedH] = icon.sizes.split('x').map(Number);
+        const dims = await page.evaluate(async (url) => {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          const bmp = await createImageBitmap(blob);
+          const result = { width: bmp.width, height: bmp.height };
+          bmp.close();
+          return result;
+        }, icon.src ?? '');
+        expect(dims).toEqual({ width: expectedW, height: expectedH });
+      }
+    }
+
+    // Activos estáticos de marca y dimensiones de og-image.webp
+    for (const assetPath of [
+      '/favicon.ico',
+      '/favicon-16x16.webp',
+      '/favicon-32x32.webp',
+      '/apple-touch-icon.png',
+      '/logo.webp',
+      '/og-image.webp',
+    ]) {
+      const assetRes = await request.get(assetPath);
+      expect(assetRes.status()).toBe(200);
+    }
+
+    const ogDims = await page.evaluate(async () => {
+      const res = await fetch('/og-image.webp');
+      const blob = await res.blob();
+      const bmp = await createImageBitmap(blob);
+      const result = { width: bmp.width, height: bmp.height };
+      bmp.close();
+      return result;
+    });
+    expect(ogDims).toEqual({ width: 1200, height: 630 });
 
     // robots.txt y sitemap.xml
     const robotsRes = await request.get('/robots.txt');
