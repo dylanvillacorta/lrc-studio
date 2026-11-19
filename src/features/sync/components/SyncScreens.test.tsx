@@ -2,6 +2,7 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LyricLine } from '@/types';
 import { KaraokePreview } from './KaraokePreview';
+import { LineRowActionBar, LineTimeEditor } from './LineRowActions';
 import { LineSyncScreen } from './LineSyncScreen';
 import { WaveformStrip } from './WaveformStrip';
 import { WordSyncScreen } from './WordSyncScreen';
@@ -299,5 +300,62 @@ describe('WaveformStrip', () => {
     expect(html).toContain('data-testid="timeline-expanded-time"');
     expect(html).toContain('data-testid="timeline-floating-indicator"');
     expect(html).toContain('00:14');
+  });
+});
+
+describe('LineRowActionBar y LineTimeEditor', () => {
+  it('renderiza la barra de acciones para línea sincronizada y omite Reproducir desde aquí cuando no tiene marca', () => {
+    const syncedHtml = renderToString(
+      <LineRowActionBar
+        isSynced
+        hasSyncedFromHereDown
+        onPlayFromHere={vi.fn()}
+        onEditTime={vi.fn()}
+        onClearMark={vi.fn()}
+        onClearMarksFromHere={vi.fn()}
+      />,
+    );
+    expect(syncedHtml).toContain('aria-label="Acciones de línea"');
+    expect(syncedHtml).toContain('aria-label="Reproducir desde aquí"');
+    expect(syncedHtml).toContain('aria-label="Editar tiempo"');
+    expect(syncedHtml).toContain('aria-label="Borrar marca"');
+    expect(syncedHtml).toContain('aria-label="Borrar marcas desde esta línea hacia abajo"');
+    expect(syncedHtml).toContain('min-h-11 min-w-11');
+
+    const unsyncedHtml = renderToString(
+      <LineRowActionBar
+        isSynced={false}
+        hasSyncedFromHereDown={false}
+        onPlayFromHere={vi.fn()}
+        onEditTime={vi.fn()}
+        onClearMark={vi.fn()}
+        onClearMarksFromHere={vi.fn()}
+      />,
+    );
+    expect(unsyncedHtml).not.toContain('Reproducir desde aquí');
+    expect(unsyncedHtml).not.toContain('Borrar marca');
+    expect(unsyncedHtml).toContain('aria-label="Editar tiempo"');
+  });
+
+  it('renderiza el editor de tiempo en línea con botones ±10/±50 ms, aviso de orden y Aceptar/Cancelar', () => {
+    const html = renderToString(
+      <LineTimeEditor
+        lineIndex={1}
+        initialStartMs={8_000}
+        prevLineStartMs={12_000}
+        durationMs={90_000}
+        onAccept={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(html).toContain('Línea 2');
+    expect(html).toContain('value="00:08.00"');
+    expect(html).toContain('aria-label="Restar 50 milisegundos"');
+    expect(html).toContain('aria-label="Restar 10 milisegundos"');
+    expect(html).toContain('aria-label="Sumar 10 milisegundos"');
+    expect(html).toContain('aria-label="Sumar 50 milisegundos"');
+    expect(html).toContain('aria-label="Aceptar tiempo"');
+    expect(html).toContain('aria-label="Cancelar edición"');
+    expect(html).toContain('Aviso: queda antes de la línea anterior (00:12.00).');
   });
 });

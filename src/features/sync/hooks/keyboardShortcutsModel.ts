@@ -24,7 +24,8 @@ export type KeyboardShortcutAction =
   | { type: 'repeat-preroll'; preventDefault: true }
   | { type: 'toggle-play'; preventDefault: true }
   | { type: 'nudge'; deltaMs: NudgeDeltaMs; preventDefault: true }
-  | { type: 'undo'; preventDefault: true };
+  | { type: 'undo'; preventDefault: true }
+  | { type: 'redo'; preventDefault: true };
 
 const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 
@@ -100,6 +101,17 @@ export function resolveKeyboardShortcut(
       return null;
     }
     return { type: 'undo', preventDefault: true };
+  }
+
+  if (
+    hasCtrlOrMeta &&
+    !hasAlt &&
+    ((keyLower === 'z' && Boolean(event.shiftKey)) || (keyLower === 'y' && !event.shiftKey))
+  ) {
+    if (event.repeat) {
+      return null;
+    }
+    return { type: 'redo', preventDefault: true };
   }
 
   if (hasCtrlOrMeta || hasAlt) {

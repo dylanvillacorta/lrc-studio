@@ -44,3 +44,68 @@ export function popSyncHistory(history: readonly SyncSnapshot[]): {
     remaining: history.slice(0, -1),
   };
 }
+
+export interface SyncHistoryState {
+  past: SyncSnapshot[];
+  future: SyncSnapshot[];
+}
+
+export function createSyncHistoryState(): SyncHistoryState {
+  return { past: [], future: [] };
+}
+
+/**
+ * Registra una instantánea previa a un cambio y limpia la pila de rehacer.
+ */
+export function recordSyncHistory(
+  state: SyncHistoryState,
+  snapshot: SyncSnapshot,
+  maxItems = MAX_SYNC_HISTORY,
+): SyncHistoryState {
+  return {
+    past: pushSyncHistory(state.past, snapshot, maxItems),
+    future: [],
+  };
+}
+
+/**
+ * Deshace un paso guardando el estado actual en `future` para permitir rehacer.
+ */
+export function undoSyncHistory(
+  state: SyncHistoryState,
+  current: SyncSnapshot,
+  maxItems = MAX_SYNC_HISTORY,
+): { state: SyncHistoryState; snapshot: SyncSnapshot | null } {
+  const { snapshot, remaining } = popSyncHistory(state.past);
+  if (!snapshot) {
+    return { state, snapshot: null };
+  }
+  return {
+    state: {
+      past: remaining,
+      future: pushSyncHistory(state.future, current, maxItems),
+    },
+    snapshot,
+  };
+}
+
+/**
+ * Rehace un paso previamente deshecho y lo devuelve a la pila `past`.
+ */
+export function redoSyncHistory(
+  state: SyncHistoryState,
+  current: SyncSnapshot,
+  maxItems = MAX_SYNC_HISTORY,
+): { state: SyncHistoryState; snapshot: SyncSnapshot | null } {
+  const { snapshot, remaining } = popSyncHistory(state.future);
+  if (!snapshot) {
+    return { state, snapshot: null };
+  }
+  return {
+    state: {
+      past: pushSyncHistory(state.past, current, maxItems),
+      future: remaining,
+    },
+    snapshot,
+  };
+}

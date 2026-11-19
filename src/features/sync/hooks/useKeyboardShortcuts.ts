@@ -24,6 +24,7 @@ export interface KeyboardShortcutHandlers {
   onTogglePlay: () => void;
   onNudge: (deltaMs: NudgeDeltaMs) => void;
   onUndo: () => void;
+  onRedo?: () => void;
 }
 
 export interface UseKeyboardShortcutsOptions extends KeyboardShortcutHandlers {
@@ -82,6 +83,9 @@ export function attachKeyboardShortcutListeners(
       case 'undo':
         handlers.onUndo();
         break;
+      case 'redo':
+        handlers.onRedo?.();
+        break;
     }
   };
 
@@ -125,6 +129,7 @@ export function useKeyboardShortcuts({
   onTogglePlay,
   onNudge,
   onUndo,
+  onRedo,
 }: UseKeyboardShortcutsOptions): void {
   const handlersRef = useRef<KeyboardShortcutHandlers>({
     onStampStart,
@@ -133,6 +138,7 @@ export function useKeyboardShortcuts({
     onTogglePlay,
     onNudge,
     onUndo,
+    onRedo,
   });
 
   useEffect(() => {
@@ -143,8 +149,9 @@ export function useKeyboardShortcuts({
       onTogglePlay,
       onNudge,
       onUndo,
+      onRedo,
     };
-  }, [onNudge, onRepeatPreRoll, onStampEnd, onStampStart, onTogglePlay, onUndo]);
+  }, [onNudge, onRedo, onRepeatPreRoll, onStampEnd, onStampStart, onTogglePlay, onUndo]);
 
   useEffect(() => {
     const win: KeyboardWindowLike | null =

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clearLineMark,
+  clearMarksFromLine,
   nudgeLineTime,
+  setLineStartTime,
   stampLineEnd,
   stampLineStart,
   undoLineSync,
@@ -107,5 +110,52 @@ describe('lineSync', () => {
     const u3 = undoLineSync(u2.lines, u2.nextLineIndex, 1000);
     expect(u3.nextLineIndex).toBe(0);
     expect(u3.rewindTargetMs).toBe(0);
+  });
+
+  it('borra la marca de una línea y sus palabras y la deja como objetivo', () => {
+    const linesWithWords: LyricLine[] = [
+      {
+        id: 'l1',
+        text: 'Primera línea',
+        startMs: 1000,
+        endMs: 2500,
+        words: [{ id: 'w1', text: 'Primera', startMs: 1000, endMs: 1500 }],
+      },
+      { id: 'l2', text: 'Segunda línea', startMs: 3000, endMs: 4500, words: [] },
+    ];
+    const cleared = clearLineMark(linesWithWords, 0);
+    expect(cleared.nextLineIndex).toBe(0);
+    expect(cleared.lines[0]?.startMs).toBeNull();
+    expect(cleared.lines[0]?.endMs).toBeNull();
+    expect(cleared.lines[0]?.words[0]?.startMs).toBeNull();
+    expect(cleared.lines[0]?.words[0]?.endMs).toBeNull();
+    expect(cleared.lines[1]?.startMs).toBe(3000);
+  });
+
+  it('borra marcas desde una línea hacia abajo dejando las anteriores intactas', () => {
+    const lines: LyricLine[] = [
+      { id: 'l1', text: 'Uno', startMs: 1000, endMs: 2000, words: [] },
+      { id: 'l2', text: 'Dos', startMs: 2100, endMs: 3000, words: [{ id: 'w2', text: 'Dos', startMs: 2100, endMs: 2900 }] },
+      { id: 'l3', text: 'Tres', startMs: 3100, endMs: 4000, words: [] },
+    ];
+    const cleared = clearMarksFromLine(lines, 1);
+    expect(cleared.nextLineIndex).toBe(1);
+    expect(cleared.lines[0]?.startMs).toBe(1000);
+    expect(cleared.lines[1]?.startMs).toBeNull();
+    expect(cleared.lines[1]?.words[0]?.startMs).toBeNull();
+    expect(cleared.lines[2]?.startMs).toBeNull();
+  });
+
+  it('fija startMs manual y limpia endMs si queda menor o igual', () => {
+    const lines: LyricLine[] = [
+      { id: 'l1', text: 'Uno', startMs: 1000, endMs: 2000, words: [] },
+    ];
+    const updatedValid = setLineStartTime(lines, 0, 1500);
+    expect(updatedValid[0]?.startMs).toBe(1500);
+    expect(updatedValid[0]?.endMs).toBe(2000);
+
+    const updatedResetEnd = setLineStartTime(lines, 0, 2500);
+    expect(updatedResetEnd[0]?.startMs).toBe(2500);
+    expect(updatedResetEnd[0]?.endMs).toBeNull();
   });
 });

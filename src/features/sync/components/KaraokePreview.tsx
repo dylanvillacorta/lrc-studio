@@ -6,13 +6,16 @@ import {
   type CSSProperties,
 } from 'react';
 import { computeKaraokeState } from '@/features/sync';
+import {
+  animateScrollToCenter,
+  cancelScrollAnimationRef,
+} from '@/features/sync/hooks/useCenteredListScroll';
 import type { PlaybackTimeStore } from '@/features/sync/hooks/playbackTimeStore';
 import { formatTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
 import { Icon, IconButton, Pill, Segmented, WellPanel } from '@/ui';
 import { NoAudioCard } from './NoAudioCard';
 import {
-  computeCenteredScrollTop,
   formatUnsyncedLinesNotice,
   SYNC_MODE_OPTIONS,
   SYNC_SEGMENTED_CLASS,
@@ -33,16 +36,6 @@ export interface KaraokePreviewProps {
   onTogglePlay: () => void;
   onSeek: (targetMs: number) => void;
   onUploadAudio: (file: File) => Promise<void>;
-}
-
-const SCROLL_ANIMATION_MS = 220;
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
 }
 
 /**
@@ -77,62 +70,24 @@ export const KaraokePreview = memo(function KaraokePreview({
   getCurrentTimeMsRef.current = getCurrentTimeMs;
 
   const cancelScrollAnimation = useCallback(() => {
-    if (scrollRafRef.current !== null && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(scrollRafRef.current);
-      scrollRafRef.current = null;
-    }
+    cancelScrollAnimationRef(scrollRafRef);
   }, []);
 
   const scrollLineIntoCenter = useCallback(
     (lineIndex: number, instant: boolean) => {
       const container = scrollContainerRef.current;
       const activeEl = lineRefs.current[lineIndex];
-      if (!container || !activeEl || typeof container.getBoundingClientRect !== 'function') {
+      if (!container || !activeEl) {
         return;
       }
-
-      const containerRect = container.getBoundingClientRect();
-      const activeRect = activeEl.getBoundingClientRect();
-      const targetScrollTop = computeCenteredScrollTop({
-        containerScrollTop: container.scrollTop,
-        containerClientHeight: container.clientHeight,
-        containerScrollHeight: container.scrollHeight,
-        containerTop: containerRect.top,
-        elementTop: activeRect.top,
-        elementHeight: activeRect.height,
+      animateScrollToCenter({
+        container,
+        targetEl: activeEl,
+        instant,
+        rafRef: scrollRafRef,
       });
-
-      cancelScrollAnimation();
-
-      if (
-        instant ||
-        prefersReducedMotion() ||
-        typeof requestAnimationFrame !== 'function' ||
-        Math.abs(targetScrollTop - container.scrollTop) < 1
-      ) {
-        container.scrollTop = targetScrollTop;
-        return;
-      }
-
-      const startScrollTop = container.scrollTop;
-      const distance = targetScrollTop - startScrollTop;
-      const startTime = performance.now();
-
-      const step = (now: number) => {
-        const elapsed = now - startTime;
-        const progress = Math.min(1, elapsed / SCROLL_ANIMATION_MS);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        container.scrollTop = startScrollTop + distance * eased;
-        if (progress < 1) {
-          scrollRafRef.current = requestAnimationFrame(step);
-        } else {
-          scrollRafRef.current = null;
-        }
-      };
-
-      scrollRafRef.current = requestAnimationFrame(step);
     },
-    [cancelScrollAnimation],
+    [],
   );
 
   const initialTimeMs = timeStore

@@ -103,14 +103,21 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
 
     await page.getByRole('button', { name: 'Pausar' }).click();
 
-    // 3. Seleccionar una línea sincronizada mueve la aguja y el contador a su marca
+    // 3. Tocar una línea sincronizada la selecciona sin mover la aguja; «Reproducir desde aquí» sí salta y reproduce
+    const beforeSelectMs = Number(await slider.getAttribute('aria-valuenow'));
     const syncedLine1 = page.getByRole('button', {
       name: /Luces de neón brillan en la ciudad/i,
     });
     await syncedLine1.click();
     await expect
       .poll(async () => Number(await slider.getAttribute('aria-valuenow')))
-      .toBe(5000);
+      .toBe(beforeSelectMs);
+
+    await page.getByRole('button', { name: 'Reproducir desde aquí' }).click();
+    await expect
+      .poll(async () => Number(await slider.getAttribute('aria-valuenow')))
+      .toBeGreaterThanOrEqual(4800);
+    await page.getByRole('button', { name: 'Pausar' }).click();
 
     // 6. Entrar a Ráfaga no inicia reproducción (audio.paused sigue true) y salir detiene
     await selectSyncMode(page, 'Ráfaga');
@@ -118,10 +125,10 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
     await expect
       .poll(async () => page.evaluate(() => window.__lrcAudioElement?.paused ?? null))
       .toBe(true);
-    await expect(page.getByRole('button', { name: 'Reproducir' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Reproducir', exact: true })).toBeVisible();
 
     // Al pulsar Reproducir sí reproduce, y al detener/salir se pausa
-    await page.getByRole('button', { name: 'Reproducir' }).click();
+    await page.getByRole('button', { name: 'Reproducir', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Pausar' })).toBeVisible();
     await page.getByRole('button', { name: 'Detener ráfaga' }).click();
     await expect
@@ -245,7 +252,7 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
 
     // A) Seguimiento durante reproducción: al iniciar en 0s resalta línea 1, y al adelantar 5s pasa a línea 2
     await line1.click();
-    await page.getByRole('button', { name: 'Reproducir' }).click();
+    await page.getByRole('button', { name: 'Reproducir', exact: true }).click();
     await expect(line1).toHaveAttribute('data-playing', 'true', { timeout: 6000 });
 
     await page.getByRole('button', { name: 'Adelantar 5 segundos' }).click();

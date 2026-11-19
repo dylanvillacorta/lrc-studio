@@ -9,12 +9,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  popSyncHistory,
-  pushSyncHistory,
+  createSyncHistoryState,
+  recordSyncHistory,
+  redoSyncHistory,
+  undoSyncHistory,
+  type SyncHistoryState,
   type SyncSnapshot,
 } from '@/features/sync/model/history';
 import {
+  clearLineMark as clearLineMarkPure,
+  clearMarksFromLine as clearMarksFromLinePure,
   nudgeLineTime,
+  setLineStartTime as setLineStartTimePure,
   stampLineEnd,
   stampLineStart,
   undoLineSync,
@@ -42,12 +48,16 @@ export interface UseSyncEngineReturn {
   activeLineIndex: number;
   activeWordIndex: number;
   canUndo: boolean;
+  canRedo: boolean;
   progress: SyncProgress;
   setActiveLineIndex: (index: number) => void;
   setActiveWordIndex: (index: number) => void;
   replaceLines: (nextLines: LyricLine[], recordHistory?: boolean) => void;
   stampLineStart: (nowMs: number, lineHoldMode?: boolean) => void;
   stampLineEnd: (nowMs: number, advanceAfter?: boolean) => void;
+  clearLineMark: (lineIndex: number) => void;
+  clearMarksFromLine: (fromLineIndex: number) => void;
+  setLineStartTime: (lineIndex: number, startMs: number) => void;
   undoLine: (currentTimeMs: number) => number;
   stampWordStart: (params: {
     nowMs: number;
@@ -70,6 +80,7 @@ export interface UseSyncEngineReturn {
   ) => void;
   nudgeLine: (lineIndex: number, field: 'startMs' | 'endMs', deltaMs: number) => void;
   undo: () => boolean;
+  redo: () => boolean;
   resetHistory: () => void;
 }
 
@@ -86,7 +97,7 @@ export function useSyncEngine(
   const [lines, setLines] = useState<LyricLine[]>(initialLines);
   const [activeLineIndex, setActiveLineIndexState] = useState(initialLineIndex);
   const [activeWordIndex, setActiveWordIndexState] = useState(initialWordIndex);
-  const [history, setHistory] = useState<SyncSnapshot[]>([]);
+  const [history, setHistory] = useState<SyncHistoryState>(() => createSyncHistoryState());
 
   const linesRef = useRef(lines);
   const activeLineIndexRef = useRef(activeLineIndex);
@@ -138,7 +149,7 @@ export function useSyncEngine(
           activeWordIndex: activeWordIndexRef.current,
         };
         setHistory((prev) => {
-          const updated = pushSyncHistory(prev, snapshot);
+          const updated = recordSyncHistory(prev, snapshot);
           historyRef.current = updated;
           return updated;
         });
@@ -200,6 +211,33 @@ export function useSyncEngine(
       );
       commitLines(result.lines, result.nextLineIndex, 0);
       return result.rewindTargetMs;
+    },
+    [commitLines],
+  );
+
+  const clearLineMark = useCallback(
+    (lineIndex: number) => {
+      const result = clearLineMarkPure(linesRef.current, lineIndex);
+      commitLines(result.lines, result.nextLineIndex, 0);
+    },
+    [commitLines],
+  );
+
+  const clearMarksFromLine = useCallback(
+    (fromLineIndex: number) => {
+      const result = clearMarksFromLinePure(linesRef.current, fromLineIndex);
+      commitLines(result.lines, result.nextLineIndex, 0);
+    },
+    [commitLines],
+  );
+
+  const setLineStartTime = useCallback(
+    (lineIndex: number, startMs: number) => {
+      if (!linesRef.current[lineIndex]) {
+        return;
+      }
+      const next = setLineStartTimePure(linesRef.current, lineIndex, startMs);
+      commitLines(next, lineIndex, 0);
     },
     [commitLines],
   );
@@ -298,15 +336,42 @@ export function useSyncEngine(
   );
 
   const undo = useCallback((): boolean => {
-    const { snapshot, remaining } = popSyncHistory(historyRef.current);
+    const current: SyncSnapshot = {
+      lines: linesRef.current,
+      activeLineIndex: activeLineIndexRef.current,
+      activeWordIndex: activeWordIndexRef.current,
+    };
+    const { snapshot, state: nextHistory } = undoSyncHistory(historyRef.current, current);
     if (!snapshot) {
       return false;
     }
-    historyRef.current = remaining;
+    historyRef.current = nextHistory;
     linesRef.current = snapshot.lines;
     activeLineIndexRef.current = snapshot.activeLineIndex;
     activeWordIndexRef.current = snapshot.activeWordIndex;
-    setHistory(remaining);
+    setHistory(nextHistory);
+    setLines(snapshot.lines);
+    setActiveLineIndexState(snapshot.activeLineIndex);
+    setActiveWordIndexState(snapshot.activeWordIndex);
+    onChangeRef.current?.(snapshot.lines);
+    return true;
+  }, []);
+
+  const redo = useCallback((): boolean => {
+    const current: SyncSnapshot = {
+      lines: linesRef.current,
+      activeLineIndex: activeLineIndexRef.current,
+      activeWordIndex: activeWordIndexRef.current,
+    };
+    const { snapshot, state: nextHistory } = redoSyncHistory(historyRef.current, current);
+    if (!snapshot) {
+      return false;
+    }
+    historyRef.current = nextHistory;
+    linesRef.current = snapshot.lines;
+    activeLineIndexRef.current = snapshot.activeLineIndex;
+    activeWordIndexRef.current = snapshot.activeWordIndex;
+    setHistory(nextHistory);
     setLines(snapshot.lines);
     setActiveLineIndexState(snapshot.activeLineIndex);
     setActiveWordIndexState(snapshot.activeWordIndex);
@@ -315,12 +380,14 @@ export function useSyncEngine(
   }, []);
 
   const resetHistory = useCallback(() => {
-    historyRef.current = [];
-    setHistory([]);
+    const empty = createSyncHistoryState();
+    historyRef.current = empty;
+    setHistory(empty);
   }, []);
 
   const progress = useMemo(() => computeSyncProgress(lines), [lines]);
-  const canUndo = history.length > 0;
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
 
   return useMemo<UseSyncEngineReturn>(
     () => ({
@@ -328,12 +395,16 @@ export function useSyncEngine(
       activeLineIndex,
       activeWordIndex,
       canUndo,
+      canRedo,
       progress,
       setActiveLineIndex,
       setActiveWordIndex,
       replaceLines,
       stampLineStart: handleStampLineStart,
       stampLineEnd: handleStampLineEnd,
+      clearLineMark,
+      clearMarksFromLine,
+      setLineStartTime,
       undoLine: handleUndoLine,
       stampWordStart: handleStampWordStart,
       stampWordEnd: handleStampWordEnd,
@@ -341,12 +412,16 @@ export function useSyncEngine(
       nudgeWord,
       nudgeLine,
       undo,
+      redo,
       resetHistory,
     }),
     [
       activeLineIndex,
       activeWordIndex,
+      canRedo,
       canUndo,
+      clearLineMark,
+      clearMarksFromLine,
       distributeWordsInLine,
       handleStampLineEnd,
       handleStampLineStart,
@@ -357,10 +432,12 @@ export function useSyncEngine(
       nudgeLine,
       nudgeWord,
       progress,
+      redo,
       replaceLines,
       resetHistory,
       setActiveLineIndex,
       setActiveWordIndex,
+      setLineStartTime,
       undo,
     ],
   );

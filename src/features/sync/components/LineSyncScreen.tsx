@@ -1,9 +1,10 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import {
   computeCompensatedStampMs,
   readCurrentTimeMs,
 } from '@/features/sync';
 import type { PlaybackTimeStore } from '@/features/sync/hooks/playbackTimeStore';
+import { useCenteredListScroll } from '@/features/sync/hooks/useCenteredListScroll';
 import { formatDisplayTime, formatTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
 import {
@@ -15,6 +16,7 @@ import {
   SyncButton,
   WellPanel,
 } from '@/ui';
+import { LineRowActionBar, LineTimeEditor } from './LineRowActions';
 import { NoAudioCard } from './NoAudioCard';
 import {
   getNextPlaybackRate,
@@ -51,6 +53,10 @@ export interface LineSyncScreenProps {
   onChangePlaybackRate: (rate: number) => void;
   onUndo: () => void;
   onSelectLine: (index: number) => void;
+  onPlayFromLine?: (index: number) => void;
+  onEditLineTime?: (index: number, startMs: number) => void;
+  onClearLineMark?: (index: number) => void;
+  onClearMarksFromLine?: (index: number) => void;
   onStampLine: (nowMs: number) => void;
   onOpenLoupe: () => void;
   onStopBurst: () => void;
@@ -85,39 +91,27 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   onChangePlaybackRate,
   onUndo,
   onSelectLine,
+  onPlayFromLine,
+  onEditLineTime,
+  onClearLineMark,
+  onClearMarksFromLine,
   onStampLine,
   onOpenLoupe,
   onStopBurst,
   onUploadAudio,
 }: LineSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
+  const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
-  const lineButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const lineRowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  useEffect(() => {
-    const listEl = listRef.current;
-    const targetEl = lineButtonRefs.current[trackedListIndex];
-    if (!listEl || !targetEl) {
-      return;
-    }
-    const reduced =
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    const targetTop = Math.max(
-      0,
-      targetEl.offsetTop - (listEl.clientHeight - targetEl.offsetHeight) / 2,
-    );
-    if (typeof listEl.scrollTo === 'function') {
-      listEl.scrollTo({
-        top: targetTop,
-        behavior: reduced ? 'auto' : 'smooth',
-      });
-    } else {
-      listEl.scrollTop = targetTop;
-    }
-  }, [trackedListIndex]);
+  useCenteredListScroll({
+    containerRef: listRef,
+    itemRefs: lineRowRefs,
+    targetIndex: trackedListIndex,
+    enabled: hasAudio && lines.length > 0,
+    itemCount: lines.length,
+  });
 
   if (!hasAudio) {
     return (
@@ -244,6 +238,24 @@ export const LineSyncScreen = memo(function LineSyncScreen({
         </IconButton>
       </div>
 
+      {editingLineIndex !== null && lines[editingLineIndex] ? (
+        <LineTimeEditor
+          key={`${editingLineIndex}-${lines[editingLineIndex]?.id ?? ''}`}
+          lineIndex={editingLineIndex}
+          initialStartMs={lines[editingLineIndex]?.startMs ?? null}
+          prevLineStartMs={
+            editingLineIndex > 0 ? (lines[editingLineIndex - 1]?.startMs ?? null) : null
+          }
+          durationMs={durationMs}
+          onAccept={(idx, startMs) => {
+            onEditLineTime?.(idx, startMs);
+            setEditingLineIndex(null);
+            setLiveNotice(`Tiempo de línea ${idx + 1} actualizado a ${formatTime(startMs)}`);
+          }}
+          onCancel={() => setEditingLineIndex(null)}
+        />
+      ) : null}
+
       <WellPanel
         ref={listRef}
         data-testid="sync-line-list"
@@ -254,44 +266,97 @@ export const LineSyncScreen = memo(function LineSyncScreen({
             const isCurrent = index === activeLineIndex;
             const isPlayingLine = index === playingLineIndex;
             const isSynced = line.startMs !== null;
+            const hasSyncedFromHereDown = lines
+              .slice(index)
+              .some((item) => item.startMs !== null);
             return (
-              <button
+              <div
                 key={line.id}
                 ref={(el) => {
-                  lineButtonRefs.current[index] = el;
+                  lineRowRefs.current[index] = el;
                 }}
-                type="button"
-                onClick={() => onSelectLine(index)}
-                aria-current={isCurrent ? 'true' : undefined}
+                data-line-index={index}
                 data-playing={isPlayingLine ? 'true' : undefined}
-                className={`w-full min-h-11 px-3 py-1.5 rounded-[12px] flex items-center justify-between gap-2 text-left transition-shadow motion-reduce:transition-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
+                className={`w-full min-h-11 rounded-[12px] flex items-center gap-1 transition-shadow motion-reduce:transition-none ${
                   isCurrent
                     ? isPlayingLine
-                      ? 'relieve ring-1 ring-acc/45 text-ink font-extrabold'
-                      : 'relieve text-ink font-extrabold'
+                      ? 'relieve ring-1 ring-acc/45 text-ink'
+                      : 'relieve text-ink'
                     : isPlayingLine
-                      ? 'bg-acc/10 ring-1 ring-acc/35 text-ink font-bold'
-                      : isSynced
-                        ? 'bg-transparent text-ink font-semibold'
-                        : 'bg-transparent text-mute font-semibold'
+                      ? 'bg-acc/10 ring-1 ring-acc/35 text-ink'
+                      : 'bg-transparent'
                 }`}
               >
-                <span className="truncate text-[14px] flex-1 min-w-0">
-                  {line.text}
-                </span>
-                <span
-                  aria-label={!isSynced ? 'Sin marca de tiempo' : undefined}
-                  className={`font-mono text-xs font-bold tabular-nums shrink-0 w-[8ch] text-right ${
-                    !isSynced
-                      ? 'text-acc/70'
-                      : isCurrent || isPlayingLine
-                        ? 'text-acc'
-                        : 'text-ok'
+                <button
+                  type="button"
+                  onClick={() => onSelectLine(index)}
+                  aria-current={isCurrent ? 'true' : undefined}
+                  data-playing={isPlayingLine ? 'true' : undefined}
+                  className={`flex-1 min-w-0 min-h-11 px-3 py-1.5 rounded-[12px] flex items-center justify-between gap-2 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
+                    isCurrent
+                      ? 'text-ink font-extrabold'
+                      : isPlayingLine
+                        ? 'text-ink font-bold'
+                        : isSynced
+                          ? 'text-ink font-semibold'
+                          : 'text-mute font-semibold'
                   }`}
                 >
-                  {formatDisplayTime(line.startMs)}
-                </span>
-              </button>
+                  <span className="truncate text-[14px] flex-1 min-w-0">
+                    {line.text}
+                  </span>
+                  <span
+                    aria-label={!isSynced ? 'Sin marca de tiempo' : undefined}
+                    className={`font-mono text-xs font-bold tabular-nums shrink-0 w-[8ch] text-right ${
+                      !isSynced
+                        ? 'text-acc/70'
+                        : isCurrent || isPlayingLine
+                          ? 'text-acc'
+                          : 'text-ok'
+                    }`}
+                  >
+                    {formatDisplayTime(line.startMs)}
+                  </span>
+                </button>
+                {isCurrent ? (
+                  <div className="pr-1 shrink-0">
+                    <LineRowActionBar
+                      isSynced={isSynced}
+                      hasSyncedFromHereDown={hasSyncedFromHereDown}
+                      onPlayFromHere={
+                        isSynced && onPlayFromLine
+                          ? () => onPlayFromLine(index)
+                          : undefined
+                      }
+                      onEditTime={
+                        onEditLineTime
+                          ? () => setEditingLineIndex(index)
+                          : undefined
+                      }
+                      onClearMark={
+                        isSynced && onClearLineMark
+                          ? () => {
+                              onClearLineMark(index);
+                              setEditingLineIndex(null);
+                              setLiveNotice(`Marca de línea ${index + 1} borrada`);
+                            }
+                          : undefined
+                      }
+                      onClearMarksFromHere={
+                        hasSyncedFromHereDown && onClearMarksFromLine
+                          ? () => {
+                              onClearMarksFromLine(index);
+                              setEditingLineIndex(null);
+                              setLiveNotice(
+                                `Marcas borradas desde la línea ${index + 1} hacia abajo`,
+                              );
+                            }
+                          : undefined
+                      }
+                    />
+                  </div>
+                ) : null}
+              </div>
             );
           })
         ) : (

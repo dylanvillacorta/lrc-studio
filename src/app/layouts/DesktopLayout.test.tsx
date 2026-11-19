@@ -83,6 +83,7 @@ function createSampleContext(
       activeLineIndex: 0,
       activeWordIndex: 1,
       canUndo: true,
+      canRedo: false,
       progress: {
         totalLines: 1,
         syncedLines: 1,
@@ -96,6 +97,9 @@ function createSampleContext(
       replaceLines: () => {},
       stampLineStart: () => {},
       stampLineEnd: () => {},
+      clearLineMark: () => {},
+      clearMarksFromLine: () => {},
+      setLineStartTime: () => {},
       undoLine: () => 0,
       stampWordStart: () => ({
         shouldPause: false,
@@ -111,6 +115,7 @@ function createSampleContext(
       nudgeWord: () => {},
       nudgeLine: () => {},
       undo: () => true,
+      redo: () => false,
       resetHistory: () => {},
     },
     player: {

@@ -166,6 +166,15 @@ describe('attachKeyboardShortcutListeners', () => {
     fakeWindow.dispatchEvent(ctrlZ);
     expect(handlers.onUndo).toHaveBeenCalledTimes(1);
 
+    expect(resolveKeyboardShortcut({ key: 'Z', ctrlKey: true, shiftKey: true })).toEqual({
+      type: 'redo',
+      preventDefault: true,
+    });
+    expect(resolveKeyboardShortcut({ key: 'y', ctrlKey: true })).toEqual({
+      type: 'redo',
+      preventDefault: true,
+    });
+
     cleanup();
 
     const afterCleanup = new Event('keydown', { cancelable: true });

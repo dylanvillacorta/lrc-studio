@@ -1,4 +1,9 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useRef, useState } from 'react';
+import {
+  LineRowActionBar,
+  LineTimeEditor,
+} from '@/features/sync/components/LineRowActions';
+import { useCenteredListScroll } from '@/features/sync/hooks/useCenteredListScroll';
 import { formatDisplayTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
 import { WellPanel } from '@/ui';
@@ -8,7 +13,13 @@ export interface DesktopLineListProps {
   activeLineIndex: number;
   playingLineIndex?: number;
   trackedListIndex?: number;
+  durationMs?: number;
+  autoCenter?: boolean;
   onSelectLine: (index: number) => void;
+  onPlayFromLine?: (index: number) => void;
+  onEditLineTime?: (index: number, startMs: number) => void;
+  onClearLineMark?: (index: number) => void;
+  onClearMarksFromLine?: (index: number) => void;
 }
 
 /**
@@ -19,91 +30,150 @@ export const DesktopLineList = memo(function DesktopLineList({
   activeLineIndex,
   playingLineIndex = -1,
   trackedListIndex = activeLineIndex,
+  durationMs = 0,
+  autoCenter = true,
   onSelectLine,
+  onPlayFromLine,
+  onEditLineTime,
+  onClearLineMark,
+  onClearMarksFromLine,
 }: DesktopLineListProps) {
+  const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
-  const lineButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const lineRowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  useEffect(() => {
-    const listEl = listRef.current;
-    const targetEl = lineButtonRefs.current[trackedListIndex];
-    if (!listEl || !targetEl) {
-      return;
-    }
-    const reduced =
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const targetTop = Math.max(
-      0,
-      targetEl.offsetTop - (listEl.clientHeight - targetEl.offsetHeight) / 2,
-    );
-    if (typeof listEl.scrollTo === 'function') {
-      listEl.scrollTo({
-        top: targetTop,
-        behavior: reduced ? 'auto' : 'smooth',
-      });
-    } else {
-      listEl.scrollTop = targetTop;
-    }
-  }, [trackedListIndex]);
+  useCenteredListScroll({
+    containerRef: listRef,
+    itemRefs: lineRowRefs,
+    targetIndex: trackedListIndex,
+    enabled: autoCenter && lines.length > 0,
+    itemCount: lines.length,
+  });
 
   return (
-    <WellPanel
-      ref={listRef}
-      data-testid="desktop-line-list"
-      className="flex-1 min-h-[180px] p-2.5 overflow-y-auto flex flex-col gap-1.5"
-    >
-      {lines.length > 0 ? (
-        lines.map((line, index) => {
-          const isCurrent = index === activeLineIndex;
-          const isPlayingLine = index === playingLineIndex;
-          const isSynced = line.startMs !== null;
-          return (
-            <button
-              key={line.id}
-              ref={(el) => {
-                lineButtonRefs.current[index] = el;
-              }}
-              type="button"
-              onClick={() => onSelectLine(index)}
-              aria-current={isCurrent ? 'true' : undefined}
-              data-playing={isPlayingLine ? 'true' : undefined}
-              className={`w-full min-h-12 px-3.5 py-2.5 rounded-[14px] flex items-center justify-between gap-2.5 text-left transition-shadow motion-reduce:transition-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
-                isCurrent
-                  ? isPlayingLine
-                    ? 'relieve ring-1 ring-acc/45 text-ink font-extrabold'
-                    : 'relieve text-ink font-extrabold'
-                  : isPlayingLine
-                    ? 'bg-acc/10 ring-1 ring-acc/35 text-ink font-bold'
-                    : isSynced
-                      ? 'bg-transparent text-ink font-semibold'
-                      : 'bg-transparent text-mute font-semibold'
-              }`}
-            >
-              <span className="truncate text-[14.5px] flex-1 min-w-0">
-                {line.text}
-              </span>
-              <span
-                aria-label={!isSynced ? 'Sin marca de tiempo' : undefined}
-                className={`font-mono text-xs font-bold tabular-nums shrink-0 w-[8ch] text-right ${
-                  !isSynced
-                    ? 'text-acc/70'
-                    : isCurrent || isPlayingLine
-                      ? 'text-acc'
-                      : 'text-ok'
+    <div className="flex-1 min-h-[180px] max-h-[max(240px,calc(100dvh-430px))] flex flex-col gap-2">
+      {editingLineIndex !== null && lines[editingLineIndex] ? (
+        <LineTimeEditor
+          key={`${editingLineIndex}-${lines[editingLineIndex]?.id ?? ''}`}
+          lineIndex={editingLineIndex}
+          initialStartMs={lines[editingLineIndex]?.startMs ?? null}
+          prevLineStartMs={
+            editingLineIndex > 0 ? (lines[editingLineIndex - 1]?.startMs ?? null) : null
+          }
+          durationMs={durationMs}
+          onAccept={(idx, startMs) => {
+            onEditLineTime?.(idx, startMs);
+            setEditingLineIndex(null);
+          }}
+          onCancel={() => setEditingLineIndex(null)}
+        />
+      ) : null}
+
+      <WellPanel
+        ref={listRef}
+        data-testid="desktop-line-list"
+        className="flex-1 min-h-0 p-2.5 overflow-y-auto flex flex-col gap-1.5"
+      >
+        {lines.length > 0 ? (
+          lines.map((line, index) => {
+            const isCurrent = index === activeLineIndex;
+            const isPlayingLine = index === playingLineIndex;
+            const isSynced = line.startMs !== null;
+            const hasSyncedFromHereDown = lines
+              .slice(index)
+              .some((item) => item.startMs !== null);
+            return (
+              <div
+                key={line.id}
+                ref={(el) => {
+                  lineRowRefs.current[index] = el;
+                }}
+                data-line-index={index}
+                data-playing={isPlayingLine ? 'true' : undefined}
+                className={`w-full min-h-12 rounded-[14px] flex items-center gap-2 transition-shadow motion-reduce:transition-none ${
+                  isCurrent
+                    ? isPlayingLine
+                      ? 'relieve ring-1 ring-acc/45 text-ink'
+                      : 'relieve text-ink'
+                    : isPlayingLine
+                      ? 'bg-acc/10 ring-1 ring-acc/35 text-ink'
+                      : 'bg-transparent'
                 }`}
               >
-                {formatDisplayTime(line.startMs)}
-              </span>
-            </button>
-          );
-        })
-      ) : (
-        <div className="flex-1 flex items-center justify-center p-4 text-center text-sm font-semibold text-mute">
-          Aún no hay letra cargada. Usa «Letra» arriba para agregar líneas.
-        </div>
-      )}
-    </WellPanel>
+                <button
+                  type="button"
+                  onClick={() => onSelectLine(index)}
+                  aria-current={isCurrent ? 'true' : undefined}
+                  data-playing={isPlayingLine ? 'true' : undefined}
+                  className={`flex-1 min-w-0 min-h-12 px-3.5 py-2.5 rounded-[14px] flex items-center justify-between gap-2.5 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
+                    isCurrent
+                      ? 'text-ink font-extrabold'
+                      : isPlayingLine
+                        ? 'text-ink font-bold'
+                        : isSynced
+                          ? 'text-ink font-semibold'
+                          : 'text-mute font-semibold'
+                  }`}
+                >
+                  <span className="truncate text-[14.5px] flex-1 min-w-0">
+                    {line.text}
+                  </span>
+                  <span
+                    aria-label={!isSynced ? 'Sin marca de tiempo' : undefined}
+                    className={`font-mono text-xs font-bold tabular-nums shrink-0 w-[8ch] text-right ${
+                      !isSynced
+                        ? 'text-acc/70'
+                        : isCurrent || isPlayingLine
+                          ? 'text-acc'
+                          : 'text-ok'
+                    }`}
+                  >
+                    {formatDisplayTime(line.startMs)}
+                  </span>
+                </button>
+                {isCurrent ? (
+                  <div className="pr-1.5 shrink-0">
+                    <LineRowActionBar
+                      isSynced={isSynced}
+                      hasSyncedFromHereDown={hasSyncedFromHereDown}
+                      onPlayFromHere={
+                        isSynced && onPlayFromLine
+                          ? () => onPlayFromLine(index)
+                          : undefined
+                      }
+                      onEditTime={
+                        onEditLineTime
+                          ? () => setEditingLineIndex(index)
+                          : undefined
+                      }
+                      onClearMark={
+                        isSynced && onClearLineMark
+                          ? () => {
+                              onClearLineMark(index);
+                              setEditingLineIndex(null);
+                            }
+                          : undefined
+                      }
+                      onClearMarksFromHere={
+                        hasSyncedFromHereDown && onClearMarksFromLine
+                          ? () => {
+                              onClearMarksFromLine(index);
+                              setEditingLineIndex(null);
+                            }
+                          : undefined
+                      }
+                    />
+                  </div>
+                ) : null}
+              </div>
+            );
+          })
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-4 text-center text-sm font-semibold text-mute">
+            Aún no hay letra cargada. Usa «Letra» arriba para agregar líneas.
+          </div>
+        )}
+      </WellPanel>
+    </div>
   );
 });

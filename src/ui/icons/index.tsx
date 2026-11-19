@@ -21,7 +21,10 @@ export type IconName =
   | 'menu'
   | 'info'
   | 'settings'
-  | 'close';
+  | 'close'
+  | 'edit'
+  | 'redo'
+  | 'clearDown';
 
 export interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -50,6 +53,9 @@ const PATHS: Record<IconName, string> = {
   info: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14v-4m0-4h.01',
   settings: 'M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M1 14h6M9 8h6M17 16h6',
   close: 'M18 6 6 18M6 6l12 12',
+  edit: 'M12 20h9M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z',
+  redo: 'M21 7v6h-6M21 13a9 9 0 1 1-3-6.7L21 9',
+  clearDown: 'M4 6h10M4 11h8M4 16h6M18 10v9m-3-3 3 3 3-3',
 };
 
 /**

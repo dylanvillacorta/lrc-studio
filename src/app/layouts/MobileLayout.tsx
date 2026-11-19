@@ -218,7 +218,7 @@ export function MobileLayout() {
     }
   }, [activeTab, flushPendingSave, refreshCatalog]);
 
-  const { seekTo, pause, togglePlay } = player;
+  const { seekTo, play, pause, togglePlay } = player;
   const {
     lines: syncLines,
     activeLineIndex: syncActiveLineIndex,
@@ -227,17 +227,22 @@ export function MobileLayout() {
   } = sync;
 
   const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
-  const { playingLineIndex, trackedListIndex, selectLine: handleSelectLine } =
-    usePlaybackLineTracking({
-      lines: syncLines,
-      isPlaying: player.isPlaying,
-      activeLineIndex: syncActiveLineIndex,
-      timeStore: player.timeStore,
-      fallbackCurrentTimeMs,
-      setActiveLineIndex: setSyncActiveLineIndex,
-      setActiveWordIndex: setSyncActiveWordIndex,
-      seekTo,
-    });
+  const {
+    playingLineIndex,
+    trackedListIndex,
+    selectLine: handleSelectLine,
+    playFromLine: handlePlayFromLine,
+  } = usePlaybackLineTracking({
+    lines: syncLines,
+    isPlaying: player.isPlaying,
+    activeLineIndex: syncActiveLineIndex,
+    timeStore: player.timeStore,
+    fallbackCurrentTimeMs,
+    setActiveLineIndex: setSyncActiveLineIndex,
+    setActiveWordIndex: setSyncActiveWordIndex,
+    seekTo,
+    play,
+  });
 
   const exitBurstIfNeeded = useCallback(() => {
     const exit = computeBurstExitState(syncSubView === 'burst');
@@ -585,6 +590,10 @@ export function MobileLayout() {
               onChangePlaybackRate={handleChangePlaybackRate}
               onUndo={sync.undo}
               onSelectLine={handleSelectLine}
+              onPlayFromLine={handlePlayFromLine}
+              onEditLineTime={sync.setLineStartTime}
+              onClearLineMark={sync.clearLineMark}
+              onClearMarksFromLine={sync.clearMarksFromLine}
               onStampLine={handleStampLine}
               onOpenLoupe={handleOpenLoupe}
               onStopBurst={handleStopBurst}
