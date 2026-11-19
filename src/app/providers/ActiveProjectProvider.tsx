@@ -25,6 +25,7 @@ import {
   buildSessionState,
   useAutosave,
   createAudioObjectUrl,
+  useDeviceLatency,
   useSessionRestore,
   type AutosaveSnapshot,
   type RestorePlan,
@@ -43,6 +44,7 @@ export interface ActiveProjectProviderProps {
 export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) {
   const adapter = useStorage();
   const restore = useSessionRestore(adapter);
+  const { latencyMs, setLatencyMs } = useDeviceLatency(adapter);
   const { clearAudioUrl: clearRestoreAudioUrl } = restore;
 
   const [project, setProject] = useState<ProjectFullData | null>(null);
@@ -388,6 +390,8 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       autosaveState,
       sync,
       player,
+      latencyMs,
+      setLatencyMs,
       openProject,
       createProject,
       attachAudio,
@@ -404,6 +408,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       createProject,
       effectiveAudioUrl,
       flushAutosave,
+      latencyMs,
       openProject,
       player,
       project,
@@ -411,6 +416,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       restore.status,
       saveStatus,
       setActiveTab,
+      setLatencyMs,
       sync,
       updateProjectMetadata,
       waveformPeaks,

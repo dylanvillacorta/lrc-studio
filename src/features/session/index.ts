@@ -49,3 +49,7 @@ export {
   type SessionRestoreStatus,
   type UseSessionRestoreReturn,
 } from '@/features/session/hooks/useSessionRestore';
+export {
+  useDeviceLatency,
+  type UseDeviceLatencyReturn,
+} from '@/features/session/hooks/useDeviceLatency';

@@ -57,6 +57,8 @@ function createStubStorage(): IStorageAdapter {
     deleteProject: async () => {},
     getSessionState: async () => null,
     saveSessionState: async () => {},
+    getLatencyMs: async () => 0,
+    saveLatencyMs: async () => {},
     exportFullCatalogBackup: async () => '{}',
     importCatalogBackup: async () => {},
   };
@@ -125,6 +127,8 @@ function createSampleContext(
       setSeeking: () => {},
       setPlaybackRate: () => {},
     },
+    latencyMs: 0,
+    setLatencyMs: () => {},
     openProject: async () => {},
     createProject: async () => SAMPLE_PROJECT,
     attachAudio: async () => {},

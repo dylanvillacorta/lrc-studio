@@ -291,6 +291,31 @@ describe('WebIndexedDBAdapter', () => {
     expect((restored?.blob as Blob).type).toBe('audio/flac');
     expect(new Uint8Array(await (restored?.blob as Blob).arrayBuffer())).toEqual(flacBytes);
   });
+
+  it('persiste latencyMs en meta/localStorage con valor por defecto 0 y acotado a 0..500', async () => {
+    const dbName = nextDbName();
+    const memoryStorage = makeMemoryStorage();
+    const adapter = new WebIndexedDBAdapter({ dbName, storage: memoryStorage });
+    await adapter.init();
+
+    expect(await adapter.getLatencyMs()).toBe(0);
+
+    await adapter.saveLatencyMs(200);
+    expect(await adapter.getLatencyMs()).toBe(200);
+
+    // Nueva instancia sin localStorage lee desde IndexedDB meta
+    const adapterOnlyIdb = new WebIndexedDBAdapter({ dbName, storage: null });
+    await adapterOnlyIdb.init();
+    expect(await adapterOnlyIdb.getLatencyMs()).toBe(200);
+
+    // Acota fuera de rango y redondea decimales
+    await adapter.saveLatencyMs(999);
+    expect(await adapter.getLatencyMs()).toBe(500);
+    await adapter.saveLatencyMs(-30);
+    expect(await adapter.getLatencyMs()).toBe(0);
+    await adapter.saveLatencyMs(174.6);
+    expect(await adapter.getLatencyMs()).toBe(175);
+  });
 });
 
 describe('Selector de adaptador y stub Tauri', () => {
