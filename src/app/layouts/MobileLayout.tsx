@@ -579,7 +579,6 @@ export function MobileLayout() {
               activeLineIndex={sync.activeLineIndex}
               playingLineIndex={playingLineIndex}
               trackedListIndex={trackedListIndex}
-              canUndo={sync.canUndo}
               syncMode={burstActive ? 'burst' : 'line'}
               burstWindow={burstWindow}
               onSelectMode={handleSelectMode}
@@ -588,12 +587,9 @@ export function MobileLayout() {
               onSeekEnd={handleSeekEnd}
               onTogglePlay={player.togglePlay}
               onChangePlaybackRate={handleChangePlaybackRate}
-              onUndo={sync.undo}
               onSelectLine={handleSelectLine}
               onPlayFromLine={handlePlayFromLine}
-              onEditLineTime={sync.setLineStartTime}
               onClearLineMark={sync.clearLineMark}
-              onClearMarksFromLine={sync.clearMarksFromLine}
               onStampLine={handleStampLine}
               onOpenLoupe={handleOpenLoupe}
               onStopBurst={handleStopBurst}

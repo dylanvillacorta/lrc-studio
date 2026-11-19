@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LyricLine } from '@/types';
 import { KaraokePreview } from './KaraokePreview';
 import { LineRowActionBar, LineTimeEditor } from './LineRowActions';
-import { LineSyncScreen } from './LineSyncScreen';
+import { findLastMarkedLineIndex, LineSyncScreen } from './LineSyncScreen';
 import { WaveformStrip } from './WaveformStrip';
 import { WordSyncScreen } from './WordSyncScreen';
 
@@ -48,14 +48,13 @@ describe('LineSyncScreen', () => {
         lines={SAMPLE_LINES}
         activeLineIndex={1}
         playingLineIndex={0}
-        canUndo
         syncMode="line"
         onSelectMode={vi.fn()}
         onSeek={vi.fn()}
         onTogglePlay={vi.fn()}
         onChangePlaybackRate={vi.fn()}
-        onUndo={vi.fn()}
         onSelectLine={vi.fn()}
+        onClearLineMark={vi.fn()}
         onStampLine={vi.fn()}
         onOpenLoupe={vi.fn()}
         onStopBurst={vi.fn()}
@@ -67,7 +66,8 @@ describe('LineSyncScreen', () => {
     expect(html).toContain('MARCAR LÍNEA 2');
     expect(html).toContain('Retroceder 5 segundos');
     expect(html).toContain('Adelantar 5 segundos');
-    expect(html).toContain('Deshacer última marca');
+    expect(html).toContain('aria-label="Deshacer última marca de línea"');
+    expect(html).not.toContain('aria-label="Deshacer última marca"');
     expect(html).toContain('Abrir ajuste fino en lupa');
     expect(html).not.toContain('esperando marca');
     expect(html).toContain('--:--.--');
@@ -76,6 +76,51 @@ describe('LineSyncScreen', () => {
     expect(html).toContain('text-acc/70');
     expect(html).toContain('data-playing="true"');
     expect(html).toContain('Karaoke');
+  });
+
+  it('deshabilita el botón de deshacer última marca de línea cuando ninguna línea tiene marca y resuelve el último índice marcado hacia atrás', () => {
+    const unmarkedLines: LyricLine[] = SAMPLE_LINES.map((line) => ({
+      ...line,
+      startMs: null,
+      endMs: null,
+    }));
+    const html = renderToString(
+      <LineSyncScreen
+        hasAudio
+        peaks={[0.2, 0.8, 0.5]}
+        currentTimeMs={0}
+        durationMs={120_000}
+        isPlaying={false}
+        playbackRate={1}
+        lines={unmarkedLines}
+        activeLineIndex={0}
+        syncMode="line"
+        onSelectMode={vi.fn()}
+        onSeek={vi.fn()}
+        onTogglePlay={vi.fn()}
+        onChangePlaybackRate={vi.fn()}
+        onSelectLine={vi.fn()}
+        onClearLineMark={vi.fn()}
+        onStampLine={vi.fn()}
+        onOpenLoupe={vi.fn()}
+        onStopBurst={vi.fn()}
+        onUploadAudio={vi.fn(async () => {})}
+      />,
+    );
+    expect(html).toMatch(/<button[^>]*aria-label="Deshacer última marca de línea"[^>]*disabled=""/);
+
+    const threeLines: LyricLine[] = [
+      { id: 'a', text: 'Uno', startMs: 1000, endMs: null, words: [] },
+      { id: 'b', text: 'Dos', startMs: null, endMs: null, words: [] },
+      { id: 'c', text: 'Tres', startMs: 3000, endMs: null, words: [] },
+    ];
+    expect(findLastMarkedLineIndex(threeLines)).toBe(2);
+    expect(
+      findLastMarkedLineIndex(
+        threeLines.map((l, idx) => (idx === 2 ? { ...l, startMs: null } : l)),
+      ),
+    ).toBe(0);
+    expect(findLastMarkedLineIndex(unmarkedLines)).toBe(-1);
   });
 
   it('muestra el estado vacío cuando no hay audio', () => {
@@ -89,13 +134,11 @@ describe('LineSyncScreen', () => {
         playbackRate={1}
         lines={[]}
         activeLineIndex={0}
-        canUndo={false}
         syncMode="line"
         onSelectMode={vi.fn()}
         onSeek={vi.fn()}
         onTogglePlay={vi.fn()}
         onChangePlaybackRate={vi.fn()}
-        onUndo={vi.fn()}
         onSelectLine={vi.fn()}
         onStampLine={vi.fn()}
         onOpenLoupe={vi.fn()}
@@ -121,13 +164,11 @@ describe('LineSyncScreen', () => {
         playbackRate={1}
         lines={[]}
         activeLineIndex={0}
-        canUndo={false}
         syncMode="line"
         onSelectMode={vi.fn()}
         onSeek={vi.fn()}
         onTogglePlay={vi.fn()}
         onChangePlaybackRate={vi.fn()}
-        onUndo={vi.fn()}
         onSelectLine={vi.fn()}
         onStampLine={vi.fn()}
         onOpenLoupe={vi.fn()}
@@ -304,37 +345,32 @@ describe('WaveformStrip', () => {
 });
 
 describe('LineRowActionBar y LineTimeEditor', () => {
-  it('renderiza la barra de acciones para línea sincronizada y omite Reproducir desde aquí cuando no tiene marca', () => {
+  it('renderiza la barra de acciones solo con Reproducir desde aquí y Borrar marca cuando tiene marca', () => {
     const syncedHtml = renderToString(
       <LineRowActionBar
         isSynced
-        hasSyncedFromHereDown
         onPlayFromHere={vi.fn()}
-        onEditTime={vi.fn()}
         onClearMark={vi.fn()}
-        onClearMarksFromHere={vi.fn()}
       />,
     );
     expect(syncedHtml).toContain('aria-label="Acciones de línea"');
     expect(syncedHtml).toContain('aria-label="Reproducir desde aquí"');
-    expect(syncedHtml).toContain('aria-label="Editar tiempo"');
     expect(syncedHtml).toContain('aria-label="Borrar marca"');
-    expect(syncedHtml).toContain('aria-label="Borrar marcas desde esta línea hacia abajo"');
+    expect(syncedHtml).not.toContain('aria-label="Editar tiempo"');
+    expect(syncedHtml).not.toContain('aria-label="Borrar marcas desde esta línea hacia abajo"');
     expect(syncedHtml).toContain('min-h-11 min-w-11');
 
     const unsyncedHtml = renderToString(
       <LineRowActionBar
         isSynced={false}
-        hasSyncedFromHereDown={false}
         onPlayFromHere={vi.fn()}
-        onEditTime={vi.fn()}
         onClearMark={vi.fn()}
-        onClearMarksFromHere={vi.fn()}
       />,
     );
     expect(unsyncedHtml).not.toContain('Reproducir desde aquí');
     expect(unsyncedHtml).not.toContain('Borrar marca');
-    expect(unsyncedHtml).toContain('aria-label="Editar tiempo"');
+    expect(unsyncedHtml).not.toContain('Editar tiempo');
+    expect(unsyncedHtml).not.toContain('Borrar marcas desde esta línea hacia abajo');
   });
 
   it('renderiza el editor de tiempo en línea con botones ±10/±50 ms, aviso de orden y Aceptar/Cancelar', () => {

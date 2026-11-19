@@ -39,7 +39,12 @@ test.describe('Flujo de sincronización completo', () => {
     await expect(page.getByRole('button', { name: /MARCAR LÍNEA 6/i })).toBeVisible();
 
     // Deshacer revierte la marca
-    await page.getByRole('button', { name: 'Deshacer última marca' }).click();
+    await page
+      .getByRole('button', {
+        name: isMobile ? 'Deshacer última marca de línea' : 'Deshacer última marca',
+        exact: true,
+      })
+      .click();
     await expect(line5Btn).toContainText('--:--.--');
     await expect(page.getByRole('button', { name: /MARCAR LÍNEA 5/i })).toBeVisible();
 

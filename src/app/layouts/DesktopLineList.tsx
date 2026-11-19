@@ -1,8 +1,5 @@
-import { memo, useRef, useState } from 'react';
-import {
-  LineRowActionBar,
-  LineTimeEditor,
-} from '@/features/sync/components/LineRowActions';
+import { memo, useRef } from 'react';
+import { LineRowActionBar } from '@/features/sync/components/LineRowActions';
 import { useCenteredListScroll } from '@/features/sync/hooks/useCenteredListScroll';
 import { formatDisplayTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
@@ -13,13 +10,10 @@ export interface DesktopLineListProps {
   activeLineIndex: number;
   playingLineIndex?: number;
   trackedListIndex?: number;
-  durationMs?: number;
   autoCenter?: boolean;
   onSelectLine: (index: number) => void;
   onPlayFromLine?: (index: number) => void;
-  onEditLineTime?: (index: number, startMs: number) => void;
   onClearLineMark?: (index: number) => void;
-  onClearMarksFromLine?: (index: number) => void;
 }
 
 /**
@@ -30,15 +24,11 @@ export const DesktopLineList = memo(function DesktopLineList({
   activeLineIndex,
   playingLineIndex = -1,
   trackedListIndex = activeLineIndex,
-  durationMs = 0,
   autoCenter = true,
   onSelectLine,
   onPlayFromLine,
-  onEditLineTime,
   onClearLineMark,
-  onClearMarksFromLine,
 }: DesktopLineListProps) {
-  const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const lineRowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -52,23 +42,6 @@ export const DesktopLineList = memo(function DesktopLineList({
 
   return (
     <div className="flex-1 min-h-[180px] max-h-[max(240px,calc(100dvh-430px))] flex flex-col gap-2">
-      {editingLineIndex !== null && lines[editingLineIndex] ? (
-        <LineTimeEditor
-          key={`${editingLineIndex}-${lines[editingLineIndex]?.id ?? ''}`}
-          lineIndex={editingLineIndex}
-          initialStartMs={lines[editingLineIndex]?.startMs ?? null}
-          prevLineStartMs={
-            editingLineIndex > 0 ? (lines[editingLineIndex - 1]?.startMs ?? null) : null
-          }
-          durationMs={durationMs}
-          onAccept={(idx, startMs) => {
-            onEditLineTime?.(idx, startMs);
-            setEditingLineIndex(null);
-          }}
-          onCancel={() => setEditingLineIndex(null)}
-        />
-      ) : null}
-
       <WellPanel
         ref={listRef}
         data-testid="desktop-line-list"
@@ -79,9 +52,6 @@ export const DesktopLineList = memo(function DesktopLineList({
             const isCurrent = index === activeLineIndex;
             const isPlayingLine = index === playingLineIndex;
             const isSynced = line.startMs !== null;
-            const hasSyncedFromHereDown = lines
-              .slice(index)
-              .some((item) => item.startMs !== null);
             return (
               <div
                 key={line.id}
@@ -135,30 +105,15 @@ export const DesktopLineList = memo(function DesktopLineList({
                   <div className="pr-1.5 shrink-0">
                     <LineRowActionBar
                       isSynced={isSynced}
-                      hasSyncedFromHereDown={hasSyncedFromHereDown}
                       onPlayFromHere={
                         isSynced && onPlayFromLine
                           ? () => onPlayFromLine(index)
-                          : undefined
-                      }
-                      onEditTime={
-                        onEditLineTime
-                          ? () => setEditingLineIndex(index)
                           : undefined
                       }
                       onClearMark={
                         isSynced && onClearLineMark
                           ? () => {
                               onClearLineMark(index);
-                              setEditingLineIndex(null);
-                            }
-                          : undefined
-                      }
-                      onClearMarksFromHere={
-                        hasSyncedFromHereDown && onClearMarksFromLine
-                          ? () => {
-                              onClearMarksFromLine(index);
-                              setEditingLineIndex(null);
                             }
                           : undefined
                       }
