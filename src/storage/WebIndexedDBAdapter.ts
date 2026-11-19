@@ -21,7 +21,17 @@ const STORE_AUDIO = 'audio';
 const STORE_META = 'meta';
 
 const META_SESSION_KEY = 'session';
+const META_LATENCY_KEY = 'latencyMs';
 const LOCAL_STORAGE_SESSION_KEY = 'lyricsync:session';
+const LOCAL_STORAGE_LATENCY_KEY = 'lyricsync:latencyMs';
+const MAX_LATENCY_MS = 500;
+
+function normalizeLatencyMs(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(MAX_LATENCY_MS, Math.round(value)));
+}
 
 const VALID_TABS: ReadonlySet<string> = new Set<ActiveTab>([
   'sync',
@@ -428,6 +438,48 @@ export class WebIndexedDBAdapter implements IStorageAdapter {
         storage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(state));
       } catch {
         // Ignora fallos de cuota o restricciones de localStorage; IndexedDB ya persistió la sesión.
+      }
+    }
+  }
+
+  async getLatencyMs(): Promise<number> {
+    const storage = this.getLocalStorage();
+    if (storage) {
+      try {
+        const raw = storage.getItem(LOCAL_STORAGE_LATENCY_KEY);
+        if (raw !== null) {
+          const parsed = Number(raw);
+          if (Number.isFinite(parsed)) {
+            return normalizeLatencyMs(parsed);
+          }
+        }
+      } catch {
+        // Si localStorage falla o contiene datos corruptos, cae a IndexedDB.
+      }
+    }
+
+    const db = await this.ensureDb();
+    const tx = db.transaction(STORE_META, 'readonly');
+    const stored = await requestToPromise(
+      tx.objectStore(STORE_META).get(META_LATENCY_KEY) as IDBRequest<number | undefined>,
+    );
+    await transactionDone(tx);
+    return normalizeLatencyMs(stored);
+  }
+
+  async saveLatencyMs(latencyMs: number): Promise<void> {
+    const normalized = normalizeLatencyMs(latencyMs);
+    const db = await this.ensureDb();
+    const tx = db.transaction(STORE_META, 'readwrite');
+    tx.objectStore(STORE_META).put(normalized, META_LATENCY_KEY);
+    await transactionDone(tx);
+
+    const storage = this.getLocalStorage();
+    if (storage) {
+      try {
+        storage.setItem(LOCAL_STORAGE_LATENCY_KEY, String(normalized));
+      } catch {
+        // Ignora fallos de cuota o restricciones de localStorage; IndexedDB ya persistió el ajuste.
       }
     }
   }

@@ -55,6 +55,8 @@ export interface ActiveProjectContextValue {
   autosaveState: AutosaveState;
   sync: UseSyncEngineReturn;
   player: UseAudioPlayerReturn;
+  latencyMs: number;
+  setLatencyMs: (nextMs: number) => void;
   openProject: (projectId: string) => Promise<void>;
   createProject: (input?: CreateProjectInput) => Promise<ProjectFullData>;
   attachAudio: (file: AudioFileInput) => Promise<void>;

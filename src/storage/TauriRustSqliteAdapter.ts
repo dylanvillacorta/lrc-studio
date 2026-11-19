@@ -118,6 +118,23 @@ export class TauriRustSqliteAdapter implements IStorageAdapter {
   }
 
   /**
+   * Recupera la compensación de latencia de salida de audio en ms desde SQLite.
+   * Comando futuro: `invoke('get_latency_ms_sqlite')`
+   */
+  async getLatencyMs(): Promise<number> {
+    throw notImplemented('getLatencyMs');
+  }
+
+  /**
+   * Persiste la compensación de latencia de salida de audio en ms en SQLite.
+   * Comando futuro: `invoke('save_latency_ms_sqlite', { latencyMs })`
+   */
+  async saveLatencyMs(latencyMs: number): Promise<void> {
+    void latencyMs;
+    throw notImplemented('saveLatencyMs');
+  }
+
+  /**
    * Exporta el catálogo completo desde SQLite y los audios en disco codificados en Base64.
    * Comando futuro: `invoke('export_catalog_backup_sqlite')`
    */

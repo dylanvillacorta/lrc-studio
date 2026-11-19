@@ -64,6 +64,16 @@ export interface IStorageAdapter {
   saveSessionState(state: SessionState): Promise<void>;
 
   /**
+   * Recupera la compensación de latencia de salida de audio en milisegundos (0–500).
+   */
+  getLatencyMs(): Promise<number>;
+
+  /**
+   * Persiste la compensación de latencia de salida de audio en el dispositivo (0–500 ms).
+   */
+  saveLatencyMs(latencyMs: number): Promise<void>;
+
+  /**
    * Exporta todo el catálogo (proyectos y audios en base64) como una cadena JSON serializada.
    */
   exportFullCatalogBackup(): Promise<string>;
