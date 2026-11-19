@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
+import babiFixture from '@/features/export/model/__fixtures__/babi-pa-ti.project.json';
 import { WebIndexedDBAdapter } from '@/storage';
 import type { CatalogBackup } from '@/types';
 import {
@@ -83,5 +84,53 @@ describe('catalogOperations con WebIndexedDBAdapter', () => {
     await expect(exportCatalogProjectBackup(adapter, 'no-existe')).rejects.toThrow(
       /No se encontró/,
     );
+  });
+
+  it('importa un proyecto JSON exportado (fixture Babi - Pa ti) creando proyecto sin audio y con progreso', async () => {
+    const rawJson = JSON.stringify(babiFixture);
+    await importCatalogBackupFromJson(adapter, rawJson);
+
+    const list = await loadCatalogProjects(adapter);
+    expect(list).toHaveLength(1);
+
+    const summary = list[0]!;
+    expect(summary.title).toBe('Pa ti');
+    expect(summary.artist).toBe('Babi');
+    expect(summary.audioFileName).toBe('Grind – Pa Ti.mp3');
+    expect(summary.totalLines).toBeGreaterThanOrEqual(40);
+    expect(summary.syncedLines).toBeGreaterThan(0);
+
+    const full = await adapter.getProject(summary.id);
+    expect(full).not.toBeNull();
+    expect(full?.lines.length).toBeGreaterThanOrEqual(40);
+    expect(full?.lines[0]?.startMs).toBe(7153);
+
+    const audio = await adapter.getAudioBinary(summary.id);
+    expect(audio).toBeNull();
+
+    // Importar dos veces el mismo proyecto crea dos entradas con ids únicos
+    await importCatalogBackupFromJson(adapter, rawJson);
+    const listTwice = await loadCatalogProjects(adapter);
+    expect(listTwice).toHaveLength(2);
+    expect(listTwice[0]?.id).not.toBe(listTwice[1]?.id);
+  });
+
+  it('asigna Sin título si el proyecto JSON importado tiene título vacío y rechaza formatos desconocidos', async () => {
+    await importCatalogBackupFromJson(
+      adapter,
+      JSON.stringify({
+        schemaVersion: '1.0',
+        metadata: { title: '   ', artist: 'Anónimo' },
+        lines: [{ text: 'Verso', startTime: 1, endTime: 2, words: [] }],
+      }),
+    );
+
+    const list = await loadCatalogProjects(adapter);
+    expect(list).toHaveLength(1);
+    expect(list[0]?.title).toBe('Sin título');
+
+    await expect(
+      importCatalogBackupFromJson(adapter, JSON.stringify({ foo: 'bar' })),
+    ).rejects.toThrow(/respaldo de catálogo o un proyecto JSON de LyricSync/);
   });
 });

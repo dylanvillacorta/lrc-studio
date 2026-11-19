@@ -5,6 +5,7 @@ export {
   buildBackupFileName,
   buildSingleProjectBackup,
   createEmptyProject,
+  createProjectFromImportedJson,
   createProjectId,
   duplicateProject,
   filterProjectsByQuery,

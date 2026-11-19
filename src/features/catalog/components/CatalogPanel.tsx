@@ -102,6 +102,7 @@ export const CatalogPanel = memo(function CatalogPanel({
             <RaisedButton
               size="sm"
               aria-label="Importar respaldo .json"
+              title="Importar respaldo de catálogo o proyecto .json"
               onClick={() => backupInputRef.current?.click()}
               className="min-h-12 rounded-[16px] px-3 flex-none"
             >

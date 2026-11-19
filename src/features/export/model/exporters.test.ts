@@ -99,7 +99,7 @@ describe('exporters', () => {
     );
     expect(unknownVersion.ok).toBe(false);
     if (!unknownVersion.ok) {
-      expect(unknownVersion.error).toContain('Versión de proyecto JSON no compatible');
+      expect(unknownVersion.error).toContain('no reconoce el esquema');
     }
 
     const noLines = parseProjectJson('{"metadata":{}}');
