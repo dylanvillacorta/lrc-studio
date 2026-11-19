@@ -131,6 +131,6 @@ describe('catalogOperations con WebIndexedDBAdapter', () => {
 
     await expect(
       importCatalogBackupFromJson(adapter, JSON.stringify({ foo: 'bar' })),
-    ).rejects.toThrow(/respaldo de catálogo o un proyecto JSON de LyricSync/);
+    ).rejects.toThrow(/respaldo de catálogo o un proyecto JSON de LRC Studio/);
   });
 });

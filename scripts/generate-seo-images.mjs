@@ -85,7 +85,7 @@ const ogHtml = `<!doctype html>
   <div class="card">
     <div class="top">
       <div class="badge">${iconSvg}</div>
-      <div class="title">LyricSync Studio</div>
+      <div class="title">LRC Studio</div>
     </div>
     <div class="subtitle">
       Sincroniza letras LRC y ELRC palabra por palabra para karaoke directamente en el navegador, sin subir archivos.

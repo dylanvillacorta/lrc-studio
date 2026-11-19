@@ -37,7 +37,12 @@ describe('InfoDialog', () => {
 
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-modal="true"');
-    expect(html).toContain('LyricSync Studio');
+    expect(html).toContain('LRC Studio');
+    expect(html).toContain('Creado por');
+    expect(html).toContain('href="https://dylanvillacorta.com"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).toContain('Dylan Villacorta');
     expect(html).toContain('v1.2.3');
     expect(html).toContain('abc1234');
     expect(html).toContain('lrc.dirtykeras.com');

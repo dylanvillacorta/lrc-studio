@@ -6,7 +6,7 @@ import type {
 } from '@/types';
 
 /**
- * Contrato de almacenamiento local-first para LyricSync Studio.
+ * Contrato de almacenamiento local-first para LRC Studio.
  * Permite intercambiar el motor de persistencia (IndexedDB en web o SQLite/disco en Tauri)
  * sin acoplar la lógica de negocio ni los componentes de interfaz.
  */

@@ -9,7 +9,7 @@ function ResponsiveLayout() {
 }
 
 /**
- * Raíz de la aplicación LyricSync Studio.
+ * Raíz de la aplicación LRC Studio.
  */
 export function App() {
   return (

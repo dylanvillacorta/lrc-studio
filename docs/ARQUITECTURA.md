@@ -1,4 +1,4 @@
-# Arquitectura — LyricSync Studio
+# Arquitectura — LRC Studio
 
 ## 1. Stack tecnológico
 
