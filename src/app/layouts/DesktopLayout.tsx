@@ -182,17 +182,22 @@ export function DesktopLayout() {
   const activeLine = sync.lines[sync.activeLineIndex];
   const targetWord = activeLine?.words[sync.activeWordIndex];
   const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
-  const { playingLineIndex, trackedListIndex, selectLine: handleSelectLine } =
-    usePlaybackLineTracking({
-      lines: sync.lines,
-      isPlaying: player.isPlaying,
-      activeLineIndex: sync.activeLineIndex,
-      timeStore: player.timeStore,
-      fallbackCurrentTimeMs,
-      setActiveLineIndex: sync.setActiveLineIndex,
-      setActiveWordIndex: sync.setActiveWordIndex,
-      seekTo: player.seekTo,
-    });
+  const {
+    playingLineIndex,
+    trackedListIndex,
+    selectLine: handleSelectLine,
+    playFromLine: handlePlayFromLine,
+  } = usePlaybackLineTracking({
+    lines: sync.lines,
+    isPlaying: player.isPlaying,
+    activeLineIndex: sync.activeLineIndex,
+    timeStore: player.timeStore,
+    fallbackCurrentTimeMs,
+    setActiveLineIndex: sync.setActiveLineIndex,
+    setActiveWordIndex: sync.setActiveWordIndex,
+    seekTo: player.seekTo,
+    play: player.play,
+  });
 
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
@@ -314,6 +319,7 @@ export function DesktopLayout() {
     onTogglePlay: player.togglePlay,
     onNudge: handleNudge,
     onUndo: sync.undo,
+    onRedo: sync.redo,
   });
 
   const inspectorIsWord =
@@ -586,7 +592,13 @@ export function DesktopLayout() {
                     activeLineIndex={sync.activeLineIndex}
                     playingLineIndex={playingLineIndex}
                     trackedListIndex={trackedListIndex}
+                    durationMs={durationMs}
+                    autoCenter={syncMode !== 'word'}
                     onSelectLine={handleSelectLine}
+                    onPlayFromLine={handlePlayFromLine}
+                    onEditLineTime={sync.setLineStartTime}
+                    onClearLineMark={sync.clearLineMark}
+                    onClearMarksFromLine={sync.clearMarksFromLine}
                   />
                   {syncMode !== 'word' ? (
                     <SyncButton
