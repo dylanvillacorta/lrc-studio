@@ -85,7 +85,7 @@ test.describe('Marcas exactas, calibración de latencia y desplazar marcas (T24)
     );
     await expect(page.getByRole('button', { name: /MARCAR LÍNEA 2/i })).toBeVisible();
 
-    // Mover la barra lejos y seleccionar la línea 1: audio.currentTime debe quedar a <50 ms de la marca.
+    // Mover la barra lejos y seleccionar la línea 1: no hace seek; «Reproducir desde aquí» sí salta a la marca.
     await seekToFraction(page, isMobile, 0.75);
     await expect.poll(async () => audioMs(page)).toBeGreaterThan(55_000);
 
@@ -93,11 +93,17 @@ test.describe('Marcas exactas, calibración de latencia y desplazar marcas (T24)
       hasText: 'Luces de neón brillan en la ciudad',
     });
     await line1Button.click();
-
-    await expect
-      .poll(async () => Math.abs((await audioMs(page)) - knownTime1Ms))
-      .toBeLessThan(50);
     await expect(line1Button).toHaveAttribute('aria-current', 'true');
+    await expect.poll(async () => audioMs(page)).toBeGreaterThan(55_000);
+
+    await page.getByRole('button', { name: 'Reproducir desde aquí' }).click();
+    await expect
+      .poll(async () => await audioMs(page))
+      .toBeGreaterThanOrEqual(knownTime1Ms - 50);
+    await expect
+      .poll(async () => await audioMs(page))
+      .toBeLessThan(knownTime1Ms + 1500);
+    await page.getByRole('button', { name: 'Pausar' }).click();
 
     // 2. Configurar latencyMs = 200 y marcar la línea 2 en otro tiempo conocido.
     await page.getByRole('button', { name: 'Ajustes de sincronización' }).click();
