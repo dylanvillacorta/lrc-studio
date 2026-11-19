@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { readCurrentTimeMs } from '@/features/sync';
 import { WaveformStrip } from '@/features/sync/components/WaveformStrip';
 import { getNextPlaybackRate } from '@/features/sync/components/syncViewHelpers';
 import {
@@ -66,8 +67,8 @@ export const DesktopWaveformCard = memo(function DesktopWaveformCard({
   onUndo,
   onOpenLoupe,
 }: DesktopWaveformCardProps) {
-  const readCurrentTimeMs = () =>
-    getCurrentTimeMs ? getCurrentTimeMs() : timeStore ? timeStore.getTimeMs() : currentTimeMs;
+  const readNowMs = () =>
+    readCurrentTimeMs({ getCurrentTimeMs, timeStore, currentTimeMs });
 
   return (
     <WellPanel className="px-4 py-3.5 flex flex-col gap-2.5">
@@ -99,7 +100,7 @@ export const DesktopWaveformCard = memo(function DesktopWaveformCard({
           <IconButton
             round
             aria-label="Retroceder 5 segundos"
-            onClick={() => onSeek(Math.max(0, readCurrentTimeMs() - 5000))}
+            onClick={() => onSeek(Math.max(0, readNowMs() - 5000))}
           >
             <Icon name="rewind" size={20} />
           </IconButton>
@@ -117,7 +118,7 @@ export const DesktopWaveformCard = memo(function DesktopWaveformCard({
           <IconButton
             round
             aria-label="Adelantar 5 segundos"
-            onClick={() => onSeek(Math.min(durationMs, readCurrentTimeMs() + 5000))}
+            onClick={() => onSeek(Math.min(durationMs, readNowMs() + 5000))}
           >
             <Icon name="forward" size={20} />
           </IconButton>

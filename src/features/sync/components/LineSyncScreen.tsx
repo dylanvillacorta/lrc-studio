@@ -1,4 +1,8 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import {
+  computeCompensatedStampMs,
+  readCurrentTimeMs,
+} from '@/features/sync';
 import type { PlaybackTimeStore } from '@/features/sync/hooks/playbackTimeStore';
 import { formatDisplayTime, formatTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
@@ -28,6 +32,7 @@ export interface LineSyncScreenProps {
   timeStore?: PlaybackTimeStore | null;
   getCurrentTimeMs?: () => number;
   currentTimeMs?: number;
+  latencyMs?: number;
   durationMs: number;
   isPlaying: boolean;
   playbackRate: number;
@@ -61,6 +66,7 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   timeStore = null,
   getCurrentTimeMs,
   currentTimeMs = 0,
+  latencyMs = 0,
   durationMs,
   isPlaying,
   playbackRate,
@@ -132,14 +138,14 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   const hasLines = lines.length > 0;
   const lineNumber = Math.min(lines.length, activeLineIndex + 1);
 
-  const readCurrentTimeMs = () =>
-    getCurrentTimeMs ? getCurrentTimeMs() : timeStore ? timeStore.getTimeMs() : currentTimeMs;
+  const readNowMs = () =>
+    readCurrentTimeMs({ getCurrentTimeMs, timeStore, currentTimeMs });
 
   const handleStampPointerDown = () => {
     if (!hasLines) {
       return;
     }
-    const stampMs = readCurrentTimeMs();
+    const stampMs = computeCompensatedStampMs(readNowMs(), latencyMs);
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       navigator.vibrate(10);
     }
@@ -204,7 +210,7 @@ export const LineSyncScreen = memo(function LineSyncScreen({
         <IconButton
           round
           aria-label="Retroceder 5 segundos"
-          onClick={() => onSeek(Math.max(0, readCurrentTimeMs() - 5000))}
+          onClick={() => onSeek(Math.max(0, readNowMs() - 5000))}
           className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
           <Icon name="rewind" size={18} />
@@ -222,7 +228,7 @@ export const LineSyncScreen = memo(function LineSyncScreen({
         <IconButton
           round
           aria-label="Adelantar 5 segundos"
-          onClick={() => onSeek(Math.min(durationMs, readCurrentTimeMs() + 5000))}
+          onClick={() => onSeek(Math.min(durationMs, readNowMs() + 5000))}
           className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
         >
           <Icon name="forward" size={18} />

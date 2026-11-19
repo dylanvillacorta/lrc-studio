@@ -1,5 +1,10 @@
 import { memo, useState } from 'react';
-import { computePreRollStartMs, DEFAULT_PRE_ROLL_MS } from '@/features/sync';
+import {
+  computeCompensatedStampMs,
+  computePreRollStartMs,
+  DEFAULT_PRE_ROLL_MS,
+  readCurrentTimeMs,
+} from '@/features/sync';
 import {
   usePlaybackTime,
   type PlaybackTimeStore,
@@ -37,6 +42,7 @@ export interface WordSyncScreenProps {
   timeStore?: PlaybackTimeStore | null;
   getCurrentTimeMs?: () => number;
   currentTimeMs?: number;
+  latencyMs?: number;
   durationMs: number;
   isPlaying: boolean;
   lines: readonly LyricLine[];
@@ -117,6 +123,7 @@ export const WordSyncScreen = memo(function WordSyncScreen({
   timeStore = null,
   getCurrentTimeMs,
   currentTimeMs = 0,
+  latencyMs = 0,
   durationMs,
   isPlaying,
   lines,
@@ -165,8 +172,8 @@ export const WordSyncScreen = memo(function WordSyncScreen({
     activeWordIndex + 1 < words.length ? words[activeWordIndex + 1] : undefined;
 
   const targetStartMs = resolveWordTargetStartMs(activeLine, activeWordIndex);
-  const readCurrentTimeMs = () =>
-    getCurrentTimeMs ? getCurrentTimeMs() : timeStore ? timeStore.getTimeMs() : currentTimeMs;
+  const readNowMs = () =>
+    readCurrentTimeMs({ getCurrentTimeMs, timeStore, currentTimeMs });
   const subMode: WordSyncSubMode = sniperMode
     ? 'sniper'
     : holdMode
@@ -178,7 +185,7 @@ export const WordSyncScreen = memo(function WordSyncScreen({
       onPause();
     } else if (feedback.shouldRewindPreRoll) {
       const nextTarget = resolveWordTargetStartMs(activeLine, activeWordIndex + 1);
-      onSeek(computePreRollStartMs(nextTarget ?? readCurrentTimeMs(), preRollMs));
+      onSeek(computePreRollStartMs(nextTarget ?? readNowMs(), preRollMs));
       void onPlay();
     }
   };
@@ -194,7 +201,7 @@ export const WordSyncScreen = memo(function WordSyncScreen({
     if (!targetWord) {
       return;
     }
-    const nowMs = readCurrentTimeMs();
+    const nowMs = computeCompensatedStampMs(readNowMs(), latencyMs);
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       navigator.vibrate(10);
     }
@@ -221,7 +228,7 @@ export const WordSyncScreen = memo(function WordSyncScreen({
       return;
     }
     setIsHolding(false);
-    const nowMs = readCurrentTimeMs();
+    const nowMs = computeCompensatedStampMs(readNowMs(), latencyMs);
     const feedback = onStampWordEnd({
       nowMs,
       subMode,

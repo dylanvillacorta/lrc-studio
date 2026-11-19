@@ -14,6 +14,9 @@ import {
   DEFAULT_PRE_ROLL_MS,
   getActiveLineWindow,
   getBurstLoopSeekTargetMs,
+  readCurrentTimeMs,
+  shiftTimings,
+  SyncSettingsDialog,
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { LineSyncScreen } from '@/features/sync/components/LineSyncScreen';
@@ -100,6 +103,8 @@ export function MobileLayout() {
     saveStatus,
     sync,
     player,
+    latencyMs,
+    setLatencyMs,
     openProject,
     createProject,
     attachAudio,
@@ -121,6 +126,7 @@ export function MobileLayout() {
     flush: flushPendingSave,
   });
   const [infoOpen, setInfoOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
   const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
@@ -131,7 +137,12 @@ export function MobileLayout() {
   }, [player]);
 
   const getCurrentTimeMs = useCallback(
-    () => playerRef.current.getCurrentTimeMs?.() ?? playerRef.current.currentTime,
+    () =>
+      readCurrentTimeMs({
+        getCurrentTimeMs: playerRef.current.getCurrentTimeMs,
+        timeStore: playerRef.current.timeStore,
+        currentTimeMs: playerRef.current.currentTime,
+      }),
     [],
   );
 
@@ -175,7 +186,7 @@ export function MobileLayout() {
         burstActive,
         isPlaying: player.isPlaying,
         isEditing: true,
-        currentTimeMs: player.currentTime,
+        currentTimeMs: getCurrentTimeMs(),
         windowStartMs: burstWindow.windowStartMs,
         windowEndMs: burstWindow.windowEndMs,
       });
@@ -189,7 +200,7 @@ export function MobileLayout() {
         burstActive: true,
         isPlaying: true,
         isEditing: true,
-        currentTimeMs: timeStore.getTimeMs(),
+        currentTimeMs: getCurrentTimeMs(),
         windowStartMs: burstWindow.windowStartMs,
         windowEndMs: burstWindow.windowEndMs,
       });
@@ -199,7 +210,7 @@ export function MobileLayout() {
     };
     checkBurstEnd();
     return timeStore.subscribe(checkBurstEnd);
-  }, [activeTab, burstActive, burstWindow, player, syncSubView]);
+  }, [activeTab, burstActive, burstWindow, getCurrentTimeMs, player, syncSubView]);
 
   useEffect(() => {
     if (activeTab === 'catalog') {
@@ -374,6 +385,13 @@ export function MobileLayout() {
     [sync],
   );
 
+  const handleShiftTimings = useCallback(
+    (deltaMs: number) => {
+      sync.replaceLines(shiftTimings(sync.lines, deltaMs, durationMs), true);
+    },
+    [durationMs, sync],
+  );
+
   const handleStopBurst = useCallback(() => {
     setSyncSubView('default');
     player.pause();
@@ -441,6 +459,7 @@ export function MobileLayout() {
             saveStatus={saveStatus}
             onOpenCatalog={handleOpenCatalogFromHeader}
             onRetrySave={handleRetrySave}
+            onOpenSettings={() => setSettingsOpen(true)}
             onOpenInfo={() => setInfoOpen(true)}
           />
         ) : null}
@@ -547,6 +566,7 @@ export function MobileLayout() {
               timeStore={player.timeStore}
               getCurrentTimeMs={getCurrentTimeMs}
               currentTimeMs={fallbackCurrentTimeMs}
+              latencyMs={latencyMs}
               durationMs={durationMs}
               isPlaying={player.isPlaying}
               playbackRate={player.playbackRate}
@@ -579,6 +599,7 @@ export function MobileLayout() {
               timeStore={player.timeStore}
               getCurrentTimeMs={getCurrentTimeMs}
               currentTimeMs={fallbackCurrentTimeMs}
+              latencyMs={latencyMs}
               durationMs={durationMs}
               isPlaying={player.isPlaying}
               lines={sync.lines}
@@ -641,6 +662,16 @@ export function MobileLayout() {
             className="pt-1.5 pb-2.5 [&>button]:min-h-[48px] [@media(max-height:720px)]:pt-1 [@media(max-height:720px)]:pb-1.5 [@media(max-height:720px)]:[&>button]:min-h-[44px]"
           />
         ) : null}
+        <SyncSettingsDialog
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          latencyMs={latencyMs}
+          onChangeLatencyMs={setLatencyMs}
+          lines={sync.lines}
+          durationMs={durationMs}
+          onShiftTimings={handleShiftTimings}
+          onUndoShift={sync.undo}
+        />
         <InfoDialog
           open={infoOpen}
           onClose={() => setInfoOpen(false)}

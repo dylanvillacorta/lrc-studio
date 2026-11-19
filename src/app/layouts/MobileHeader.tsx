@@ -8,6 +8,7 @@ export interface MobileHeaderProps {
   saveStatus: SaveStatus;
   onOpenCatalog: () => void;
   onRetrySave: () => void;
+  onOpenSettings?: () => void;
   onOpenInfo?: () => void;
 }
 
@@ -20,6 +21,7 @@ export const MobileHeader = memo(function MobileHeader({
   saveStatus,
   onOpenCatalog,
   onRetrySave,
+  onOpenSettings,
   onOpenInfo,
 }: MobileHeaderProps) {
   const isSaving = saveStatus === 'saving' || saveStatus === 'pending';
@@ -60,6 +62,15 @@ export const MobileHeader = memo(function MobileHeader({
           <span>{isSaving ? 'Guardando' : 'Guardado'}</span>
         </Pill>
       )}
+
+      {onOpenSettings ? (
+        <IconButton
+          aria-label="Ajustes de sincronización"
+          onClick={onOpenSettings}
+        >
+          <Icon name="settings" size={20} />
+        </IconButton>
+      ) : null}
 
       {onOpenInfo ? (
         <IconButton

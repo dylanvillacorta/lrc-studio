@@ -14,4 +14,8 @@ export {
   type ScrollShadowProps,
   type ScrollShadowState,
 } from './ScrollShadow';
+export {
+  AccessibleDialog,
+  type AccessibleDialogProps,
+} from './AccessibleDialog';
 export { Icon, type IconProps, type IconName } from './icons';
