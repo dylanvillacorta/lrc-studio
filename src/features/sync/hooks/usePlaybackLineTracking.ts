@@ -23,6 +23,10 @@ export interface UsePlaybackLineTrackingOptions {
   setActiveWordIndex: (index: number) => void;
   seekTo: (targetMs: number) => void;
   play?: () => Promise<void> | void;
+  /** `false` en modo Palabra: la reproducción no cambia la línea activa. Por defecto `true`. */
+  followPlayback?: boolean;
+  /** Palabra en foco al elegir una línea (por defecto 0; en Palabra, la primera sin marca). */
+  resolveWordIndexForLine?: (lineIndex: number) => number;
 }
 
 export interface UsePlaybackLineTrackingReturn {
@@ -47,6 +51,8 @@ export function usePlaybackLineTracking({
   setActiveWordIndex,
   seekTo,
   play,
+  followPlayback = true,
+  resolveWordIndexForLine,
 }: UsePlaybackLineTrackingOptions): UsePlaybackLineTrackingReturn {
   const [manualOverrideAtPlayingIndex, setManualOverrideAtPlayingIndex] =
     useState<number | null>(null);
@@ -95,6 +101,7 @@ export function usePlaybackLineTracking({
       manualOverrideAtPlayingIndex: isManualOverrideActive
         ? manualOverrideAtPlayingIndex
         : null,
+      followPlayback,
     });
     lastPlayingLineRef.current = res.playingLineIndex;
     if (res.nextActiveLineIndex !== null && res.nextActiveLineIndex !== activeLineIndex) {
@@ -103,6 +110,7 @@ export function usePlaybackLineTracking({
   }, [
     activeLineIndex,
     fallbackCurrentTimeMs,
+    followPlayback,
     isManualOverrideActive,
     isPlaying,
     lines,
@@ -116,9 +124,15 @@ export function usePlaybackLineTracking({
     (index: number) => {
       setManualOverrideAtPlayingIndex(isPlaying ? playingLineIndex : null);
       setActiveLineIndex(index);
-      setActiveWordIndex(0);
+      setActiveWordIndex(resolveWordIndexForLine?.(index) ?? 0);
     },
-    [isPlaying, playingLineIndex, setActiveLineIndex, setActiveWordIndex],
+    [
+      isPlaying,
+      playingLineIndex,
+      resolveWordIndexForLine,
+      setActiveLineIndex,
+      setActiveWordIndex,
+    ],
   );
 
   const playFromLine = useCallback(
@@ -129,11 +143,18 @@ export function usePlaybackLineTracking({
       }
       setManualOverrideAtPlayingIndex(null);
       setActiveLineIndex(index);
-      setActiveWordIndex(0);
+      setActiveWordIndex(resolveWordIndexForLine?.(index) ?? 0);
       seekTo(selected.startMs);
       void play?.();
     },
-    [lines, play, seekTo, setActiveLineIndex, setActiveWordIndex],
+    [
+      lines,
+      play,
+      resolveWordIndexForLine,
+      seekTo,
+      setActiveLineIndex,
+      setActiveWordIndex,
+    ],
   );
 
   return useMemo(

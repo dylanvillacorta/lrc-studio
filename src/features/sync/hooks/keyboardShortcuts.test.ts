@@ -62,6 +62,12 @@ describe('keyboardShortcutsModel', () => {
       type: 'undo',
       preventDefault: true,
     });
+    expect(resolveKeyboardShortcut({ key: 'Backspace' })).toEqual({
+      type: 'undo',
+      preventDefault: true,
+    });
+    expect(resolveKeyboardShortcut({ key: 'Backspace', repeat: true })).toBeNull();
+    expect(resolveKeyboardShortcut({ key: 'Backspace', target: { tagName: 'INPUT' } })).toBeNull();
   });
 
   it('ignora pulsaciones cuando el foco está en input, textarea, select o contenteditable', () => {

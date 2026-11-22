@@ -22,9 +22,16 @@ export {
   nudgeWordTime,
 } from '@/features/sync/model/wordAdjust';
 export {
-  stampWordEndOnRelease,
-  stampWordStart,
+  findNextUnsyncedWord,
+  firstUnsyncedWordIndex,
+  hasWordStampToUndo,
+  resolveSmartWordFocus,
+  resolveWordEntryFocus,
+  stampWord,
+  undoLastWordStamp,
   type StampWordParams,
+  type UndoWordStampResult,
+  type WordPosition,
   type WordSyncResult,
 } from '@/features/sync/model/wordSync';
 export {
@@ -66,19 +73,15 @@ export {
   TIMELINE_COLLAPSE_DELAY_MS,
   TIMELINE_SEEK_THROTTLE_MS,
   computeFloatingIndicatorLeftPct,
+  computeFramedPointerTimeMs,
   computePointerRatio,
   computePointerTimeMs,
+  isTapGesture,
   reduceTimelineInteraction,
   shouldThrottleSeek,
+  type TimelineFrame,
   type TimelineInteractionState,
 } from '@/features/sync/model/timelineScrub';
-export {
-  computeBurstEnterState,
-  computeBurstExitState,
-  getBurstLoopSeekTargetMs,
-  type BurstLoopCheckParams,
-  type BurstTransitionResult,
-} from '@/features/sync/model/burstLoop';
 export {
   MAX_LATENCY_MS,
   clampLatencyMs,

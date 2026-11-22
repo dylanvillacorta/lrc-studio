@@ -34,7 +34,6 @@ function makeProject(
     settings: {
       playbackRate: 1,
       preRollSeconds: 2.5,
-      sniperMode: false,
       autoAdvance: true,
     },
     lines: [

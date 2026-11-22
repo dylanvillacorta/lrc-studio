@@ -21,7 +21,6 @@ const SAMPLE_PROJECT: ProjectFullData = {
   settings: {
     playbackRate: 1,
     preRollSeconds: 3,
-    sniperMode: true,
     autoAdvance: true,
   },
   lines: [

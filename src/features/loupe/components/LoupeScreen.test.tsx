@@ -62,7 +62,7 @@ describe('InspectorPanel y LoupeScreen (SSR)', () => {
         lines={sampleLines}
         isSaved
         onChange={noop}
-        onPlayBurst={noop}
+        onPlayLine={noop}
         onApply={noop}
         onBack={noop}
       />,
@@ -80,7 +80,8 @@ describe('InspectorPanel y LoupeScreen (SSR)', () => {
     expect(html).toContain('aria-label="Fin de la línea"');
     expect(html).toContain('aria-valuenow="31420"');
     expect(html).toContain('aria-valuenow="35870"');
-    expect(html).toContain('Ráfaga de línea');
+    expect(html).toContain('Escuchar línea');
+    expect(html).not.toContain('Ráfaga')
     expect(html).toContain('Aplicar');
   });
 });

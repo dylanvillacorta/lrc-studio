@@ -57,7 +57,6 @@ describe('LineSyncScreen', () => {
         onClearLineMark={vi.fn()}
         onStampLine={vi.fn()}
         onOpenLoupe={vi.fn()}
-        onStopBurst={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -76,6 +75,7 @@ describe('LineSyncScreen', () => {
     expect(html).toContain('text-acc/70');
     expect(html).toContain('data-playing="true"');
     expect(html).toContain('Karaoke');
+    expect(html).not.toContain('Ráfaga');
   });
 
   it('deshabilita el botón de deshacer última marca de línea cuando ninguna línea tiene marca y resuelve el último índice marcado hacia atrás', () => {
@@ -103,7 +103,6 @@ describe('LineSyncScreen', () => {
         onClearLineMark={vi.fn()}
         onStampLine={vi.fn()}
         onOpenLoupe={vi.fn()}
-        onStopBurst={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -142,7 +141,6 @@ describe('LineSyncScreen', () => {
         onSelectLine={vi.fn()}
         onStampLine={vi.fn()}
         onOpenLoupe={vi.fn()}
-        onStopBurst={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -172,7 +170,6 @@ describe('LineSyncScreen', () => {
         onSelectLine={vi.fn()}
         onStampLine={vi.fn()}
         onOpenLoupe={vi.fn()}
-        onStopBurst={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -194,25 +191,14 @@ describe('WordSyncScreen', () => {
         activeLineIndex={0}
         activeWordIndex={2}
         preRollMs={2500}
-        sniperMode
-        holdMode={false}
         syncMode="word"
         onSelectMode={vi.fn()}
-        onToggleSniper={vi.fn()}
-        onToggleHold={vi.fn()}
         onSeek={vi.fn()}
         onPlay={vi.fn()}
-        onPause={vi.fn()}
-        onStampWordStart={vi.fn(() => ({
-          shouldPause: false,
-          shouldRewindPreRoll: false,
-          completedLine: false,
-        }))}
-        onStampWordEnd={vi.fn(() => ({
-          shouldPause: false,
-          shouldRewindPreRoll: false,
-          completedLine: false,
-        }))}
+        onStampWordStart={vi.fn(() => ({ completedAll: false }))}
+        onSelectWord={vi.fn()}
+        onUndoWord={vi.fn(() => null)}
+        canUndoWord
         onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
@@ -224,8 +210,75 @@ describe('WordSyncScreen', () => {
     expect(html).toContain('Repetir Pre-Roll −2.5 s');
     expect(html).toContain('MARCAR PALABRA');
     expect(html).toContain('Pre-Roll:');
-    expect(html).toContain('Francotirador');
-    expect(html).toContain('Mantener');
+    expect(html).toContain('Toca al sonar «luna»');
+    expect(html).toContain('aria-label="Deshacer última palabra"');
+    expect(html).not.toContain('Francotirador');
+    expect(html).not.toContain('Mantener');
+    expect(html).not.toContain('← la');
+    expect(html).not.toContain('inicio');
+    expect(html).not.toContain('fin →');
+  });
+
+  it('desactiva Deshacer última palabra sin marcas y MARCAR PALABRA con todo marcado', () => {
+    const unmarked: LyricLine[] = SAMPLE_LINES.map((line) => ({
+      ...line,
+      startMs: null,
+      endMs: null,
+      words: line.words.map((w) => ({ ...w, startMs: null, endMs: null })),
+    }));
+    const noMarks = renderToString(
+      <WordSyncScreen
+        hasAudio
+        peaks={[0.3, 0.7]}
+        currentTimeMs={0}
+        durationMs={120_000}
+        isPlaying={false}
+        lines={unmarked}
+        activeLineIndex={0}
+        activeWordIndex={0}
+        syncMode="word"
+        onSelectMode={vi.fn()}
+        onSeek={vi.fn()}
+        onPlay={vi.fn()}
+        onStampWordStart={vi.fn(() => ({ completedAll: false }))}
+        onSelectWord={vi.fn()}
+        onUndoWord={vi.fn(() => null)}
+        canUndoWord={false}
+        onOpenLoupe={vi.fn()}
+        onUploadAudio={vi.fn(async () => {})}
+      />,
+    );
+    expect(noMarks).toMatch(
+      /<button[^>]*aria-label="Deshacer última palabra"[^>]*disabled=""/,
+    );
+
+    const allMarked: LyricLine[] = SAMPLE_LINES.map((line) => ({
+      ...line,
+      words: line.words.map((w) => ({ ...w, startMs: 1000, endMs: 1500 })),
+    }));
+    const done = renderToString(
+      <WordSyncScreen
+        hasAudio
+        peaks={[0.3, 0.7]}
+        currentTimeMs={0}
+        durationMs={120_000}
+        isPlaying={false}
+        lines={allMarked}
+        activeLineIndex={0}
+        activeWordIndex={0}
+        syncMode="word"
+        onSelectMode={vi.fn()}
+        onSeek={vi.fn()}
+        onPlay={vi.fn()}
+        onStampWordStart={vi.fn(() => ({ completedAll: true }))}
+        onSelectWord={vi.fn()}
+        onUndoWord={vi.fn(() => null)}
+        canUndoWord
+        onOpenLoupe={vi.fn()}
+        onUploadAudio={vi.fn(async () => {})}
+      />,
+    );
+    expect(done).toContain('Todas las palabras están marcadas');
   });
 });
 

@@ -30,7 +30,6 @@ export interface LyricLine {
 export interface ProjectSettings {
   playbackRate: number;
   preRollSeconds: number;
-  sniperMode: boolean;
   autoAdvance: boolean;
 }
 
@@ -115,11 +114,6 @@ export interface CatalogBackup {
 }
 
 /**
- * Submodos disponibles para la sincronización palabra por palabra.
- */
-export type WordSyncSubMode = 'sniper' | 'isolatedLine' | 'tap' | 'hold';
-
-/**
  * Formatos soportados de exportación de letras sincronizadas.
  */
 export type ExportFormat = 'json' | 'elrc' | 'lrc';
@@ -145,7 +139,7 @@ export interface SongMetadata {
 export type PreRollTrafficLight = 'red' | 'amber' | 'green';
 
 /**
- * Ventana temporal de reproducción para la ráfaga de línea aislada (en milisegundos).
+ * Ventana temporal de reproducción de «Escuchar línea» en la lupa, con Pre-Roll y Post-Roll (en milisegundos).
  */
 export interface ActiveLineWindow {
   lineStartMs: number;

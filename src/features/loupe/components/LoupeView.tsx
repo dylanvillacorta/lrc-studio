@@ -20,6 +20,8 @@ export interface LoupeViewProps {
   currentTimeMs: number;
   zoomWindow: ZoomWindow;
   onChange: (bounds: LineBounds) => void;
+  /** Informa del inicio/fin de un arrastre para que el padre congele la ventana de zoom. */
+  onDragStateChange?: (dragging: boolean) => void;
   snapStepMs?: number;
   className?: string;
 }
@@ -37,6 +39,7 @@ export function LoupeView({
   currentTimeMs,
   zoomWindow,
   onChange,
+  onDragStateChange,
   snapStepMs,
   className = '',
 }: LoupeViewProps) {
@@ -59,17 +62,25 @@ export function LoupeView({
 
   const handleDragStart = useCallback(() => {
     cancelSnapshotRef.current = { startMs: lineStartMs, endMs: lineEndMs };
-  }, [lineEndMs, lineStartMs]);
+    onDragStateChange?.(true);
+  }, [lineEndMs, lineStartMs, onDragStateChange]);
+
+  const handleDragEnd = useCallback(() => {
+    cancelSnapshotRef.current = null;
+    onDragStateChange?.(false);
+  }, [onDragStateChange]);
 
   const handleDragCancel = useCallback(() => {
     if (cancelSnapshotRef.current) {
       onChange(cancelSnapshotRef.current);
       cancelSnapshotRef.current = null;
     }
-  }, [onChange]);
+    onDragStateChange?.(false);
+  }, [onChange, onDragStateChange]);
 
   const startDrag = useDragHandle({
     clientXToMs,
+    edgeMs: lineStartMs,
     onDragStart: handleDragStart,
     onDrag: (targetMs) => {
       onChange(
@@ -83,14 +94,13 @@ export function LoupeView({
         }),
       );
     },
-    onDragEnd: () => {
-      cancelSnapshotRef.current = null;
-    },
+    onDragEnd: handleDragEnd,
     onDragCancel: handleDragCancel,
   });
 
   const endDrag = useDragHandle({
     clientXToMs,
+    edgeMs: lineEndMs,
     onDragStart: handleDragStart,
     onDrag: (targetMs) => {
       onChange(
@@ -104,9 +114,7 @@ export function LoupeView({
         }),
       );
     },
-    onDragEnd: () => {
-      cancelSnapshotRef.current = null;
-    },
+    onDragEnd: handleDragEnd,
     onDragCancel: handleDragCancel,
   });
 

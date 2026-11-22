@@ -13,10 +13,12 @@ import {
 } from '@/features/sync/hooks/playbackTimeStore';
 import {
   computeFloatingIndicatorLeftPct,
-  computePointerTimeMs,
+  computeFramedPointerTimeMs,
+  isTapGesture,
   reduceTimelineInteraction,
   shouldThrottleSeek,
   TIMELINE_COLLAPSE_DELAY_MS,
+  type TimelineFrame,
   type TimelineInteractionState,
 } from '@/features/sync/model/timelineScrub';
 import { formatTime } from '@/lib/time';
@@ -74,6 +76,9 @@ export const WaveformStrip = memo(function WaveformStrip({
   const activePointerIdRef = useRef<number | null>(null);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSeekAtRef = useRef<number>(0);
+  // Geometría y X inicial congeladas en pointerdown: la expansión visual no debe alterar el cálculo.
+  const dragFrameRef = useRef<TimelineFrame | null>(null);
+  const downXRef = useRef<number>(0);
 
   const isExpanded = forceExpanded || interaction.expanded;
   const displayTimeMs = dragTimeMs !== null ? dragTimeMs : effectiveTimeMs;
@@ -187,6 +192,8 @@ export const WaveformStrip = memo(function WaveformStrip({
     }
 
     clearCollapseTimer();
+    dragFrameRef.current = { left: rect.left, width: rect.width };
+    downXRef.current = event.clientX;
     activePointerIdRef.current = event.pointerId;
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -197,7 +204,7 @@ export const WaveformStrip = memo(function WaveformStrip({
     setInteraction((prev) => reduceTimelineInteraction(prev, 'pointerdown'));
     onSeekStart?.();
 
-    const targetMs = computePointerTimeMs(event.clientX, rect.left, rect.width, durationMs);
+    const targetMs = computeFramedPointerTimeMs(event.clientX, dragFrameRef.current, durationMs);
     setDragTimeMs(targetMs);
     lastSeekAtRef.current = typeof performance !== 'undefined' ? performance.now() : Date.now();
     onSeek(targetMs);
@@ -207,11 +214,15 @@ export const WaveformStrip = memo(function WaveformStrip({
     if (!interaction.dragging || activePointerIdRef.current !== event.pointerId) {
       return;
     }
-    const rect = event.currentTarget.getBoundingClientRect();
-    if (rect.width <= 0 || durationMs <= 0) {
+    const frame = dragFrameRef.current;
+    if (!frame || frame.width <= 0 || durationMs <= 0) {
       return;
     }
-    const targetMs = computePointerTimeMs(event.clientX, rect.left, rect.width, durationMs);
+    // Un movimiento menor al umbral sigue siendo un toque: sin seeks intermedios.
+    if (isTapGesture(downXRef.current, event.clientX)) {
+      return;
+    }
+    const targetMs = computeFramedPointerTimeMs(event.clientX, frame, durationMs);
     setDragTimeMs(targetMs);
 
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -237,15 +248,19 @@ export const WaveformStrip = memo(function WaveformStrip({
       // Ignorar en entornos sin captura activa.
     }
 
-    const rect = event.currentTarget.getBoundingClientRect();
+    const frame = dragFrameRef.current;
+    dragFrameRef.current = null;
     const fallbackMs = timeStore ? timeStore.getTimeMs() : currentTimeMs;
-    const finalMs =
-      kind === 'pointerup' && rect.width > 0 && durationMs > 0
-        ? computePointerTimeMs(event.clientX, rect.left, rect.width, durationMs)
-        : (dragTimeMs ?? fallbackMs);
+    const isTap = kind === 'pointerup' && isTapGesture(downXRef.current, event.clientX);
 
     setDragTimeMs(null);
-    onSeek(finalMs);
+    if (!isTap) {
+      const finalMs =
+        kind === 'pointerup' && frame && frame.width > 0 && durationMs > 0
+          ? computeFramedPointerTimeMs(event.clientX, frame, durationMs)
+          : (dragTimeMs ?? fallbackMs);
+      onSeek(finalMs);
+    }
     onSeekEnd?.();
     setInteraction((prev) => reduceTimelineInteraction(prev, kind));
     scheduleCollapse();
@@ -257,14 +272,10 @@ export const WaveformStrip = memo(function WaveformStrip({
       onClick={onOpenLoupe}
       disabled={!canOpenLoupe}
       aria-label="Abrir ajuste fino en lupa"
-      className={
-        isExpanded
-          ? 'min-h-11 px-3 text-xs font-extrabold text-acc shrink-0'
-          : 'min-h-11 min-w-11 px-2.5 text-xs font-extrabold text-acc shrink-0'
-      }
+      className="min-h-11 min-w-11 px-2.5 text-xs font-extrabold text-acc shrink-0"
     >
       <Icon name="search" size={16} />
-      <span className={isExpanded ? 'inline' : 'hidden sm:inline'}>Lupa</span>
+      <span className="hidden sm:inline">Lupa</span>
     </RaisedButton>
   ) : null;
 
@@ -278,12 +289,12 @@ export const WaveformStrip = memo(function WaveformStrip({
         data-timeline-expanded={isExpanded ? 'true' : 'false'}
         className={
           isExpanded
-            ? 'absolute inset-x-0 top-0 z-30 p-3 bg-bg shadow-[var(--shadow-raised-xl)] flex flex-col gap-2 transition-all duration-150 motion-reduce:transition-none'
-            : 'h-full px-2.5 py-1 flex items-center gap-2 transition-all duration-150 motion-reduce:transition-none'
+            ? 'absolute inset-x-0 top-0 z-30 px-2.5 py-3 bg-bg shadow-[var(--shadow-raised-xl)] flex flex-col gap-2 transition-shadow duration-150 motion-reduce:transition-none'
+            : 'h-full px-2.5 py-1 flex flex-col justify-center transition-shadow duration-150 motion-reduce:transition-none'
         }
       >
         {isExpanded ? (
-          <div className="flex items-center justify-between gap-2 pb-4">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-baseline gap-2 min-w-0">
               <span
                 data-testid="timeline-expanded-time"
@@ -301,17 +312,18 @@ export const WaveformStrip = memo(function WaveformStrip({
                   {statusText}
                 </span>
               ) : null}
-              {loupeButton}
             </div>
           </div>
-        ) : (
-          <span
-            data-testid="timeline-compact-time"
-            className="font-mono text-xs font-bold text-ink tabular-nums shrink-0"
-          >
-            {formatTime(displayTimeMs)}
-          </span>
-        )}
+        ) : null}
+
+        {/* Fila de la barra: misma geometría horizontal compacta y expandida (solo crece en vertical). */}
+        <div className="flex items-center gap-2 min-w-0">
+        <span
+          data-testid="timeline-compact-time"
+          className="font-mono text-xs font-bold text-ink tabular-nums shrink-0"
+        >
+          {formatTime(displayTimeMs)}
+        </span>
 
         <div
           role="slider"
@@ -338,7 +350,7 @@ export const WaveformStrip = memo(function WaveformStrip({
           }}
           className={`relative cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc rounded-[12px] ${
             isExpanded
-              ? 'w-full h-[80px] overflow-visible'
+              ? 'flex-1 min-w-0 h-[80px] overflow-visible mt-5'
               : 'flex-1 min-w-0 h-[38px] [@media(max-height:720px)]:h-[34px] overflow-hidden'
           }`}
           style={{ touchAction: 'none' }}
@@ -400,14 +412,11 @@ export const WaveformStrip = memo(function WaveformStrip({
           </div>
         </div>
 
-        {!isExpanded ? (
-          <>
-            <span className="font-mono text-xs font-bold text-mute tabular-nums shrink-0">
-              {formatTime(durationMs)}
-            </span>
-            {loupeButton}
-          </>
-        ) : null}
+        <span className="font-mono text-xs font-bold text-mute tabular-nums shrink-0">
+          {formatTime(durationMs)}
+        </span>
+        {loupeButton}
+        </div>
       </WellPanel>
     </div>
   );
