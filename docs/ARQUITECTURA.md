@@ -131,6 +131,30 @@ El botón **Importar** del catálogo acepta dos formatos JSON distintos:
 - **Respaldo de catálogo (`CatalogBackup`, `schemaVersion: 1`):** incluye arreglos `projects` y `audios` con binarios en base64; se restaura completo en el adaptador.
 - **Proyecto JSON individual (`exportJson`, esquema actual `lrc-studio.1`):** incluye arreglo `lines` sin `projects`; se normaliza mediante el migrador paso a paso `migrateProjectJson` (`src/features/export/model/projectMigrations.ts`, que acepta versiones legadas `sin schemaVersion`, `1`/`1.0`, `2.0` y `2.0-musixmatch-richsync`, además de `lrc-studio.1`, y rechaza versiones futuras como `lrc-studio.N` o desconocidas) y crea un proyecto nuevo con `id` único y sin binario de audio.
 
+#### Cadenas de migración (todo dato persistido o exportado tiene versión de esquema)
+
+Las tres cadenas usan la utilidad pura `runMigrations` (`src/lib/schemaMigration.ts`): aplica los pasos uno a uno hasta la versión actual y devuelve error claro (nunca continúa en silencio) si falta un paso, la versión es desconocida o futura («Esta versión de LRC Studio no reconoce el esquema X, actualiza la app.») o hay un ciclo.
+
+| Cadena | Dónde vive | Versión actual | Versiones conocidas |
+| :--- | :--- | :--- | :--- |
+| Proyecto JSON exportado | `src/features/export/model/projectMigrations.ts` (`PROJECT_MIGRATION_STEPS`) | `lrc-studio.1` | `1.0`, `2.0`, `2.0-musixmatch-richsync`, `lrc-studio.1` |
+| Respaldo del catálogo | `src/storage/backupMigrations.ts` (`BACKUP_MIGRATION_STEPS`, `BACKUP_SCHEMA_VERSION` en `src/types`) | `1` | `1` (sin pasos todavía; listo para `1 -> 2`) |
+| Proyecto almacenado en IndexedDB | `src/storage/storedProjectMigrations.ts` (`STORED_PROJECT_MIGRATION_STEPS`, `STORED_PROJECT_SCHEMA_VERSION` en `src/types`) | `2` | `1` (registros sin versión), `2`. Paso `1 -> 2`: elimina `settings.sniperMode` |
+
+**Contrato de lectura (comprobar siempre):** en cada lectura de datos persistidos o importados (cargar proyecto, restaurar sesión, listar catálogo, exportar/importar respaldo, importar proyecto JSON) se comprueba la versión de esquema; si no es la actual se migra paso a paso en memoria y después se **valida la forma** del resultado (no solo la versión). Se escribe siempre con la versión actual.
+
+**Nunca borrar ni fallar en silencio:**
+- Si el registro está mal formado, la migración falla o la versión es futura o desconocida, el registro original se conserva **tal cual (crudo)** en IndexedDB: `getProject` lanza `UnrestorableProjectError` con el motivo, `saveProject` (autoguardado) y la importación de respaldos **rechazan** pisar un registro no restaurable, y nada se escribe parcialmente.
+- La UI siempre informa: el catálogo muestra el registro como «No se puede restaurar» (sin opción de abrir) con el motivo y el botón **Descargar original** (JSON crudo, tal como está guardado) para revisarlo o corregirlo a mano; eliminarlo es solo una acción explícita de la usuaria con confirmación, nunca automática (`IStorageAdapter.listUnrestorableProjects` y `getRawProjectJson`).
+- Restaurar sesión: si el proyecto activo no se puede restaurar, la app arranca igual en estado vacío mostrando el aviso (`RestoreNoticeBanner`), sin borrar ni sobrescribir el registro.
+- Importar un archivo inválido (JSON de proyecto o respaldo) muestra el motivo y no escribe nada. Exportar un respaldo completo falla con mensaje claro si hay registros no restaurables (la usuaria descarga primero su original).
+
+**Procedimiento para agregar una versión de esquema:**
+1. Subir la constante de versión actual (`PROJECT_JSON_SCHEMA_VERSION`, `BACKUP_SCHEMA_VERSION` o `STORED_PROJECT_SCHEMA_VERSION`) y agregar la nueva versión al final de la lista de versiones conocidas.
+2. Agregar al final del mapa de pasos el paso desde la versión anterior (`{ nextVersion, migrate }`); `migrate` no muta el documento recibido.
+3. Agregar un fixture de la versión anterior (`__fixtures__/`) y cubrirlo en la prueba de garantía de la cadena (cada versión conocida excepto la actual tiene paso; cada fixture migra hasta la actual y produce datos válidos).
+4. Nunca borrar ni reescribir pasos ni fixtures existentes.
+
 ### Selector de adaptador (`src/storage/index.ts`)
 
 - Detecta `typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window`.
