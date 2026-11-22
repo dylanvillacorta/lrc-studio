@@ -72,10 +72,17 @@
     -webkit-touch-callout: default;
   }
 
-  button,
-  [role="button"],
-  a {
+  html,
+  body,
+  *,
+  *::before,
+  *::after {
     touch-action: manipulation;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   input[type="range"] {
@@ -88,4 +95,14 @@ body {
   background-color: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+/* iOS hace zoom automático al enfocar campos con fuente menor a 16px.
+   Regla fuera de capas para ganar a las utilidades de Tailwind. */
+@media (pointer: coarse), (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
