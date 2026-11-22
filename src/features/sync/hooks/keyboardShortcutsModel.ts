@@ -96,6 +96,13 @@ export function resolveKeyboardShortcut(
 
   const keyLower = event.key.toLowerCase();
 
+  if (event.key === 'Backspace' && !hasAlt && !hasCtrlOrMeta && !event.shiftKey) {
+    if (event.repeat) {
+      return null;
+    }
+    return { type: 'undo', preventDefault: true };
+  }
+
   if (keyLower === 'z' && !hasAlt && !event.shiftKey) {
     if (event.repeat) {
       return null;

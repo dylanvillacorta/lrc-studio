@@ -16,7 +16,6 @@ import {
 const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   playbackRate: 1,
   preRollSeconds: 2.5,
-  sniperMode: false,
   autoAdvance: true,
 };
 

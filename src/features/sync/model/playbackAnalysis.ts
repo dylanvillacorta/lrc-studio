@@ -129,7 +129,7 @@ export function findActiveWordIndex(
 }
 
 /**
- * Calcula la ventana temporal de la línea activa con Pre-Roll y Post-Roll para la ráfaga aislada.
+ * Calcula la ventana temporal de la línea activa con Pre-Roll y Post-Roll para «Escuchar línea» en la lupa.
  * Proviene de `getActiveLineWindow` en el archivo base (convertido a milisegundos).
  */
 export function getActiveLineWindow(
@@ -343,6 +343,11 @@ export interface PlaybackTrackingInput {
   activeLineIndex: number;
   lastPlayingLineIndex: number;
   manualOverrideAtPlayingIndex: number | null;
+  /**
+   * Si es `false` (modo Palabra), la reproducción nunca cambia la línea activa: el foco
+   * solo lo mueven las marcas y la selección manual. Por defecto `true`.
+   */
+  followPlayback?: boolean;
 }
 
 export interface PlaybackTrackingResult {
@@ -363,6 +368,7 @@ export function resolvePlaybackTracking({
   activeLineIndex,
   lastPlayingLineIndex,
   manualOverrideAtPlayingIndex,
+  followPlayback = true,
 }: PlaybackTrackingInput): PlaybackTrackingResult {
   const playingLineIndex = isPlaying ? findActiveLineIndex(lines, currentTimeMs) : -1;
 
@@ -385,7 +391,9 @@ export function resolvePlaybackTracking({
       playingLineIndex,
       trackedListIndex: playingLineIndex,
       nextActiveLineIndex:
-        activeLineHasTime && playingLineHasTime ? playingLineIndex : null,
+        followPlayback && activeLineHasTime && playingLineHasTime
+          ? playingLineIndex
+          : null,
       nextManualOverride: null,
     };
   }

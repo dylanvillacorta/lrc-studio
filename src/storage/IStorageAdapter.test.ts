@@ -48,7 +48,6 @@ describe('Tipos del dominio y contrato IStorageAdapter', () => {
       settings: {
         playbackRate: 1,
         preRollSeconds: 2.5,
-        sniperMode: false,
         autoAdvance: true,
       },
       createdAt: 1700000000000,
