@@ -74,11 +74,10 @@ describe('syncViewHelpers', () => {
     expect(buf.byteLength).toBeGreaterThan(44);
   });
 
-  it('expone las 4 opciones del selector de sincronización y formatea avisos de karaoke', () => {
+  it('expone las 3 opciones del selector de sincronización y formatea avisos de karaoke', () => {
     expect(SYNC_MODE_OPTIONS.map((o) => o.value)).toEqual([
       'line',
       'word',
-      'burst',
       'karaoke',
     ]);
     expect(formatUnsyncedLinesNotice(4, 0)).toBeNull();

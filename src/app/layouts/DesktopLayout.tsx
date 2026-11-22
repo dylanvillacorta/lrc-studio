@@ -15,14 +15,15 @@ import { useCatalog } from '@/features/catalog';
 import { type ParsedProjectJson } from '@/features/export';
 import { type LineBounds } from '@/features/loupe';
 import {
-  computeBurstEnterState,
-  computeBurstExitState,
   computeCompensatedStampMs,
   computePreRollStartMs,
   DEFAULT_PRE_ROLL_MS,
+  firstUnsyncedWordIndex,
+  findNextUnsyncedWord,
   getActiveLineWindow,
-  getBurstLoopSeekTargetMs,
+  hasWordStampToUndo,
   readCurrentTimeMs,
+  resolveWordEntryFocus,
   shiftTimings,
   SyncSettingsDialog,
 } from '@/features/sync';
@@ -39,9 +40,8 @@ import {
   UpdateBanner,
   useVersionCheck,
 } from '@/features/version';
-import { formatDisplayTime } from '@/lib/time';
-import type { WordSyncSubMode } from '@/types';
-import { Pill, RaisedButton, SyncButton } from '@/ui';
+import { SyncButton } from '@/ui';
+import { RestoreNoticeBanner } from './RestoreNoticeBanner';
 
 /**
  * Vista principal de escritorio (≥ 768 px): 3 columnas (catálogo, editor, inspector)
@@ -67,6 +67,8 @@ export function DesktopLayout() {
     updateProjectMetadata,
     clearActiveProject,
     flushPendingSave,
+    restoreNotice,
+    restoreError,
   } = useActiveProject();
 
   const catalog = useCatalog(storage);
@@ -84,9 +86,7 @@ export function DesktopLayout() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const [burstActive, setBurstActive] = useState(false);
   const [karaokeActive, setKaraokeActive] = useState(false);
-  const [holdMode, setHoldMode] = useState(false);
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
   const [liveNotice, setLiveNotice] = useState('');
   const playerRef = useRef(player);
@@ -113,8 +113,6 @@ export function DesktopLayout() {
     project && project.settings.preRollSeconds > 0
       ? Math.round(project.settings.preRollSeconds * 1000)
       : DEFAULT_PRE_ROLL_MS;
-  const sniperMode = project?.settings.sniperMode ?? true;
-  const subMode: WordSyncSubMode = sniperMode ? 'sniper' : holdMode ? 'hold' : 'tap';
 
   const centerView: DesktopCenterView =
     activeTab === 'lyrics' ||
@@ -126,55 +124,9 @@ export function DesktopLayout() {
 
   const syncMode: DesktopSyncMode = karaokeActive
     ? 'karaoke'
-    : burstActive
-      ? 'burst'
-      : activeTab === 'word'
-        ? 'word'
-        : 'line';
-
-  const burstWindow = useMemo(() => {
-    if (!burstActive || sync.lines.length === 0) return null;
-    return getActiveLineWindow(sync.lines, sync.activeLineIndex, {
-      preRollMs,
-      durationMs,
-    });
-  }, [burstActive, durationMs, preRollMs, sync.activeLineIndex, sync.lines]);
-
-  useEffect(() => {
-    if (!burstWindow || !burstActive || !player.isPlaying || centerView !== 'editor') {
-      return;
-    }
-    const timeStore = player.timeStore;
-    if (!timeStore) {
-      const targetMs = getBurstLoopSeekTargetMs({
-        burstActive,
-        isPlaying: player.isPlaying,
-        isEditing: true,
-        currentTimeMs: getCurrentTimeMs(),
-        windowStartMs: burstWindow.windowStartMs,
-        windowEndMs: burstWindow.windowEndMs,
-      });
-      if (targetMs !== null) {
-        player.seekTo(targetMs);
-      }
-      return;
-    }
-    const checkBurstEnd = () => {
-      const targetMs = getBurstLoopSeekTargetMs({
-        burstActive: true,
-        isPlaying: true,
-        isEditing: true,
-        currentTimeMs: getCurrentTimeMs(),
-        windowStartMs: burstWindow.windowStartMs,
-        windowEndMs: burstWindow.windowEndMs,
-      });
-      if (targetMs !== null) {
-        player.seekTo(targetMs);
-      }
-    };
-    checkBurstEnd();
-    return timeStore.subscribe(checkBurstEnd);
-  }, [burstActive, burstWindow, centerView, getCurrentTimeMs, player]);
+    : activeTab === 'word'
+      ? 'word'
+      : 'line';
 
   useEffect(() => {
     if (activeTab === 'catalog') {
@@ -194,6 +146,25 @@ export function DesktopLayout() {
   const activeLine = sync.lines[sync.activeLineIndex];
   const targetWord = activeLine?.words[sync.activeWordIndex];
   const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
+  const allWordsSynced = useMemo(
+    () => findNextUnsyncedWord(sync.lines, { lineIndex: 0, wordIndex: 0 }) === null,
+    [sync.lines],
+  );
+  const canUndoWord = useMemo(
+    () =>
+      hasWordStampToUndo(sync.lines, {
+        lineIndex: sync.activeLineIndex,
+        wordIndex: sync.activeWordIndex,
+      }),
+    [sync.activeLineIndex, sync.activeWordIndex, sync.lines],
+  );
+  const resolveWordIndexForLine = useMemo(
+    () =>
+      syncMode === 'word'
+        ? (lineIndex: number) => firstUnsyncedWordIndex(sync.lines[lineIndex]) ?? 0
+        : undefined,
+    [sync.lines, syncMode],
+  );
   const {
     playingLineIndex,
     trackedListIndex,
@@ -209,40 +180,29 @@ export function DesktopLayout() {
     setActiveWordIndex: sync.setActiveWordIndex,
     seekTo: player.seekTo,
     play: player.play,
+    // En modo Palabra el foco solo lo mueven las marcas y la selección manual.
+    followPlayback: syncMode !== 'word',
+    resolveWordIndexForLine,
   });
 
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
       if (mode === 'line') {
-        const exit = computeBurstExitState(burstActive);
-        if (exit.shouldPause) player.pause();
         setKaraokeActive(false);
-        setBurstActive(false);
         setActiveTab('sync');
       } else if (mode === 'word') {
-        const exit = computeBurstExitState(burstActive);
-        if (exit.shouldPause) player.pause();
         setKaraokeActive(false);
-        setBurstActive(false);
         setActiveTab('word');
-      } else if (mode === 'burst') {
-        const enter = computeBurstEnterState();
-        setKaraokeActive(false);
-        setBurstActive(enter.burstActive);
-        setActiveTab('sync');
-        if (sync.lines.length > 0 && enter.shouldPlay === false) {
-          const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
-          player.seekTo(win.windowStartMs);
-        }
+        // Foco automático: primera palabra sin marca (de la línea activa o, si no, tras la última marcada).
+        const focus = resolveWordEntryFocus(sync.lines, sync.activeLineIndex);
+        sync.setActiveLineIndex(focus.lineIndex);
+        sync.setActiveWordIndex(focus.wordIndex);
       } else if (mode === 'karaoke') {
-        const exit = computeBurstExitState(burstActive);
-        if (exit.shouldPause) player.pause();
-        setBurstActive(false);
         setKaraokeActive(true);
         setActiveTab('sync');
       }
     },
-    [burstActive, durationMs, player, preRollMs, setActiveTab, sync.activeLineIndex, sync.lines],
+    [setActiveTab, sync],
   );
 
   const handleUploadAudio = useCallback(
@@ -266,51 +226,58 @@ export function DesktopLayout() {
     setLiveNotice('Repitiendo Pre-Roll');
   }, [activeLine, getCurrentTimeMs, player, preRollMs, sync.activeWordIndex, syncMode]);
 
-  const applyWordFeedback = useCallback(
-    (feedback: { shouldPause: boolean; shouldRewindPreRoll: boolean }, nowMs: number) => {
-      if (feedback.shouldPause) {
-        player.pause();
-      } else if (feedback.shouldRewindPreRoll) {
-        const nextTarget = resolveWordTargetStartMs(activeLine, sync.activeWordIndex + 1);
-        player.seekTo(computePreRollStartMs(nextTarget ?? nowMs, preRollMs));
-        void player.play();
-      }
-    },
-    [activeLine, player, preRollMs, sync.activeWordIndex],
-  );
-
   const handleStampStart = useCallback(() => {
     if (syncMode === 'karaoke') return;
     const nowMs = computeCompensatedStampMs(getCurrentTimeMs(), latencyMs);
     if (syncMode === 'word') {
       if (!targetWord) return;
+      if (allWordsSynced) {
+        setLiveNotice('Todas las palabras están marcadas. Deshaz para re-marcar la última');
+        return;
+      }
       if (!player.isPlaying) void player.play();
-      const feedback = sync.stampWordStart({
-        nowMs,
-        subMode,
-        sniperHoldDuration: holdMode,
-        sniperAutoAdvancePreRoll: true,
-      });
-      if (!holdMode) applyWordFeedback(feedback, nowMs);
-      setLiveNotice(`Palabra «${targetWord.text}» marcada`);
+      const feedback = sync.stampWordStart(nowMs);
+      setLiveNotice(
+        feedback.completedAll
+          ? `Palabra «${targetWord.text}» marcada. Todas las palabras están marcadas`
+          : `Palabra «${targetWord.text}» marcada`,
+      );
       return;
     }
     if (sync.lines.length === 0) return;
     sync.stampLineStart(nowMs, false);
     setLiveNotice(`Línea ${sync.activeLineIndex + 1} marcada`);
-  }, [applyWordFeedback, getCurrentTimeMs, holdMode, latencyMs, player, subMode, sync, syncMode, targetWord]);
+  }, [allWordsSynced, getCurrentTimeMs, latencyMs, player, sync, syncMode, targetWord]);
 
-  const handleStampEnd = useCallback(() => {
-    if (syncMode !== 'word' || !holdMode || !targetWord) return;
-    const nowMs = computeCompensatedStampMs(getCurrentTimeMs(), latencyMs);
-    const feedback = sync.stampWordEnd({
-      nowMs,
-      subMode,
-      sniperHoldDuration: holdMode,
-      sniperAutoAdvancePreRoll: true,
-    });
-    applyWordFeedback(feedback, nowMs);
-  }, [applyWordFeedback, getCurrentTimeMs, holdMode, latencyMs, subMode, sync, syncMode, targetWord]);
+  /**
+   * Deshacer en modo Palabra: desmarca la última palabra sincronizada, deja el foco en ella y
+   * vuelve el audio a `inicio − Pre-Roll` reproduciendo para volver a marcarla.
+   */
+  const handleWordUndo = useCallback(() => {
+    const result = sync.undoWordStamp(preRollMs);
+    if (!result) {
+      setLiveNotice('No hay marcas de palabra para deshacer');
+      return;
+    }
+    player.seekTo(result.rewindTargetMs);
+    void player.play();
+    setLiveNotice(`Marca de «${result.wordText}» deshecha`);
+  }, [player, preRollMs, sync]);
+
+  const handleUndo = useCallback(() => {
+    if (syncMode === 'word') {
+      handleWordUndo();
+      return;
+    }
+    sync.undo();
+  }, [handleWordUndo, sync, syncMode]);
+
+  const handleSelectWord = useCallback(
+    (wordIndex: number) => {
+      sync.setActiveWordIndex(wordIndex);
+    },
+    [sync],
+  );
 
   const handleNudge = useCallback(
     (deltaMs: -50 | -10 | 10 | 50) => {
@@ -326,11 +293,10 @@ export function DesktopLayout() {
   useKeyboardShortcuts({
     enabled: centerView === 'editor' && Boolean(audioUrl) && !settingsOpen && !infoOpen,
     onStampStart: handleStampStart,
-    onStampEnd: handleStampEnd,
     onRepeatPreRoll: handleRepeatPreRoll,
     onTogglePlay: player.togglePlay,
     onNudge: handleNudge,
-    onUndo: sync.undo,
+    onUndo: handleUndo,
     onRedo: sync.redo,
   });
 
@@ -381,7 +347,6 @@ export function DesktopLayout() {
 
   const handleOpenLoupe = useCallback(() => {
     if (!activeLine) return;
-    setBurstActive(false);
     setKaraokeActive(false);
     setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
     setActiveTab('loupe');
@@ -446,22 +411,7 @@ export function DesktopLayout() {
     player.setSeeking(false);
   }, [player]);
 
-  const handleToggleSniper = useCallback(() => {
-    if (project) {
-      updateProjectMetadata({ settings: { ...project.settings, sniperMode: !sniperMode } });
-    }
-  }, [project, sniperMode, updateProjectMetadata]);
-
-  const handleToggleHold = useCallback(() => {
-    setHoldMode((prev) => !prev);
-  }, []);
-
-  const handleStopBurst = useCallback(() => {
-    setBurstActive(false);
-    player.pause();
-  }, [player]);
-
-  const handlePlayLoupeBurst = useCallback(() => {
+  const handlePlayLoupeLine = useCallback(() => {
     const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
     player.seekTo(win.windowStartMs);
     void player.play();
@@ -487,6 +437,7 @@ export function DesktopLayout() {
   return (
     <div className="min-h-dvh w-full bg-bg text-ink flex flex-col p-5 gap-4 overflow-x-hidden">
       <UpdateBanner updateAvailable={updateAvailable} onUpdate={applyUpdate} />
+      <RestoreNoticeBanner message={restoreNotice ?? restoreError} />
       <DesktopHeader
         syncMode={syncMode}
         centerView={centerView}
@@ -528,7 +479,7 @@ export function DesktopLayout() {
               onReplaceLines={sync.replaceLines}
               onImportJson={handleImportJson}
               onChangeLoupeBounds={handleInspectorBoundsChange}
-              onPlayLoupeBurst={handlePlayLoupeBurst}
+              onPlayLoupeLine={handlePlayLoupeLine}
               onSetActiveTab={setActiveTab}
             />
           ) : !audioUrl ? (
@@ -544,33 +495,16 @@ export function DesktopLayout() {
                 isPlaying={player.isPlaying}
                 playbackRate={player.playbackRate}
                 lines={sync.lines}
-                canUndo={sync.canUndo}
+                canUndo={syncMode === 'word' ? canUndoWord : sync.canUndo}
                 canOpenLoupe={Boolean(activeLine)}
                 onSeek={player.seekTo}
                 onSeekStart={handleSeekStart}
                 onSeekEnd={handleSeekEnd}
                 onTogglePlay={player.togglePlay}
                 onChangePlaybackRate={handleChangePlaybackRate}
-                onUndo={sync.undo}
+                onUndo={handleUndo}
                 onOpenLoupe={handleOpenLoupe}
               />
-              {burstActive && burstWindow ? (
-                <div className="flex items-center justify-between gap-2 px-1">
-                  <Pill variant="acc">
-                    <span>
-                      Ráfaga en bucle · {formatDisplayTime(burstWindow.windowStartMs)} –{' '}
-                      {formatDisplayTime(burstWindow.windowEndMs)}
-                    </span>
-                  </Pill>
-                  <RaisedButton
-                    size="sm"
-                    onClick={handleStopBurst}
-                    className="min-h-12 px-3 text-xs font-extrabold"
-                  >
-                    Detener ráfaga
-                  </RaisedButton>
-                </div>
-              ) : null}
               {syncMode === 'karaoke' ? (
                 <div className="h-[415px] min-[1100px]:h-[max(320px,calc(100dvh-385px))] flex flex-col min-h-0">
                   <KaraokePreview
@@ -598,13 +532,10 @@ export function DesktopLayout() {
                       timeStore={player.timeStore}
                       currentTimeMs={fallbackCurrentTimeMs}
                       preRollMs={preRollMs}
-                      sniperMode={sniperMode}
-                      holdMode={holdMode}
-                      onToggleSniper={handleToggleSniper}
-                      onToggleHold={handleToggleHold}
+                      allWordsSynced={allWordsSynced}
+                      onSelectWord={handleSelectWord}
                       onRepeatPreRoll={handleRepeatPreRoll}
                       onStampWordStart={handleStampStart}
-                      onStampWordEnd={handleStampEnd}
                     />
                   ) : null}
                   <DesktopLineList

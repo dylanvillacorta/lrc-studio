@@ -31,10 +31,11 @@ import {
   nudgeWordTime,
 } from '@/features/sync/model/wordAdjust';
 import {
-  stampWordEndOnRelease,
-  stampWordStart,
+  stampWord,
+  undoLastWordStamp,
+  type UndoWordStampResult,
 } from '@/features/sync/model/wordSync';
-import type { LyricLine, SyncProgress, WordSyncSubMode } from '@/types';
+import type { LyricLine, SyncProgress } from '@/types';
 
 export interface UseSyncEngineOptions {
   initialLines?: LyricLine[];
@@ -59,18 +60,13 @@ export interface UseSyncEngineReturn {
   clearMarksFromLine: (fromLineIndex: number) => void;
   setLineStartTime: (lineIndex: number, startMs: number) => void;
   undoLine: (currentTimeMs: number) => number;
-  stampWordStart: (params: {
-    nowMs: number;
-    subMode: WordSyncSubMode;
-    sniperHoldDuration?: boolean;
-    sniperAutoAdvancePreRoll?: boolean;
-  }) => { shouldPause: boolean; shouldRewindPreRoll: boolean; completedLine: boolean };
-  stampWordEnd: (params: {
-    nowMs: number;
-    subMode: WordSyncSubMode;
-    sniperHoldDuration?: boolean;
-    sniperAutoAdvancePreRoll?: boolean;
-  }) => { shouldPause: boolean; shouldRewindPreRoll: boolean; completedLine: boolean };
+  /** Marca la palabra en foco y avanza el foco a la próxima palabra sin marca. */
+  stampWordStart: (nowMs: number) => { completedAll: boolean };
+  /**
+   * Quita la marca de la última palabra sincronizada (queda en el historial) y deja el foco en
+   * ella. Devuelve `null` si no hay nada que deshacer.
+   */
+  undoWordStamp: (preRollMs: number) => UndoWordStampResult | null;
   distributeWordsInLine: (lineIndex: number, fallbackStartMs?: number) => void;
   nudgeWord: (
     lineIndex: number,
@@ -243,45 +239,33 @@ export function useSyncEngine(
   );
 
   const handleStampWordStart = useCallback(
-    (params: {
-      nowMs: number;
-      subMode: WordSyncSubMode;
-      sniperHoldDuration?: boolean;
-      sniperAutoAdvancePreRoll?: boolean;
-    }) => {
-      const result = stampWordStart(linesRef.current, {
+    (nowMs: number) => {
+      const result = stampWord(linesRef.current, {
         lineIndex: activeLineIndexRef.current,
         wordIndex: activeWordIndexRef.current,
-        ...params,
+        nowMs,
       });
       commitLines(result.lines, result.nextLineIndex, result.nextWordIndex);
-      return {
-        shouldPause: result.shouldPause,
-        shouldRewindPreRoll: result.shouldRewindPreRoll,
-        completedLine: result.completedLine,
-      };
+      return { completedAll: result.completedAll };
     },
     [commitLines],
   );
 
-  const handleStampWordEnd = useCallback(
-    (params: {
-      nowMs: number;
-      subMode: WordSyncSubMode;
-      sniperHoldDuration?: boolean;
-      sniperAutoAdvancePreRoll?: boolean;
-    }) => {
-      const result = stampWordEndOnRelease(linesRef.current, {
-        lineIndex: activeLineIndexRef.current,
-        wordIndex: activeWordIndexRef.current,
-        ...params,
-      });
-      commitLines(result.lines, result.nextLineIndex, result.nextWordIndex);
-      return {
-        shouldPause: result.shouldPause,
-        shouldRewindPreRoll: result.shouldRewindPreRoll,
-        completedLine: result.completedLine,
-      };
+  const handleUndoWordStamp = useCallback(
+    (preRollMs: number): UndoWordStampResult | null => {
+      const result = undoLastWordStamp(
+        linesRef.current,
+        {
+          lineIndex: activeLineIndexRef.current,
+          wordIndex: activeWordIndexRef.current,
+        },
+        preRollMs,
+      );
+      if (!result) {
+        return null;
+      }
+      commitLines(result.lines, result.lineIndex, result.wordIndex);
+      return result;
     },
     [commitLines],
   );
@@ -407,7 +391,7 @@ export function useSyncEngine(
       setLineStartTime,
       undoLine: handleUndoLine,
       stampWordStart: handleStampWordStart,
-      stampWordEnd: handleStampWordEnd,
+      undoWordStamp: handleUndoWordStamp,
       distributeWordsInLine,
       nudgeWord,
       nudgeLine,
@@ -425,9 +409,9 @@ export function useSyncEngine(
       distributeWordsInLine,
       handleStampLineEnd,
       handleStampLineStart,
-      handleStampWordEnd,
       handleStampWordStart,
       handleUndoLine,
+      handleUndoWordStamp,
       lines,
       nudgeLine,
       nudgeWord,

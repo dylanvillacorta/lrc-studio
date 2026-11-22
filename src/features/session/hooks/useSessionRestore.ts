@@ -5,7 +5,7 @@ import {
 } from '@/features/session/model/sessionPlanner';
 import { inferAudioMime } from '@/lib/audioFormats';
 import { formatStorageErrorMessage } from '@/features/session/model/storageError';
-import type { IStorageAdapter } from '@/storage';
+import { UnrestorableProjectError, type IStorageAdapter } from '@/storage';
 
 /**
  * Estado del proceso de restauración de sesión al arrancar la aplicación.
@@ -16,7 +16,7 @@ export type SessionRestoreStatus = 'loading' | 'ready' | 'empty' | 'error';
  * Resultado puro de restaurar una sesión desde el adaptador de almacenamiento.
  */
 export type RestoreAdapterResult =
-  | { status: 'empty'; plan: null }
+  | { status: 'empty'; plan: null; notice?: string }
   | { status: 'ready'; plan: RestorePlan };
 
 /**
@@ -81,10 +81,20 @@ export async function restoreSessionFromAdapter(
     return { status: 'empty', plan: null };
   }
 
-  const [project, audio] = await Promise.all([
-    adapter.getProject(session.projectId),
-    adapter.getAudioBinary(session.projectId),
-  ]);
+  let project: Awaited<ReturnType<IStorageAdapter['getProject']>>;
+  let audio: Awaited<ReturnType<IStorageAdapter['getAudioBinary']>>;
+  try {
+    [project, audio] = await Promise.all([
+      adapter.getProject(session.projectId),
+      adapter.getAudioBinary(session.projectId),
+    ]);
+  } catch (err) {
+    if (err instanceof UnrestorableProjectError) {
+      // El registro se conserva intacto; la app arranca igual y avisa a la usuaria.
+      return { status: 'empty', plan: null, notice: err.message };
+    }
+    throw err;
+  }
 
   const plan = planRestore(session, project, audio);
   if (!plan) {
@@ -102,6 +112,8 @@ export interface UseSessionRestoreReturn {
   /** Duración del audio restaurado en segundos (`0` si no hay audio). */
   duration: number;
   error: string | null;
+  /** Aviso cuando el proyecto activo guardado no se pudo restaurar (el registro se conserva intacto). */
+  notice: string | null;
   reload: () => Promise<void>;
   /** Revoca el `ObjectURL` restaurado cuando el proveedor toma el control manual de otro audio/proyecto. */
   clearAudioUrl: () => void;
@@ -119,6 +131,7 @@ export function useSessionRestore(
   const [plan, setPlan] = useState<RestorePlan | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const activeUrlRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
@@ -140,6 +153,7 @@ export function useSessionRestore(
     const requestId = ++requestIdRef.current;
     setStatus('loading');
     setError(null);
+    setNotice(null);
 
     try {
       const result = await restoreSessionFromAdapter(adapter);
@@ -150,6 +164,7 @@ export function useSessionRestore(
       if (result.status === 'empty') {
         replaceAudioUrl(null);
         setPlan(null);
+        setNotice(result.notice ?? null);
         setStatus('empty');
         return;
       }
@@ -207,6 +222,7 @@ export function useSessionRestore(
     peaks: plan?.peaks ?? [],
     duration: plan?.duration ?? 0,
     error,
+    notice,
     reload: runRestore,
     clearAudioUrl,
   };

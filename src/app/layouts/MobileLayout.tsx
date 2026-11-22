@@ -9,12 +9,12 @@ import {
   mergeRawTextWithExistingLines,
 } from '@/features/lyrics';
 import {
-  computeBurstEnterState,
-  computeBurstExitState,
   DEFAULT_PRE_ROLL_MS,
+  firstUnsyncedWordIndex,
   getActiveLineWindow,
-  getBurstLoopSeekTargetMs,
+  hasWordStampToUndo,
   readCurrentTimeMs,
+  resolveWordEntryFocus,
   shiftTimings,
   SyncSettingsDialog,
 } from '@/features/sync';
@@ -35,6 +35,7 @@ import {
 import { downloadTextFile } from '@/lib/download';
 import type { LyricLine } from '@/types';
 import { NavBar, ScrollShadow, type NavBarItem } from '@/ui';
+import { RestoreNoticeBanner } from './RestoreNoticeBanner';
 
 const NAV_ITEMS: readonly NavBarItem<'catalog' | 'lyrics' | 'sync' | 'export'>[] = [
   { id: 'catalog', label: 'Catálogo', icon: 'library' },
@@ -53,7 +54,7 @@ const MobileLoupeBridge = memo(function MobileLoupeBridge({
   lines,
   isSaved,
   onChange,
-  onPlayBurst,
+  onPlayLine,
   onApply,
   onBack,
 }: {
@@ -66,7 +67,7 @@ const MobileLoupeBridge = memo(function MobileLoupeBridge({
   lines: LyricLine[];
   isSaved: boolean;
   onChange: (bounds: LineBounds) => void;
-  onPlayBurst: () => void;
+  onPlayLine: () => void;
   onApply: (bounds: LineBounds) => void;
   onBack: () => void;
 }) {
@@ -81,7 +82,7 @@ const MobileLoupeBridge = memo(function MobileLoupeBridge({
       lines={lines}
       isSaved={isSaved}
       onChange={onChange}
-      onPlayBurst={onPlayBurst}
+      onPlayLine={onPlayLine}
       onApply={onApply}
       onBack={onBack}
     />
@@ -111,6 +112,8 @@ export function MobileLayout() {
     updateProjectMetadata,
     clearActiveProject,
     flushPendingSave,
+    restoreNotice,
+    restoreError,
   } = useActiveProject();
 
   const catalog = useCatalog(storage);
@@ -127,8 +130,7 @@ export function MobileLayout() {
   });
   const [infoOpen, setInfoOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [syncSubView, setSyncSubView] = useState<'default' | 'burst' | 'karaoke'>('default');
-  const [holdMode, setHoldMode] = useState(false);
+  const [syncSubView, setSyncSubView] = useState<'default' | 'karaoke'>('default');
   const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
   const playerRef = useRef(player);
 
@@ -156,69 +158,13 @@ export function MobileLayout() {
       ? Math.round(project.settings.preRollSeconds * 1000)
       : DEFAULT_PRE_ROLL_MS;
 
-  const sniperMode = project?.settings.sniperMode ?? true;
-  const burstActive = syncSubView === 'burst';
-
-  const burstWindow = useMemo(() => {
-    if (!burstActive || sync.lines.length === 0) {
-      return null;
-    }
-    return getActiveLineWindow(sync.lines, sync.activeLineIndex, {
-      preRollMs,
-      durationMs,
-    });
-  }, [burstActive, durationMs, preRollMs, sync.activeLineIndex, sync.lines]);
-
-  // Bucle continuo para modo Ráfaga de línea aislada (solo si está reproduciendo y editando).
-  useEffect(() => {
-    if (
-      !burstWindow ||
-      !burstActive ||
-      !player.isPlaying ||
-      activeTab !== 'sync' ||
-      syncSubView !== 'burst'
-    ) {
-      return;
-    }
-    const timeStore = player.timeStore;
-    if (!timeStore) {
-      const targetMs = getBurstLoopSeekTargetMs({
-        burstActive,
-        isPlaying: player.isPlaying,
-        isEditing: true,
-        currentTimeMs: getCurrentTimeMs(),
-        windowStartMs: burstWindow.windowStartMs,
-        windowEndMs: burstWindow.windowEndMs,
-      });
-      if (targetMs !== null) {
-        player.seekTo(targetMs);
-      }
-      return;
-    }
-    const checkBurstEnd = () => {
-      const targetMs = getBurstLoopSeekTargetMs({
-        burstActive: true,
-        isPlaying: true,
-        isEditing: true,
-        currentTimeMs: getCurrentTimeMs(),
-        windowStartMs: burstWindow.windowStartMs,
-        windowEndMs: burstWindow.windowEndMs,
-      });
-      if (targetMs !== null) {
-        player.seekTo(targetMs);
-      }
-    };
-    checkBurstEnd();
-    return timeStore.subscribe(checkBurstEnd);
-  }, [activeTab, burstActive, burstWindow, getCurrentTimeMs, player, syncSubView]);
-
   useEffect(() => {
     if (activeTab === 'catalog') {
       void flushPendingSave().then(() => refreshCatalog());
     }
   }, [activeTab, flushPendingSave, refreshCatalog]);
 
-  const { seekTo, play, pause, togglePlay } = player;
+  const { seekTo, play, togglePlay } = player;
   const {
     lines: syncLines,
     activeLineIndex: syncActiveLineIndex,
@@ -227,6 +173,13 @@ export function MobileLayout() {
   } = sync;
 
   const fallbackCurrentTimeMs = player.timeStore ? 0 : player.currentTime;
+  const resolveWordIndexForLine = useMemo(
+    () =>
+      activeTab === 'word'
+        ? (lineIndex: number) => firstUnsyncedWordIndex(syncLines[lineIndex]) ?? 0
+        : undefined,
+    [activeTab, syncLines],
+  );
   const {
     playingLineIndex,
     trackedListIndex,
@@ -242,52 +195,34 @@ export function MobileLayout() {
     setActiveWordIndex: setSyncActiveWordIndex,
     seekTo,
     play,
+    // En modo Palabra el foco solo lo mueven las marcas y la selección manual.
+    followPlayback: activeTab !== 'word',
+    resolveWordIndexForLine,
   });
-
-  const exitBurstIfNeeded = useCallback(() => {
-    const exit = computeBurstExitState(syncSubView === 'burst');
-    if (exit.shouldPause) {
-      pause();
-    }
-  }, [pause, syncSubView]);
 
   const handleSelectMode = useCallback(
     (mode: SyncSegmentedMode) => {
       if (mode === 'line') {
-        exitBurstIfNeeded();
         setSyncSubView('default');
         setActiveTab('sync');
         return;
       }
       if (mode === 'word') {
-        exitBurstIfNeeded();
         setSyncSubView('default');
         setActiveTab('word');
+        // Foco automático: primera palabra sin marca (de la línea activa o, si no, tras la última marcada).
+        const focus = resolveWordEntryFocus(syncLines, syncActiveLineIndex);
+        setSyncActiveLineIndex(focus.lineIndex);
+        setSyncActiveWordIndex(focus.wordIndex);
         return;
       }
-      if (mode === 'karaoke') {
-        exitBurstIfNeeded();
-        setSyncSubView('karaoke');
-        setActiveTab('sync');
-        return;
-      }
-      const enter = computeBurstEnterState();
-      setSyncSubView('burst');
+      setSyncSubView('karaoke');
       setActiveTab('sync');
-      if (syncLines.length > 0 && enter.shouldPlay === false) {
-        const win = getActiveLineWindow(syncLines, syncActiveLineIndex, {
-          preRollMs,
-          durationMs,
-        });
-        seekTo(win.windowStartMs);
-      }
     },
     [
-      durationMs,
-      exitBurstIfNeeded,
-      preRollMs,
-      seekTo,
       setActiveTab,
+      setSyncActiveLineIndex,
+      setSyncActiveWordIndex,
       syncActiveLineIndex,
       syncLines,
     ],
@@ -308,11 +243,10 @@ export function MobileLayout() {
     if (!sync.lines[sync.activeLineIndex]) {
       return;
     }
-    exitBurstIfNeeded();
     setSyncSubView('default');
     setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
     setActiveTab('loupe');
-  }, [activeTab, exitBurstIfNeeded, setActiveTab, sync.activeLineIndex, sync.lines]);
+  }, [activeTab, setActiveTab, sync.activeLineIndex, sync.lines]);
 
   const handleLoupeBoundsChange = useCallback(
     (bounds: LineBounds) => {
@@ -330,7 +264,7 @@ export function MobileLayout() {
     [sync],
   );
 
-  const handleLoupePlayBurst = useCallback(() => {
+  const handleLoupePlayLine = useCallback(() => {
     const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, {
       preRollMs,
       durationMs,
@@ -356,11 +290,10 @@ export function MobileLayout() {
 
   const handleNavSelect = useCallback(
     (tab: 'catalog' | 'lyrics' | 'sync' | 'export') => {
-      exitBurstIfNeeded();
       setSyncSubView('default');
       setActiveTab(tab);
     },
-    [exitBurstIfNeeded, setActiveTab],
+    [setActiveTab],
   );
 
   const handleOpenCatalogFromHeader = useCallback(() => {
@@ -397,11 +330,6 @@ export function MobileLayout() {
     [durationMs, sync],
   );
 
-  const handleStopBurst = useCallback(() => {
-    setSyncSubView('default');
-    player.pause();
-  }, [player]);
-
   const handleSeekStart = useCallback(() => {
     player.setSeeking(true);
   }, [player]);
@@ -410,17 +338,36 @@ export function MobileLayout() {
     player.setSeeking(false);
   }, [player]);
 
-  const handleToggleSniper = useCallback(() => {
-    if (project) {
-      updateProjectMetadata({
-        settings: { ...project.settings, sniperMode: !sniperMode },
-      });
-    }
-  }, [project, sniperMode, updateProjectMetadata]);
+  const handleStampWord = useCallback(
+    (nowMs: number) => sync.stampWordStart(nowMs),
+    [sync],
+  );
 
-  const handleToggleHold = useCallback(() => {
-    setHoldMode((prev) => !prev);
-  }, []);
+  const handleSelectWord = useCallback(
+    (wordIndex: number) => {
+      sync.setActiveWordIndex(wordIndex);
+    },
+    [sync],
+  );
+
+  /**
+   * Deshacer en modo Palabra: desmarca la última palabra sincronizada, deja el foco en ella y
+   * vuelve el audio a `inicio − Pre-Roll` reproduciendo para volver a marcarla.
+   */
+  const handleWordUndo = useCallback(() => {
+    const result = sync.undoWordStamp(preRollMs);
+    if (!result) {
+      return null;
+    }
+    player.seekTo(result.rewindTargetMs);
+    void player.play();
+    return { wordText: result.wordText };
+  }, [player, preRollMs, sync]);
+
+  const canUndoWord = hasWordStampToUndo(sync.lines, {
+    lineIndex: sync.activeLineIndex,
+    wordIndex: sync.activeWordIndex,
+  });
 
   const handleLoupeApply = useCallback(
     (bounds: LineBounds) => {
@@ -456,6 +403,7 @@ export function MobileLayout() {
       <div className="w-full max-w-[430px] h-dvh flex flex-col overflow-hidden bg-bg">
         <div className="px-4 pt-2 empty:hidden">
           <UpdateBanner updateAvailable={updateAvailable} onUpdate={applyUpdate} />
+          <RestoreNoticeBanner message={restoreNotice ?? restoreError} />
         </div>
         {showTopHeader ? (
           <MobileHeader
@@ -482,6 +430,13 @@ export function MobileLayout() {
           {activeTab === 'catalog' ? (
             <CatalogPanel
               projects={catalog.projects}
+              unrestorable={catalog.unrestorable}
+              onDownloadOriginal={async (id) => {
+                const raw = await catalog.exportRawProject(id);
+                if (raw) {
+                  downloadTextFile(raw.fileName, raw.json, 'application/json;charset=utf-8');
+                }
+              }}
               activeProjectId={project?.id ?? null}
               loading={catalog.loading}
               error={catalog.error}
@@ -579,8 +534,7 @@ export function MobileLayout() {
               activeLineIndex={sync.activeLineIndex}
               playingLineIndex={playingLineIndex}
               trackedListIndex={trackedListIndex}
-              syncMode={burstActive ? 'burst' : 'line'}
-              burstWindow={burstWindow}
+              syncMode="line"
               onSelectMode={handleSelectMode}
               onSeek={player.seekTo}
               onSeekStart={handleSeekStart}
@@ -592,7 +546,6 @@ export function MobileLayout() {
               onClearLineMark={sync.clearLineMark}
               onStampLine={handleStampLine}
               onOpenLoupe={handleOpenLoupe}
-              onStopBurst={handleStopBurst}
               onUploadAudio={handleUploadAudio}
             />
           ) : null}
@@ -611,19 +564,16 @@ export function MobileLayout() {
               activeLineIndex={sync.activeLineIndex}
               activeWordIndex={sync.activeWordIndex}
               preRollMs={preRollMs}
-              sniperMode={sniperMode}
-              holdMode={holdMode}
-              syncMode={burstActive ? 'burst' : 'word'}
+              syncMode="word"
               onSelectMode={handleSelectMode}
-              onToggleSniper={handleToggleSniper}
-              onToggleHold={handleToggleHold}
               onSeek={player.seekTo}
               onSeekStart={handleSeekStart}
               onSeekEnd={handleSeekEnd}
               onPlay={player.play}
-              onPause={player.pause}
-              onStampWordStart={sync.stampWordStart}
-              onStampWordEnd={sync.stampWordEnd}
+              onStampWordStart={handleStampWord}
+              onSelectWord={handleSelectWord}
+              onUndoWord={handleWordUndo}
+              canUndoWord={canUndoWord}
               onOpenLoupe={handleOpenLoupe}
               onUploadAudio={handleUploadAudio}
             />
@@ -640,7 +590,7 @@ export function MobileLayout() {
               lines={sync.lines}
               isSaved={saveStatus === 'saved' || saveStatus === 'idle'}
               onChange={handleLoupeBoundsChange}
-              onPlayBurst={handleLoupePlayBurst}
+              onPlayLine={handleLoupePlayLine}
               onApply={handleLoupeApply}
               onBack={handleLoupeBack}
             />

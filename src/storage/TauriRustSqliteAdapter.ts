@@ -3,6 +3,7 @@ import type {
   ProjectFullData,
   ProjectSummary,
   SessionState,
+  UnrestorableProject,
 } from '@/types';
 import type { IStorageAdapter } from './IStorageAdapter';
 
@@ -51,6 +52,15 @@ export class TauriRustSqliteAdapter implements IStorageAdapter {
   async getProject(projectId: string): Promise<ProjectFullData | null> {
     void projectId;
     throw notImplemented('getProject');
+  }
+
+  async listUnrestorableProjects(): Promise<UnrestorableProject[]> {
+    throw notImplemented('listUnrestorableProjects');
+  }
+
+  async getRawProjectJson(projectId: string): Promise<string | null> {
+    void projectId;
+    throw notImplemented('getRawProjectJson');
   }
 
   /**

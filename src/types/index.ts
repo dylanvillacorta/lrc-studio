@@ -30,7 +30,6 @@ export interface LyricLine {
 export interface ProjectSettings {
   playbackRate: number;
   preRollSeconds: number;
-  sniperMode: boolean;
   autoAdvance: boolean;
 }
 
@@ -59,6 +58,8 @@ export interface ProjectSummary {
  * Datos completos de un proyecto, incluyendo letras, picos de onda y ajustes.
  */
 export interface ProjectFullData extends ProjectSummary {
+  /** Versión de esquema del registro guardado (ausente = 1). Ver `STORED_PROJECT_SCHEMA_VERSION`. */
+  schemaVersion?: number;
   lines: LyricLine[];
   waveformPeaks: number[];
   settings: ProjectSettings;
@@ -85,6 +86,26 @@ export interface SessionState {
   activeLineIndex: number;
   activeWordIndex: number;
   updatedAt: number;
+}
+
+/**
+ * Versión actual del esquema del proyecto guardado en IndexedDB.
+ */
+export const STORED_PROJECT_SCHEMA_VERSION = 2 as const;
+
+/**
+ * Causa por la que un proyecto guardado no se puede restaurar.
+ */
+export type UnrestorableCode = 'malformed' | 'future' | 'unknown' | 'migration-failed';
+
+/**
+ * Registro guardado que no se pudo migrar o validar. El original se conserva intacto.
+ */
+export interface UnrestorableProject {
+  id: string;
+  title: string | null;
+  code: UnrestorableCode;
+  reason: string;
 }
 
 /**
@@ -115,11 +136,6 @@ export interface CatalogBackup {
 }
 
 /**
- * Submodos disponibles para la sincronización palabra por palabra.
- */
-export type WordSyncSubMode = 'sniper' | 'isolatedLine' | 'tap' | 'hold';
-
-/**
  * Formatos soportados de exportación de letras sincronizadas.
  */
 export type ExportFormat = 'json' | 'elrc' | 'lrc';
@@ -145,7 +161,7 @@ export interface SongMetadata {
 export type PreRollTrafficLight = 'red' | 'amber' | 'green';
 
 /**
- * Ventana temporal de reproducción para la ráfaga de línea aislada (en milisegundos).
+ * Ventana temporal de reproducción de «Escuchar línea» en la lupa, con Pre-Roll y Post-Roll (en milisegundos).
  */
 export interface ActiveLineWindow {
   lineStartMs: number;

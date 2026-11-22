@@ -83,3 +83,37 @@ export function shouldThrottleSeek(
 ): boolean {
   return nowMs - lastSeekAtMs >= throttleMs;
 }
+
+/** Umbral en píxeles bajo el cual un down/up se considera un toque sin arrastre. */
+export const TIMELINE_TAP_THRESHOLD_PX = 4;
+
+/**
+ * Geometría horizontal de la barra congelada al inicio del gesto, para que la expansión
+ * visual de la franja no cambie la conversión de coordenadas a tiempo.
+ */
+export interface TimelineFrame {
+  left: number;
+  width: number;
+}
+
+/**
+ * Indica si el gesto fue un toque (desplazamiento horizontal menor al umbral).
+ */
+export function isTapGesture(
+  downX: number,
+  upX: number,
+  threshold = TIMELINE_TAP_THRESHOLD_PX,
+): boolean {
+  return Math.abs(upX - downX) < threshold;
+}
+
+/**
+ * Convierte la coordenada del puntero en milisegundos usando la geometría congelada del gesto.
+ */
+export function computeFramedPointerTimeMs(
+  clientX: number,
+  frame: TimelineFrame,
+  durationMs: number,
+): number {
+  return computePointerTimeMs(clientX, frame.left, frame.width, durationMs);
+}

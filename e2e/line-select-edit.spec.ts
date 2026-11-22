@@ -4,7 +4,6 @@ import {
   isMobileProject,
   openLyrics,
   openSyncEditor,
-  selectSyncMode,
   tapOrPointerDown,
   trackErrors,
 } from './helpers/studio';
@@ -21,7 +20,7 @@ const LONG_LYRICS = Array.from(
 ).join('\n');
 
 test.describe('Selección sin seek, edición, borrado, deshacer múltiple y centrado (T27)', () => {
-  test('seleccionar sin saltar, reproducir desde aquí, editar tiempo, borrar, deshacer múltiple y centrar en Línea y Ráfaga', async ({
+  test('seleccionar sin saltar, reproducir desde aquí, editar tiempo, borrar, deshacer múltiple y centrar en Línea', async ({
     page,
   }, testInfo) => {
     const assertNoErrors = trackErrors(page);
@@ -126,7 +125,7 @@ test.describe('Selección sin seek, edición, borrado, deshacer múltiple y cent
       await expect(line3Btn.locator('[aria-label="Sin marca de tiempo"]')).toHaveText('--:--.--');
     }
 
-    // 5. Centrado de línea activa mientras avanza la reproducción en Línea y Ráfaga
+    // 5. Centrado de línea activa mientras avanza la reproducción en Línea
     // Marcar línea 12 (~00:25.00) y línea 13 (~00:35.00) para probar centrado en el medio de la lista
     await page.getByRole('button', { name: 'Adelantar 5 segundos' }).click();
     await page.getByRole('button', { name: 'Adelantar 5 segundos' }).click();
@@ -195,28 +194,6 @@ test.describe('Selección sin seek, edición, borrado, deshacer múltiple y cent
 
     await page.getByRole('button', { name: 'Pausar' }).click();
 
-    // Centrado en Ráfaga: seleccionar línea 13 y entrar en Ráfaga
-    await line13Btn.click();
-
-    await selectSyncMode(page, 'Ráfaga');
-    await expect(page.getByText(/Ráfaga/i).first()).toBeVisible();
-    await page.getByRole('button', { name: 'Reproducir', exact: true }).click();
-    await expect(line13Btn).toHaveAttribute('data-playing', 'true', { timeout: 6000 });
-
-    await expect
-      .poll(async () =>
-        page.evaluate((sel) => {
-          const list = document.querySelector(sel);
-          const activeRow = list?.querySelector('[data-line-index="12"]');
-          if (!list || !activeRow) return 999;
-          const lr = list.getBoundingClientRect();
-          const rr = activeRow.getBoundingClientRect();
-          return Math.abs(lr.top + lr.height / 2 - (rr.top + rr.height / 2));
-        }, listSelector),
-      )
-      .toBeLessThanOrEqual(24);
-
-    await page.getByRole('button', { name: 'Detener ráfaga' }).click();
     assertNoErrors();
   });
 });

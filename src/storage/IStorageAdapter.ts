@@ -3,6 +3,7 @@ import type {
   ProjectFullData,
   ProjectSummary,
   SessionState,
+  UnrestorableProject,
 } from '@/types';
 
 /**
@@ -47,6 +48,17 @@ export interface IStorageAdapter {
    * Recupera el binario de audio y sus metadatos acústicos de un proyecto, o `null` si no existe.
    */
   getAudioBinary(projectId: string): Promise<AudioBinary | null>;
+
+  /**
+   * Lista los registros guardados que no se pueden restaurar (mal formados, versión futura o
+   * desconocida, migración fallida). Nunca modifica ni borra los registros.
+   */
+  listUnrestorableProjects(): Promise<UnrestorableProject[]>;
+
+  /**
+   * Devuelve el JSON crudo, tal como está guardado, de un proyecto (restaurable o no), o `null` si no existe.
+   */
+  getRawProjectJson(projectId: string): Promise<string | null>;
 
   /**
    * Elimina un proyecto y su binario de audio asociado.

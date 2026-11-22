@@ -45,6 +45,8 @@ export interface ActiveProjectContextValue {
   project: ProjectFullData | null;
   restoreStatus: SessionRestoreStatus;
   restoreError: string | null;
+  /** Aviso si el proyecto activo guardado no se pudo restaurar (el registro queda intacto). */
+  restoreNotice: string | null;
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   audioUrl: string | null;

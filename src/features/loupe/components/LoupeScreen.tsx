@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   computeZoomWindow,
   normalizeLineBounds,
   type LineBounds,
+  type ZoomWindow,
   type ZoomWindowOptions,
 } from '@/features/loupe/model/loupeModel';
 import type { LyricLine } from '@/types';
@@ -22,7 +23,7 @@ export interface LoupeScreenProps {
   zoomOptions?: ZoomWindowOptions;
   snapStepMs?: number;
   onChange: (bounds: LineBounds) => void;
-  onPlayBurst: () => void;
+  onPlayLine: () => void;
   onApply: (bounds: LineBounds) => void;
   onBack?: () => void;
   className?: string;
@@ -31,7 +32,7 @@ export interface LoupeScreenProps {
 /**
  * Pantalla de ajuste fino (Lupa e inspector de milisegundos) dirigida por props.
  * Permite arrastrar los bordes de una línea, ajustar ±10/±50 ms, escuchar la
- * ráfaga de línea aislada y aplicar los cambios.
+ * línea (con Pre-Roll y Post-Roll) y aplicar los cambios.
  */
 export function LoupeScreen({
   peaks,
@@ -44,7 +45,7 @@ export function LoupeScreen({
   zoomOptions,
   snapStepMs,
   onChange,
-  onPlayBurst,
+  onPlayLine,
   onApply,
   onBack,
   className = '',
@@ -54,7 +55,7 @@ export function LoupeScreen({
     [line, durationMs],
   );
 
-  const zoomWindow = useMemo(
+  const liveZoomWindow = useMemo(
     () =>
       computeZoomWindow(
         { startMs: bounds.startMs, endMs: bounds.endMs },
@@ -62,6 +63,23 @@ export function LoupeScreen({
         zoomOptions,
       ),
     [bounds.endMs, bounds.startMs, durationMs, zoomOptions],
+  );
+
+  // Durante el arrastre de un borde la ventana de zoom se congela: si se recalculara con los
+  // bordes actuales, la escala se desplazaría bajo el dedo y el borde se escaparía.
+  const [frozenWindow, setFrozenWindow] = useState<ZoomWindow | null>(null);
+  const handleDragStateChange = useCallback(
+    (dragging: boolean) => {
+      setFrozenWindow(dragging ? liveZoomWindow : null);
+    },
+    [liveZoomWindow],
+  );
+  const zoomWindow = useMemo<ZoomWindow>(
+    () =>
+      frozenWindow
+        ? { ...frozenWindow, lineStartMs: bounds.startMs, lineEndMs: bounds.endMs }
+        : liveZoomWindow,
+    [bounds.endMs, bounds.startMs, frozenWindow, liveZoomWindow],
   );
 
   return (
@@ -106,6 +124,7 @@ export function LoupeScreen({
         currentTimeMs={currentTimeMs}
         zoomWindow={zoomWindow}
         onChange={onChange}
+        onDragStateChange={handleDragStateChange}
         snapStepMs={snapStepMs}
       />
 
@@ -118,11 +137,11 @@ export function LoupeScreen({
 
       <div className="flex gap-3 pt-0.5">
         <RaisedButton
-          onClick={onPlayBurst}
+          onClick={onPlayLine}
           className="flex-1 text-acc"
         >
           <Icon name="play" size={18} />
-          <span>Ráfaga de línea</span>
+          <span>Escuchar línea</span>
         </RaisedButton>
 
         <RaisedButton

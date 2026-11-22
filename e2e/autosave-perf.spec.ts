@@ -88,9 +88,6 @@ test.describe('T23: guardado sin parpadeo y estabilidad de render durante reprod
 
     // 1. Cambiar entre modos y pestañas sin editar nada: el indicador nunca debe pasar a Guardando.
     await selectSyncMode(page, 'Palabra');
-    await selectSyncMode(page, 'Ráfaga');
-    await expect(page.getByRole('button', { name: 'Detener ráfaga' })).toBeVisible();
-    await page.getByRole('button', { name: 'Detener ráfaga' }).click();
     await selectSyncMode(page, 'Karaoke');
     await selectSyncMode(page, 'Línea');
     await openLyrics(page, isMobile);

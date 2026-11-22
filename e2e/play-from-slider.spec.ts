@@ -30,32 +30,24 @@ async function audioMs(page: Page): Promise<number> {
 
 async function seekToFraction(page: Page, isMobile: boolean, fraction: number) {
   const slider = sliderOf(page);
+  // La caja se mide ANTES de tocar: al tocar la franja se expande y su geometría cambia.
   const box = await slider.boundingBox();
   expect(box).toBeTruthy();
   const pointerType = isMobile ? 'touch' : 'mouse';
+  const x = box!.x + box!.width * fraction;
   const y = box!.y + box!.height / 2;
   await slider.dispatchEvent('pointerdown', {
     pointerId: 7,
     pointerType,
-    clientX: box!.x + box!.width * 0.3,
-    clientY: y,
-    isPrimary: true,
-  });
-  const expanded = (await slider.boundingBox())!;
-  const x = expanded.x + expanded.width * fraction;
-  const ey = expanded.y + expanded.height / 2;
-  await slider.dispatchEvent('pointermove', {
-    pointerId: 7,
-    pointerType,
     clientX: x,
-    clientY: ey,
+    clientY: y,
     isPrimary: true,
   });
   await slider.dispatchEvent('pointerup', {
     pointerId: 7,
     pointerType,
     clientX: x,
-    clientY: ey,
+    clientY: y,
     isPrimary: true,
   });
 }

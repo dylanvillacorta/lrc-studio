@@ -344,4 +344,29 @@ describe('playbackAnalysis', () => {
     expect(waitingUnsynced.trackedListIndex).toBe(0);
     expect(waitingUnsynced.nextActiveLineIndex).toBeNull();
   });
+
+  it('con followPlayback false (modo Palabra) la reproducción no cambia la línea activa', () => {
+    const noFollow = resolvePlaybackTracking({
+      lines: sampleLines,
+      currentTimeMs: 5200,
+      isPlaying: true,
+      activeLineIndex: 0,
+      lastPlayingLineIndex: 0,
+      manualOverrideAtPlayingIndex: null,
+      followPlayback: false,
+    });
+    expect(noFollow.playingLineIndex).toBe(1);
+    expect(noFollow.nextActiveLineIndex).toBeNull();
+
+    const follow = resolvePlaybackTracking({
+      lines: sampleLines,
+      currentTimeMs: 5200,
+      isPlaying: true,
+      activeLineIndex: 0,
+      lastPlayingLineIndex: 0,
+      manualOverrideAtPlayingIndex: null,
+      followPlayback: true,
+    });
+    expect(follow.nextActiveLineIndex).toBe(1);
+  });
 });

@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test';
 import {
   createProjectWithLyricsAndWav,
   isMobileProject,
-  selectSyncMode,
   tapOrPointerDown,
   trackErrors,
 } from './helpers/studio';
@@ -14,7 +13,7 @@ declare global {
 }
 
 test.describe('UX de sincronización y barra de tiempo (T19)', () => {
-  test('arrastre de aguja, sincronía al retroceder, salto al seleccionar línea, expansión y Ráfaga sin auto-play', async ({
+  test('arrastre de aguja, sincronía al retroceder, salto al seleccionar línea, expansión de la barra', async ({
     page,
   }, testInfo) => {
     const assertNoErrors = trackErrors(page);
@@ -118,22 +117,6 @@ test.describe('UX de sincronización y barra de tiempo (T19)', () => {
       .poll(async () => Number(await slider.getAttribute('aria-valuenow')))
       .toBeGreaterThanOrEqual(4800);
     await page.getByRole('button', { name: 'Pausar' }).click();
-
-    // 6. Entrar a Ráfaga no inicia reproducción (audio.paused sigue true) y salir detiene
-    await selectSyncMode(page, 'Ráfaga');
-    await expect(page.getByText(/Ráfaga/i).first()).toBeVisible();
-    await expect
-      .poll(async () => page.evaluate(() => window.__lrcAudioElement?.paused ?? null))
-      .toBe(true);
-    await expect(page.getByRole('button', { name: 'Reproducir', exact: true })).toBeVisible();
-
-    // Al pulsar Reproducir sí reproduce, y al detener/salir se pausa
-    await page.getByRole('button', { name: 'Reproducir', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Pausar' })).toBeVisible();
-    await page.getByRole('button', { name: 'Detener ráfaga' }).click();
-    await expect
-      .poll(async () => page.evaluate(() => window.__lrcAudioElement?.paused ?? null))
-      .toBe(true);
 
     assertNoErrors();
   });
