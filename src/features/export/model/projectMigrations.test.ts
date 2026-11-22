@@ -2,9 +2,50 @@ import { describe, expect, it } from 'vitest';
 import babiFixture from './__fixtures__/babi-pa-ti.project.json';
 import { exportJson, parseProjectJson } from './exporters';
 import {
+  KNOWN_PROJECT_SCHEMA_VERSIONS,
+  PROJECT_MIGRATION_STEPS,
   PROJECT_JSON_SCHEMA_VERSION,
   migrateProjectJson,
 } from './projectMigrations';
+
+describe('garantía: cadena de proyecto JSON', () => {
+  it('cada versión conocida excepto la actual tiene paso de migración', () => {
+    for (const version of KNOWN_PROJECT_SCHEMA_VERSIONS) {
+      if (version !== PROJECT_JSON_SCHEMA_VERSION) {
+        expect(PROJECT_MIGRATION_STEPS[version], `paso desde ${version}`).toBeDefined();
+      }
+    }
+    expect(KNOWN_PROJECT_SCHEMA_VERSIONS[KNOWN_PROJECT_SCHEMA_VERSIONS.length - 1]).toBe(
+      PROJECT_JSON_SCHEMA_VERSION,
+    );
+  });
+
+  it('un documento de cada versión conocida migra hasta la actual y produce datos válidos', () => {
+    for (const version of KNOWN_PROJECT_SCHEMA_VERSIONS) {
+      const res = migrateProjectJson({
+        schemaVersion: version,
+        metadata: { title: 'T', timeUnit: 'ms' },
+        lines: [{ text: 'a', startTime: 1000, endTime: 2000, words: [] }],
+      });
+      expect(res.ok, `versión ${version}`).toBe(true);
+      if (res.ok) {
+        expect(res.data.lines[0]?.startMs).toBe(1000);
+      }
+    }
+  });
+
+  it('un paso faltante falla con error claro en vez de seguir en silencio', () => {
+    const saved = PROJECT_MIGRATION_STEPS['2.0'];
+    try {
+      delete PROJECT_MIGRATION_STEPS['2.0'];
+      const res = migrateProjectJson({ schemaVersion: '2.0', lines: [] });
+      expect(res.ok).toBe(false);
+      if (!res.ok) expect(res.error).toContain('Falta el paso de migración');
+    } finally {
+      PROJECT_MIGRATION_STEPS['2.0'] = saved;
+    }
+  });
+});
 
 describe('projectMigrations y parseProjectJson con fixture', () => {
   it('migra todas las versiones de esquema conocidas al formato actual', () => {
