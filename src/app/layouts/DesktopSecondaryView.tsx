@@ -119,6 +119,13 @@ export const DesktopSecondaryView = memo(function DesktopSecondaryView({
       <div className="relieve rounded-[26px] overflow-hidden flex-1 min-h-0">
         <CatalogPanel
           projects={catalog.projects}
+          unrestorable={catalog.unrestorable}
+          onDownloadOriginal={async (id) => {
+            const raw = await catalog.exportRawProject(id);
+            if (raw) {
+              downloadTextFile(raw.fileName, raw.json, 'application/json;charset=utf-8');
+            }
+          }}
           activeProjectId={project?.id ?? null}
           loading={catalog.loading}
           error={catalog.error}

@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { storageService, type IStorageAdapter } from '@/storage';
-import type { ProjectFullData, ProjectSummary } from '@/types';
+import type { ProjectFullData, ProjectSummary, UnrestorableProject } from '@/types';
 import {
   createCatalogProject,
   deleteCatalogProject,
   duplicateCatalogProject,
   exportCatalogProjectBackup,
+  exportRawProject,
   importCatalogBackupFromJson,
-  loadCatalogProjects,
+  loadCatalog,
   type ProjectBackupExport,
 } from '../model/catalogOperations';
 
@@ -16,6 +17,8 @@ import {
  */
 export interface UseCatalogResult {
   projects: ProjectSummary[];
+  /** Registros guardados que no se pueden restaurar; se conservan intactos. */
+  unrestorable: UnrestorableProject[];
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -23,6 +26,8 @@ export interface UseCatalogResult {
   duplicateProject: (projectId: string) => Promise<ProjectFullData | null>;
   deleteProject: (projectId: string) => Promise<boolean>;
   exportProjectBackup: (projectId: string) => Promise<ProjectBackupExport | null>;
+  /** Prepara la descarga del JSON original, tal como está guardado, de un registro no restaurable. */
+  exportRawProject: (projectId: string) => Promise<ProjectBackupExport | null>;
   importBackup: (jsonString: string) => Promise<boolean>;
   clearError: () => void;
 }
@@ -41,15 +46,21 @@ export function useCatalog(
   adapter: IStorageAdapter = storageService,
 ): UseCatalogResult {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [unrestorable, setUnrestorable] = useState<UnrestorableProject[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async (): Promise<void> => {
+    const loaded = await loadCatalog(adapter);
+    setProjects(loaded.projects);
+    setUnrestorable(loaded.unrestorable);
+  }, [adapter]);
 
   const refresh = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      const list = await loadCatalogProjects(adapter);
-      setProjects(list);
+      await reload();
     } catch (err) {
       setError(
         toSpanishErrorMessage(
@@ -60,16 +71,17 @@ export function useCatalog(
     } finally {
       setLoading(false);
     }
-  }, [adapter]);
+  }, [reload]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadInitial(): Promise<void> {
       try {
-        const list = await loadCatalogProjects(adapter);
+        const loaded = await loadCatalog(adapter);
         if (!cancelled) {
-          setProjects(list);
+          setProjects(loaded.projects);
+          setUnrestorable(loaded.unrestorable);
           setError(null);
         }
       } catch (err) {
@@ -100,8 +112,7 @@ export function useCatalog(
       setError(null);
       try {
         const created = await createCatalogProject(adapter, title, artist);
-        const list = await loadCatalogProjects(adapter);
-        setProjects(list);
+        await reload();
         return created;
       } catch (err) {
         setError(
@@ -110,7 +121,7 @@ export function useCatalog(
         return null;
       }
     },
-    [adapter],
+    [adapter, reload],
   );
 
   const duplicateProject = useCallback(
@@ -118,8 +129,7 @@ export function useCatalog(
       setError(null);
       try {
         const duplicated = await duplicateCatalogProject(adapter, projectId);
-        const list = await loadCatalogProjects(adapter);
-        setProjects(list);
+        await reload();
         return duplicated;
       } catch (err) {
         setError(
@@ -128,7 +138,7 @@ export function useCatalog(
         return null;
       }
     },
-    [adapter],
+    [adapter, reload],
   );
 
   const deleteProject = useCallback(
@@ -136,8 +146,7 @@ export function useCatalog(
       setError(null);
       try {
         await deleteCatalogProject(adapter, projectId);
-        const list = await loadCatalogProjects(adapter);
-        setProjects(list);
+        await reload();
         return true;
       } catch (err) {
         setError(
@@ -146,7 +155,7 @@ export function useCatalog(
         return false;
       }
     },
-    [adapter],
+    [adapter, reload],
   );
 
   const exportProjectBackup = useCallback(
@@ -167,13 +176,31 @@ export function useCatalog(
     [adapter],
   );
 
+  const exportRaw = useCallback(
+    async (projectId: string): Promise<ProjectBackupExport | null> => {
+      setError(null);
+      try {
+        const title = unrestorable.find((item) => item.id === projectId)?.title;
+        return await exportRawProject(adapter, projectId, title);
+      } catch (err) {
+        setError(
+          toSpanishErrorMessage(
+            err,
+            'No se pudo descargar el original de la transcripción.',
+          ),
+        );
+        return null;
+      }
+    },
+    [adapter, unrestorable],
+  );
+
   const importBackup = useCallback(
     async (jsonString: string): Promise<boolean> => {
       setError(null);
       try {
         await importCatalogBackupFromJson(adapter, jsonString);
-        const list = await loadCatalogProjects(adapter);
-        setProjects(list);
+        await reload();
         return true;
       } catch (err) {
         setError(
@@ -185,7 +212,7 @@ export function useCatalog(
         return false;
       }
     },
-    [adapter],
+    [adapter, reload],
   );
 
   const clearError = useCallback(() => {
@@ -194,6 +221,7 @@ export function useCatalog(
 
   return {
     projects,
+    unrestorable,
     loading,
     error,
     refresh,
@@ -201,6 +229,7 @@ export function useCatalog(
     duplicateProject,
     deleteProject,
     exportProjectBackup,
+    exportRawProject: exportRaw,
     importBackup,
     clearError,
   };

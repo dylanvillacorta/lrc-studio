@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BACKUP_SCHEMA_VERSION,
+  STORED_PROJECT_SCHEMA_VERSION,
   type ProjectFullData,
   type SessionState,
 } from '@/types';
@@ -94,7 +95,7 @@ describe('WebIndexedDBAdapter', () => {
     await adapter.saveProject(project);
 
     const loaded = await adapter.getProject('p-read-write');
-    expect(loaded).toEqual(project);
+    expect(loaded).toEqual({ ...project, schemaVersion: STORED_PROJECT_SCHEMA_VERSION });
   });
 
   it('listProjects devuelve resúmenes ligeros ordenados por updatedAt descendente', async () => {
@@ -229,8 +230,8 @@ describe('WebIndexedDBAdapter', () => {
 
     const targetList = await target.listProjects();
     expect(targetList.map((p) => p.id)).toEqual(['p-2', 'p-1']);
-    expect(await target.getProject('p-1')).toEqual(p1);
-    expect(await target.getProject('p-2')).toEqual(p2);
+    expect(await target.getProject("p-1")).toEqual({ ...p1, schemaVersion: STORED_PROJECT_SCHEMA_VERSION });
+    expect(await target.getProject("p-2")).toEqual({ ...p2, schemaVersion: STORED_PROJECT_SCHEMA_VERSION });
 
     const restoredAudio = await target.getAudioBinary('p-1');
     expect(restoredAudio).not.toBeNull();
@@ -249,7 +250,7 @@ describe('WebIndexedDBAdapter', () => {
     await expect(adapter.importCatalogBackup('{json roto')).rejects.toThrow(/JSON válido/i);
     await expect(
       adapter.importCatalogBackup(JSON.stringify({ schemaVersion: 99, projects: [], audios: [] })),
-    ).rejects.toThrow(/Versión de esquema/i);
+    ).rejects.toThrow(/no reconoce el esquema "99"/i);
     await expect(
       adapter.importCatalogBackup(JSON.stringify({ schemaVersion: 1, projects: 'mal', audios: [] })),
     ).rejects.toThrow(/estructura del respaldo/i);

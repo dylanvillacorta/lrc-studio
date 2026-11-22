@@ -58,6 +58,8 @@ export interface ProjectSummary {
  * Datos completos de un proyecto, incluyendo letras, picos de onda y ajustes.
  */
 export interface ProjectFullData extends ProjectSummary {
+  /** Versión de esquema del registro guardado (ausente = 1). Ver `STORED_PROJECT_SCHEMA_VERSION`. */
+  schemaVersion?: number;
   lines: LyricLine[];
   waveformPeaks: number[];
   settings: ProjectSettings;
@@ -84,6 +86,26 @@ export interface SessionState {
   activeLineIndex: number;
   activeWordIndex: number;
   updatedAt: number;
+}
+
+/**
+ * Versión actual del esquema del proyecto guardado en IndexedDB.
+ */
+export const STORED_PROJECT_SCHEMA_VERSION = 2 as const;
+
+/**
+ * Causa por la que un proyecto guardado no se puede restaurar.
+ */
+export type UnrestorableCode = 'malformed' | 'future' | 'unknown' | 'migration-failed';
+
+/**
+ * Registro guardado que no se pudo migrar o validar. El original se conserva intacto.
+ */
+export interface UnrestorableProject {
+  id: string;
+  title: string | null;
+  code: UnrestorableCode;
+  reason: string;
 }
 
 /**

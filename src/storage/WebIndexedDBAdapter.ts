@@ -2,6 +2,8 @@ import { inferAudioMime } from '@/lib/audioFormats';
 import { arrayBufferToBase64, base64ToArrayBuffer } from '@/lib/base64';
 import {
   BACKUP_SCHEMA_VERSION,
+  STORED_PROJECT_SCHEMA_VERSION,
+  type UnrestorableProject,
   type ActiveTab,
   type AudioBinary,
   type CatalogBackup,
@@ -11,6 +13,8 @@ import {
   type SessionState,
 } from '@/types';
 import type { IStorageAdapter } from './IStorageAdapter';
+import { migrateBackupJson } from './backupMigrations';
+import { UnrestorableProjectError, migrateStoredProject } from './storedProjectMigrations';
 
 const DEFAULT_DB_NAME = 'lyricsync-studio';
 const DB_VERSION = 1;
@@ -75,6 +79,10 @@ export interface WebIndexedDBAdapterOptions {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function rawTitle(raw: unknown): string | null {
+  return isRecord(raw) && typeof raw.title === 'string' && raw.title.length > 0 ? raw.title : null;
 }
 
 function toProjectSummary(project: ProjectFullData): ProjectSummary {
@@ -160,17 +168,30 @@ function parseAndDecodeBackup(jsonString: string): {
     throw new Error('La estructura del respaldo es inválida: se esperaba un objeto JSON.');
   }
 
-  if (parsed.schemaVersion !== BACKUP_SCHEMA_VERSION) {
-    throw new Error(
-      `Versión de esquema de respaldo no compatible: se esperaba ${BACKUP_SCHEMA_VERSION}.`,
-    );
+  const migratedBackup = migrateBackupJson(parsed);
+  if (!migratedBackup.ok) {
+    throw new Error(migratedBackup.error);
+  }
+  parsed = migratedBackup.doc;
+  if (!isRecord(parsed)) {
+    throw new Error('La estructura del respaldo es inválida: se esperaba un objeto JSON.');
   }
 
   if (!Array.isArray(parsed.projects) || !Array.isArray(parsed.audios)) {
     throw new Error('La estructura del respaldo es inválida: faltan las listas de proyectos o audios.');
   }
 
-  const projects = parsed.projects.map((item, idx) => validateBackupProject(item, idx));
+  const projects = parsed.projects.map((item, idx) => {
+    validateBackupProject(item, idx);
+    const migrated = migrateStoredProject(item);
+    if (!migrated.ok) {
+      const label = isRecord(item) && typeof item.title === 'string' ? item.title : `#${idx + 1}`;
+      throw new Error(
+        `El proyecto «${label}» del respaldo no se puede importar: ${migrated.reason}. No se escribió nada.`,
+      );
+    }
+    return migrated.project;
+  });
   const audios: DecodedAudioEntry[] = parsed.audios.map((item, idx) => {
     const audio = validateBackupAudio(item, idx);
     const buffer = base64ToArrayBuffer(audio.base64);
@@ -305,18 +326,76 @@ export class WebIndexedDBAdapter implements IStorageAdapter {
   async getProject(projectId: string): Promise<ProjectFullData | null> {
     const db = await this.ensureDb();
     const tx = db.transaction(STORE_PROJECTS, 'readonly');
-    const result = await requestToPromise(
-      tx.objectStore(STORE_PROJECTS).get(projectId) as IDBRequest<ProjectFullData | undefined>,
+    const raw = await requestToPromise(
+      tx.objectStore(STORE_PROJECTS).get(projectId) as IDBRequest<unknown>,
     );
     await transactionDone(tx);
-    return result ?? null;
+    if (raw === undefined || raw === null) {
+      return null;
+    }
+    const migrated = migrateStoredProject(raw);
+    if (!migrated.ok) {
+      throw new UnrestorableProjectError(projectId, rawTitle(raw), migrated.code, migrated.reason);
+    }
+    return migrated.project;
+  }
+
+  async listUnrestorableProjects(): Promise<UnrestorableProject[]> {
+    const db = await this.ensureDb();
+    const tx = db.transaction(STORE_PROJECTS, 'readonly');
+    const records = await requestToPromise(
+      tx.objectStore(STORE_PROJECTS).getAll() as IDBRequest<unknown[]>,
+    );
+    await transactionDone(tx);
+
+    const result: UnrestorableProject[] = [];
+    for (const raw of records) {
+      const migrated = migrateStoredProject(raw);
+      if (!migrated.ok && isRecord(raw) && typeof raw.id === 'string') {
+        result.push({
+          id: raw.id,
+          title: rawTitle(raw),
+          code: migrated.code,
+          reason: migrated.reason,
+        });
+      }
+    }
+    return result;
+  }
+
+  async getRawProjectJson(projectId: string): Promise<string | null> {
+    const db = await this.ensureDb();
+    const tx = db.transaction(STORE_PROJECTS, 'readonly');
+    const raw = await requestToPromise(
+      tx.objectStore(STORE_PROJECTS).get(projectId) as IDBRequest<unknown>,
+    );
+    await transactionDone(tx);
+    if (raw === undefined || raw === null) {
+      return null;
+    }
+    return JSON.stringify(raw, null, 2);
   }
 
   async saveProject(project: ProjectFullData): Promise<void> {
     const db = await this.ensureDb();
     const tx = db.transaction([STORE_PROJECTS, STORE_SUMMARIES], 'readwrite');
-    tx.objectStore(STORE_PROJECTS).put(project);
-    tx.objectStore(STORE_SUMMARIES).put(toProjectSummary(project));
+    const projectStore = tx.objectStore(STORE_PROJECTS);
+    // Nunca se sobrescribe un registro existente que no se pueda leer (dañado o de una versión futura).
+    const existing = await requestToPromise(projectStore.get(project.id) as IDBRequest<unknown>);
+    if (existing !== undefined && existing !== null) {
+      const check = migrateStoredProject(existing);
+      if (!check.ok) {
+        tx.abort();
+        await transactionDone(tx).catch(() => undefined);
+        throw new UnrestorableProjectError(project.id, rawTitle(existing), check.code, check.reason);
+      }
+    }
+    const stamped: ProjectFullData = {
+      ...project,
+      schemaVersion: STORED_PROJECT_SCHEMA_VERSION,
+    };
+    projectStore.put(stamped);
+    tx.objectStore(STORE_SUMMARIES).put(toProjectSummary(stamped));
     await transactionDone(tx);
   }
 
@@ -487,11 +566,22 @@ export class WebIndexedDBAdapter implements IStorageAdapter {
   async exportFullCatalogBackup(): Promise<string> {
     const db = await this.ensureDb();
     const tx = db.transaction([STORE_PROJECTS, STORE_AUDIO], 'readonly');
-    const [projects, audioRecords] = await Promise.all([
-      requestToPromise(tx.objectStore(STORE_PROJECTS).getAll() as IDBRequest<ProjectFullData[]>),
+    const [rawProjects, audioRecords] = await Promise.all([
+      requestToPromise(tx.objectStore(STORE_PROJECTS).getAll() as IDBRequest<unknown[]>),
       requestToPromise(tx.objectStore(STORE_AUDIO).getAll() as IDBRequest<AudioStoredRecord[]>),
     ]);
     await transactionDone(tx);
+
+    const projects: ProjectFullData[] = rawProjects.map((raw) => {
+      const migrated = migrateStoredProject(raw);
+      if (!migrated.ok) {
+        const label = rawTitle(raw) ?? (isRecord(raw) ? String(raw.id) : 'sin id');
+        throw new Error(
+          `No se puede generar el respaldo: la transcripción «${label}» no se puede restaurar (${migrated.reason}). Descarga su original desde Mis transcripciones antes de continuar.`,
+        );
+      }
+      return migrated.project;
+    });
 
     const backup: CatalogBackup = {
       schemaVersion: BACKUP_SCHEMA_VERSION,
@@ -518,6 +608,24 @@ export class WebIndexedDBAdapter implements IStorageAdapter {
     const projectStore = tx.objectStore(STORE_PROJECTS);
     const summaryStore = tx.objectStore(STORE_SUMMARIES);
     const audioStore = tx.objectStore(STORE_AUDIO);
+
+    // Verifica todo antes de escribir: nunca se pisa un registro existente ilegible y no hay escritura parcial.
+    for (const project of projects) {
+      const existing = await requestToPromise(projectStore.get(project.id) as IDBRequest<unknown>);
+      if (existing !== undefined && existing !== null) {
+        const check = migrateStoredProject(existing);
+        if (!check.ok) {
+          tx.abort();
+          await transactionDone(tx).catch(() => undefined);
+          throw new UnrestorableProjectError(
+            project.id,
+            rawTitle(existing),
+            check.code,
+            check.reason,
+          );
+        }
+      }
+    }
 
     for (const project of projects) {
       projectStore.put(project);

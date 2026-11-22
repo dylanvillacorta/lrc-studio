@@ -29,6 +29,13 @@ export function createStorageAdapter(
 export const storageService: IStorageAdapter = createStorageAdapter();
 
 export {
+  KNOWN_STORED_PROJECT_SCHEMA_VERSIONS,
+  UnrestorableProjectError,
+  migrateStoredProject,
+} from './storedProjectMigrations';
+export { migrateBackupJson } from './backupMigrations';
+
+export {
   TauriRustSqliteAdapter,
   WebIndexedDBAdapter,
   type IStorageAdapter,
