@@ -45,7 +45,7 @@ export const DesktopLineList = memo(function DesktopLineList({
       <WellPanel
         ref={listRef}
         data-testid="desktop-line-list"
-        className="flex-1 min-h-0 p-2.5 overflow-y-auto flex flex-col gap-1.5"
+        className="flex-1 min-h-0 p-2.5 overflow-y-auto overscroll-contain flex flex-col gap-1.5"
       >
         {lines.length > 0 ? (
           lines.map((line, index) => {

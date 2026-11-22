@@ -224,10 +224,10 @@ export const WordSyncScreen = memo(function WordSyncScreen({
         canOpenLoupe={Boolean(activeLine)}
       />
 
-      <WellPanel className="flex-1 min-h-0 p-2.5 flex flex-col justify-between gap-1.5 overflow-y-auto [@media(max-height:720px)]:p-2 [@media(max-height:720px)]:gap-1">
+      <WellPanel className="flex-1 min-h-0 p-2.5 flex flex-col justify-between gap-1.5 overflow-y-auto overscroll-contain [@media(max-height:720px)]:p-2 [@media(max-height:720px)]:gap-1">
         <div
           aria-label="Palabras de la línea"
-          className="flex items-center gap-1 overflow-x-auto text-[14px] [@media(max-height:720px)]:text-[13px] leading-snug font-semibold text-mute shrink-0"
+          className="flex items-center gap-1 overflow-x-auto overscroll-contain text-[14px] [@media(max-height:720px)]:text-[13px] leading-snug font-semibold text-mute shrink-0"
         >
           {words.length > 0 ? (
             words.map((word, idx) => {
