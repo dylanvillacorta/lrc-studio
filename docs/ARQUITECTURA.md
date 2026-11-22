@@ -189,6 +189,11 @@ Acciones disponibles:
 
 ## 7. Entrada táctil y atajos de teclado
 
+- **Sensación nativa (sin selección ni zoom):**
+  - Sin selección de texto en toda la app (`user-select: none`, `-webkit-user-select`, `-webkit-touch-callout: none`), salvo `input`, `textarea`, `[contenteditable]` y elementos con la utilidad `selectable`, donde la usuaria escribe o copia texto.
+  - Sin zoom de página: meta viewport con `maximum-scale=1, user-scalable=no`; `touch-action: manipulation` global (los componentes con arrastre propio mantienen `touch-action: none`); campos a 16 px en móvil para evitar el zoom automático de iOS.
+  - `src/lib/nativeFeel.ts` (montado una vez en `App`, con limpieza) previene `gesture*` y el pinch de varios dedos (iOS Safari), Ctrl/Cmd + rueda, Ctrl/Cmd + `+`, `-`, `=`, `0` y la selección por doble clic fuera de campos editables. No intercepta teclas sin Ctrl/Cmd, por lo que no choca con los atajos de sincronización.
+
 - **Móvil / táctil:** el botón gigante de sincronización usa `onPointerDown` (latencia cero) para marcar; no hay modos que dependan de soltar el botón.
 - **Escritorio (teclado):**
   - `Espacio`: marcar línea o palabra.
