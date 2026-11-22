@@ -399,8 +399,8 @@ export function MobileLayout() {
     activeTab === 'word' || activeTab === 'loupe' ? 'sync' : activeTab;
 
   return (
-    <div className="min-h-dvh w-full bg-bg text-ink flex justify-center">
-      <div className="w-full max-w-[430px] h-dvh flex flex-col overflow-hidden bg-bg">
+    <div className="min-h-dvh w-full bg-bg text-ink flex justify-center pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <div className="w-full max-w-[430px] h-dvh flex flex-col overflow-hidden bg-bg pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         <div className="px-4 pt-2 empty:hidden">
           <UpdateBanner updateAvailable={updateAvailable} onUpdate={applyUpdate} />
           <RestoreNoticeBanner message={restoreNotice ?? restoreError} />

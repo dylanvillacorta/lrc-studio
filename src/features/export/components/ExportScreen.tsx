@@ -181,7 +181,7 @@ export function ExportScreen({
       )}
 
       <WellPanel className="p-0 overflow-hidden">
-        <pre className="font-mono text-xs sm:text-sm leading-relaxed text-ink p-4 max-h-[340px] overflow-auto whitespace-pre">
+        <pre className="font-mono text-xs sm:text-sm leading-relaxed text-ink p-4 max-h-[340px] overflow-auto overscroll-contain whitespace-pre">
           {output}
         </pre>
       </WellPanel>

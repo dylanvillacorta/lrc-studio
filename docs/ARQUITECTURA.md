@@ -217,6 +217,13 @@ Acciones disponibles:
   - Sin selección de texto en toda la app (`user-select: none`, `-webkit-user-select`, `-webkit-touch-callout: none`), salvo `input`, `textarea`, `[contenteditable]` y elementos con la utilidad `selectable`, donde la usuaria escribe o copia texto.
   - Sin zoom de página: meta viewport con `maximum-scale=1, user-scalable=no`; `touch-action: manipulation` global (los componentes con arrastre propio mantienen `touch-action: none`); campos a 16 px en móvil para evitar el zoom automático de iOS.
   - `src/lib/nativeFeel.ts` (montado una vez en `App`, con limpieza) previene `gesture*` y el pinch de varios dedos (iOS Safari), Ctrl/Cmd + rueda, Ctrl/Cmd + `+`, `-`, `=`, `0` y la selección por doble clic fuera de campos editables. No intercepta teclas sin Ctrl/Cmd, por lo que no choca con los atajos de sincronización.
+- **Página fija (T35):** la página nunca se deforma ni se mueve mientras se toca sin parar.
+  - `overscroll-behavior: none` en `html`/`body` (sin rebote ni pull-to-refresh) y `overscroll-behavior: contain` en todo contenedor con scroll interno, para no encadenar el scroll a la página.
+  - Sin scroll horizontal de la página en 390x844 ni 1280x800 (cubierto por E2E); se corrige el elemento que desborda, el `overflow-x-hidden` global es solo red de seguridad.
+  - Altura estable en móvil con `dvh` (no `vh`); `viewport-fit=cover` y `env(safe-area-inset-*)` en el layout móvil. Al salir de un campo editable, `nativeFeel` restablece el scroll de la página si el teclado virtual la dejó desplazada.
+  - `contextmenu` prevenido fuera de campos editables (`shouldPreventContextMenu`), `-webkit-touch-callout: none`, sin arrastre nativo de imágenes ni enlaces (`shouldPreventDragStart`, salvo zonas con `data-allow-drag`; el drop de archivos no se afecta) y sin resaltado al tocar (`-webkit-tap-highlight-color: transparent`), conservando `:focus-visible` para teclado.
+  - Sin saltos de layout: cifras con `font-variant-numeric: tabular-nums` (`.font-mono`), botones que cambian de icono (Reproducir/Pausar) con tamaño fijo, y avisos en vivo fuera del flujo.
+  - El centrado de la línea activa usa `scrollTop` del contenedor (`useCenteredListScroll`), nunca `scrollIntoView`, y salta sin animación con `prefers-reduced-motion`.
 
 - **Móvil / táctil:** el botón gigante de sincronización usa `onPointerDown` (latencia cero) para marcar; no hay modos que dependan de soltar el botón.
 - **Escritorio (teclado):**

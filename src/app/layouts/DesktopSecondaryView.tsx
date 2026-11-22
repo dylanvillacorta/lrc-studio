@@ -216,7 +216,7 @@ export const DesktopSecondaryView = memo(function DesktopSecondaryView({
   }
 
   return (
-    <div className="relieve rounded-[26px] p-5 flex-1 min-h-0 overflow-y-auto">
+    <div className="relieve rounded-[26px] p-5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
       <DesktopLoupeBridge
         peaks={waveformPeaks}
         durationMs={durationMs}

@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { isMobileProject, openLyrics } from './helpers/studio';
+import {
+  createProjectWithLyricsAndWav,
+  isMobileProject,
+  openCatalog,
+  openExport,
+  openLoupe,
+  openLyrics,
+  selectSyncMode,
+} from './helpers/studio';
 
 test.describe('Sensación nativa: sin zoom y sin selección', () => {
   test('meta viewport bloquea el zoom de página', async ({ page }) => {
@@ -68,5 +76,91 @@ test.describe('Sensación nativa: sin zoom y sin selección', () => {
       plainMinus: false,
       ctrlZ: false,
     });
+  });
+});
+
+test.describe('Estabilidad de la página', () => {
+  test('sin scroll horizontal en las pantallas principales y overscroll none', async ({
+    page,
+  }, testInfo) => {
+    const isMobile = isMobileProject(testInfo);
+    const noOverflow = async (label: string) => {
+      const m = await page.evaluate(() => ({
+        sw: document.documentElement.scrollWidth,
+        cw: document.documentElement.clientWidth,
+        bw: document.body.scrollWidth,
+      }));
+      expect(m.sw, `scrollWidth en ${label}`).toBeLessThanOrEqual(m.cw);
+      expect(m.bw, `body.scrollWidth en ${label}`).toBeLessThanOrEqual(m.cw);
+    };
+
+    await page.goto('/');
+    await noOverflow('catálogo');
+    const overscroll = await page.evaluate(() => ({
+      body: getComputedStyle(document.body).overscrollBehaviorY,
+      html: getComputedStyle(document.documentElement).overscrollBehaviorY,
+    }));
+    expect(overscroll).toEqual({ body: 'none', html: 'none' });
+
+    await createProjectWithLyricsAndWav(page, isMobile);
+    await noOverflow('Línea');
+    await selectSyncMode(page, 'Palabra');
+    await noOverflow('Palabra');
+    await selectSyncMode(page, 'Karaoke');
+    await noOverflow('Karaoke');
+    await selectSyncMode(page, 'Línea');
+    await openLoupe(page);
+    await noOverflow('lupa');
+    await page.getByRole('button', { name: /Volver|Cerrar/i }).first().click();
+    await openLyrics(page, isMobile);
+    await noOverflow('Letra');
+    await openExport(page, isMobile);
+    await noOverflow('Exportar');
+    await page.getByRole('button', { name: 'Ajustes de sincronización' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await noOverflow('ajustes');
+    await page.keyboard.press('Escape');
+    await openCatalog(page, isMobile);
+    await noOverflow('catálogo con proyecto');
+  });
+
+  test('contextmenu queda prevenido en un botón y no en un textarea', async ({
+    page,
+  }, testInfo) => {
+    await page.goto('/');
+    await openLyrics(page, isMobileProject(testInfo));
+    const result = await page.evaluate(() => {
+      const fire = (el: Element) => {
+        const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+        el.dispatchEvent(ev);
+        return ev.defaultPrevented;
+      };
+      const button = document.querySelector('button');
+      const area = document.querySelector('textarea');
+      return {
+        button: button ? fire(button) : null,
+        textarea: area ? fire(area) : null,
+      };
+    });
+    expect(result).toEqual({ button: true, textarea: false });
+  });
+
+  test('el botón de reproducción no cambia de tamaño al alternar play/pausa', async ({
+    page,
+  }, testInfo) => {
+    await page.goto('/');
+    await createProjectWithLyricsAndWav(page, isMobileProject(testInfo));
+    const play = page.getByRole('button', { name: 'Reproducir', exact: true }).first();
+    const before = await play.boundingBox();
+    await play.click();
+    const pause = page.getByRole('button', { name: 'Pausar', exact: true }).first();
+    await expect(pause).toBeVisible();
+    const after = await pause.boundingBox();
+    expect(before).not.toBeNull();
+    expect(after).not.toBeNull();
+    expect(after?.width).toBeCloseTo(before?.width ?? 0, 1);
+    expect(after?.height).toBeCloseTo(before?.height ?? 0, 1);
+    expect(after?.x).toBeCloseTo(before?.x ?? 0, 1);
+    expect(after?.y).toBeCloseTo(before?.y ?? 0, 1);
   });
 });

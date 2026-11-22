@@ -85,6 +85,25 @@
     text-size-adjust: 100%;
   }
 
+  /* Sin rebote ni pull-to-refresh; la página queda fija. */
+  html,
+  body {
+    overscroll-behavior: none;
+    max-width: 100%;
+  }
+
+  /* Sin arrastrar imágenes ni enlaces (no afecta al drop de archivos). */
+  img,
+  a {
+    -webkit-user-drag: none;
+    user-drag: none;
+  }
+
+  /* Cifras que cambian a 60 FPS: ancho estable. */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
   input[type="range"] {
     touch-action: none;
   }

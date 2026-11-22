@@ -221,7 +221,7 @@ export const LineSyncScreen = memo(function LineSyncScreen({
       <WellPanel
         ref={listRef}
         data-testid="sync-line-list"
-        className="flex-1 min-h-0 p-1.5 overflow-y-auto flex flex-col gap-1"
+        className="flex-1 min-h-0 p-1.5 overflow-y-auto overscroll-contain flex flex-col gap-1"
       >
         {hasLines ? (
           lines.map((line, index) => {
