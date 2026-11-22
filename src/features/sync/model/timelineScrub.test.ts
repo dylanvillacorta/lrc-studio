@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeFloatingIndicatorLeftPct,
+  computeFramedPointerTimeMs,
+  isTapGesture,
   computePointerRatio,
   computePointerTimeMs,
   reduceTimelineInteraction,
@@ -51,6 +53,22 @@ describe('timelineScrub', () => {
       expanded: true,
       dragging: false,
     });
+  });
+
+  it('distingue un toque de un arrastre con umbral de 4 px', () => {
+    expect(isTapGesture(100, 100)).toBe(true);
+    expect(isTapGesture(100, 103)).toBe(true);
+    expect(isTapGesture(100, 96)).toBe(false);
+    expect(isTapGesture(100, 105)).toBe(false);
+    expect(isTapGesture(100, 108, 10)).toBe(true);
+  });
+
+  it('convierte el puntero con la geometría congelada al inicio del gesto', () => {
+    const frame = { left: 100, width: 200 };
+    expect(computeFramedPointerTimeMs(200, frame, 30_000)).toBe(15_000);
+    expect(computeFramedPointerTimeMs(50, frame, 30_000)).toBe(0);
+    expect(computeFramedPointerTimeMs(400, frame, 30_000)).toBe(30_000);
+    expect(computeFramedPointerTimeMs(200, frame, 0)).toBe(0);
   });
 
   it('aplica throttle al seek durante arrastre', () => {
