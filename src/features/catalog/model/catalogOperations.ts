@@ -1,6 +1,6 @@
 import { migrateProjectJson } from '@/features/export';
 import type { IStorageAdapter } from '@/storage';
-import type { ProjectFullData, ProjectSummary } from '@/types';
+import type { ProjectFullData, ProjectSummary, UnrestorableProject } from '@/types';
 import {
   buildBackupFileName,
   buildSingleProjectBackup,
@@ -28,6 +28,49 @@ export async function loadCatalogProjects(
 ): Promise<ProjectSummary[]> {
   await adapter.init();
   return adapter.listProjects();
+}
+
+/**
+ * Resultado de cargar el catálogo: proyectos restaurables y registros que no se pueden restaurar.
+ */
+export interface LoadedCatalog {
+  projects: ProjectSummary[];
+  unrestorable: UnrestorableProject[];
+}
+
+/**
+ * Carga el catálogo separando los registros ilegibles (mal formados, versión futura o migración fallida),
+ * que se conservan intactos y se muestran como «No se puede restaurar».
+ */
+export async function loadCatalog(adapter: IStorageAdapter): Promise<LoadedCatalog> {
+  await adapter.init();
+  const [summaries, unrestorable] = await Promise.all([
+    adapter.listProjects(),
+    adapter.listUnrestorableProjects(),
+  ]);
+  const blocked = new Set(unrestorable.map((item) => item.id));
+  return {
+    projects: summaries.filter((summary) => !blocked.has(summary.id)),
+    unrestorable,
+  };
+}
+
+/**
+ * Prepara la descarga del JSON original, tal como está guardado, de un registro que no se puede restaurar.
+ */
+export async function exportRawProject(
+  adapter: IStorageAdapter,
+  projectId: string,
+  title?: string | null,
+): Promise<ProjectBackupExport> {
+  await adapter.init();
+  const json = await adapter.getRawProjectJson(projectId);
+  if (json === null) {
+    throw new Error('No se encontró el registro original para descargar.');
+  }
+  const blob = new Blob([json], { type: 'application/json' });
+  const base = title && title.trim().length > 0 ? title : projectId;
+  return { json, blob, fileName: buildBackupFileName(base).replace(/-respaldo\.json$/, '-original.json') };
 }
 
 /**

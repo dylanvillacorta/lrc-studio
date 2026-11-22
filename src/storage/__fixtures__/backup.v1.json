@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": 1700000000000,
+  "projects": [
+    {
+      "id": "fixture-backup-v1",
+      "title": "Respaldo v1",
+      "artist": "Artista Fixture",
+      "audioFileName": "",
+      "durationMs": 0,
+      "totalLines": 1,
+      "syncedLines": 0,
+      "totalWords": 0,
+      "syncedWords": 0,
+      "lineProgress": 0,
+      "wordProgress": 0,
+      "updatedAt": 1700000000000,
+      "createdAt": 1699999000000,
+      "lines": [{ "id": "line-1", "text": "Hola", "startMs": null, "endMs": null, "words": [] }],
+      "waveformPeaks": [],
+      "settings": { "playbackRate": 1, "preRollSeconds": 2.5, "autoAdvance": true, "sniperMode": false }
+    }
+  ],
+  "audios": []
+}

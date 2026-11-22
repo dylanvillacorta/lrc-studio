@@ -41,6 +41,7 @@ import {
   useVersionCheck,
 } from '@/features/version';
 import { SyncButton } from '@/ui';
+import { RestoreNoticeBanner } from './RestoreNoticeBanner';
 
 /**
  * Vista principal de escritorio (≥ 768 px): 3 columnas (catálogo, editor, inspector)
@@ -66,6 +67,8 @@ export function DesktopLayout() {
     updateProjectMetadata,
     clearActiveProject,
     flushPendingSave,
+    restoreNotice,
+    restoreError,
   } = useActiveProject();
 
   const catalog = useCatalog(storage);
@@ -434,6 +437,7 @@ export function DesktopLayout() {
   return (
     <div className="min-h-dvh w-full bg-bg text-ink flex flex-col p-5 gap-4 overflow-x-hidden">
       <UpdateBanner updateAvailable={updateAvailable} onUpdate={applyUpdate} />
+      <RestoreNoticeBanner message={restoreNotice ?? restoreError} />
       <DesktopHeader
         syncMode={syncMode}
         centerView={centerView}

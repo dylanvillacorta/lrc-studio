@@ -1,0 +1,34 @@
+{
+  "id": "fixture-v1",
+  "title": "Proyecto guardado v1",
+  "artist": "Artista Fixture",
+  "audioFileName": "demo.mp3",
+  "durationMs": 120000,
+  "totalLines": 1,
+  "syncedLines": 1,
+  "totalWords": 2,
+  "syncedWords": 2,
+  "lineProgress": 100,
+  "wordProgress": 100,
+  "updatedAt": 1700000000000,
+  "createdAt": 1699999000000,
+  "lines": [
+    {
+      "id": "line-1",
+      "text": "Hola mundo",
+      "startMs": 500,
+      "endMs": 2000,
+      "words": [
+        { "id": "w-1", "text": "Hola", "startMs": 500, "endMs": 1100 },
+        { "id": "w-2", "text": "mundo", "startMs": 1150, "endMs": 2000 }
+      ]
+    }
+  ],
+  "waveformPeaks": [0.1, 0.4, 0.8, 0.3],
+  "settings": {
+    "playbackRate": 1,
+    "preRollSeconds": 2.5,
+    "autoAdvance": true,
+    "sniperMode": true
+  }
+}

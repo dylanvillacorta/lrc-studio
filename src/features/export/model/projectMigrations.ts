@@ -1,3 +1,8 @@
+import {
+  formatUnknownSchemaError,
+  runMigrations,
+  type MigrationStep,
+} from '@/lib/schemaMigration';
 import type { LyricLine, SongMetadata, WordTiming } from '@/types';
 
 /**
@@ -28,16 +33,19 @@ export type ParseProjectJsonResult =
   | { ok: true; data: ParsedProjectJson }
   | { ok: false; error: string };
 
-interface MigrationStep {
-  nextVersion: KnownProjectSchemaVersion;
-  migrate: (doc: Record<string, unknown>) => Record<string, unknown>;
-}
+type ProjectMigrationStep = MigrationStep<
+  KnownProjectSchemaVersion,
+  Record<string, unknown>
+>;
 
 /**
  * Tabla de pasos de migración secuencial entre versiones conocidas del esquema JSON.
  * Cada entrada transforma un documento de su versión origen a la siguiente versión.
+ * Los pasos nunca se borran ni se reescriben.
  */
-const MIGRATION_STEPS: Partial<Record<KnownProjectSchemaVersion, MigrationStep>> = {
+export const PROJECT_MIGRATION_STEPS: Partial<
+  Record<KnownProjectSchemaVersion, ProjectMigrationStep>
+> = {
   '1.0': {
     nextVersion: '2.0',
     migrate: (doc) => ({
@@ -89,17 +97,6 @@ function resolveSchemaVersion(rawVersion: unknown): KnownProjectSchemaVersion | 
     return PROJECT_JSON_SCHEMA_VERSION;
   }
   return null;
-}
-
-function formatSchemaVersionLabel(rawVersion: unknown): string {
-  if (typeof rawVersion === 'string' || typeof rawVersion === 'number') {
-    return String(rawVersion);
-  }
-  try {
-    return JSON.stringify(rawVersion) ?? String(rawVersion);
-  } catch {
-    return String(rawVersion);
-  }
 }
 
 function mapMigratedLines(
@@ -157,29 +154,25 @@ export function migrateProjectJson(parsed: unknown): ParseProjectJsonResult {
 
   const resolvedVersion = resolveSchemaVersion(parsed.schemaVersion);
   if (!resolvedVersion) {
-    const versionLabel = formatSchemaVersionLabel(parsed.schemaVersion);
-    return {
-      ok: false,
-      error: `Esta versión de LRC Studio no reconoce el esquema "${versionLabel}", actualiza la app.`,
-    };
+    return { ok: false, error: formatUnknownSchemaError(parsed.schemaVersion) };
   }
 
-  let currentVersion: KnownProjectSchemaVersion = resolvedVersion;
-  let currentDoc: Record<string, unknown> = parsed;
-  let steps = 0;
-
-  while (
-    currentVersion !== PROJECT_JSON_SCHEMA_VERSION &&
-    steps < KNOWN_PROJECT_SCHEMA_VERSIONS.length
-  ) {
-    const step = MIGRATION_STEPS[currentVersion];
-    if (!step) {
-      break;
-    }
-    currentDoc = step.migrate(currentDoc);
-    currentVersion = step.nextVersion;
-    steps += 1;
+  let migrated: ReturnType<typeof runMigrations<KnownProjectSchemaVersion, Record<string, unknown>>>;
+  try {
+    migrated = runMigrations<KnownProjectSchemaVersion, Record<string, unknown>>({
+      steps: PROJECT_MIGRATION_STEPS,
+      knownVersions: KNOWN_PROJECT_SCHEMA_VERSIONS,
+      currentVersion: PROJECT_JSON_SCHEMA_VERSION,
+      fromVersion: resolvedVersion,
+      doc: parsed,
+    });
+  } catch {
+    return { ok: false, error: 'Falló un paso de migración del proyecto JSON.' };
   }
+  if (!migrated.ok) {
+    return { ok: false, error: migrated.error };
+  }
+  const currentDoc = migrated.doc;
 
   if (!Array.isArray(currentDoc.lines)) {
     return {

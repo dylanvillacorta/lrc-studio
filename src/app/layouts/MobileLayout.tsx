@@ -35,6 +35,7 @@ import {
 import { downloadTextFile } from '@/lib/download';
 import type { LyricLine } from '@/types';
 import { NavBar, ScrollShadow, type NavBarItem } from '@/ui';
+import { RestoreNoticeBanner } from './RestoreNoticeBanner';
 
 const NAV_ITEMS: readonly NavBarItem<'catalog' | 'lyrics' | 'sync' | 'export'>[] = [
   { id: 'catalog', label: 'Catálogo', icon: 'library' },
@@ -111,6 +112,8 @@ export function MobileLayout() {
     updateProjectMetadata,
     clearActiveProject,
     flushPendingSave,
+    restoreNotice,
+    restoreError,
   } = useActiveProject();
 
   const catalog = useCatalog(storage);
@@ -400,6 +403,7 @@ export function MobileLayout() {
       <div className="w-full max-w-[430px] h-dvh flex flex-col overflow-hidden bg-bg">
         <div className="px-4 pt-2 empty:hidden">
           <UpdateBanner updateAvailable={updateAvailable} onUpdate={applyUpdate} />
+          <RestoreNoticeBanner message={restoreNotice ?? restoreError} />
         </div>
         {showTopHeader ? (
           <MobileHeader
@@ -426,6 +430,13 @@ export function MobileLayout() {
           {activeTab === 'catalog' ? (
             <CatalogPanel
               projects={catalog.projects}
+              unrestorable={catalog.unrestorable}
+              onDownloadOriginal={async (id) => {
+                const raw = await catalog.exportRawProject(id);
+                if (raw) {
+                  downloadTextFile(raw.fileName, raw.json, 'application/json;charset=utf-8');
+                }
+              }}
               activeProjectId={project?.id ?? null}
               loading={catalog.loading}
               error={catalog.error}

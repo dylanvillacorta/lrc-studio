@@ -1,8 +1,9 @@
 import { memo, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import type { ProjectSummary } from '@/types';
+import type { ProjectSummary, UnrestorableProject } from '@/types';
 import { Icon, IconButton, RaisedButton, ScrollShadow, WellPanel } from '@/ui';
 import { filterProjectsByQuery } from '../model/catalogModel';
 import { ProjectCard } from './ProjectCard';
+import { UnrestorableCard } from './UnrestorableCard';
 
 export interface CatalogPanelProps {
   projects: ProjectSummary[];
@@ -18,6 +19,10 @@ export interface CatalogPanelProps {
   onImportBackup?: (jsonString: string) => Promise<boolean> | boolean | void;
   onDelete: (projectId: string) => void;
   onClose?: () => void;
+  /** Registros guardados que no se pueden restaurar (se muestran sin opción de abrir). */
+  unrestorable?: UnrestorableProject[];
+  /** Descarga el JSON original, tal como está guardado, de un registro no restaurable. */
+  onDownloadOriginal?: (projectId: string) => void;
 }
 
 /**
@@ -37,6 +42,8 @@ export const CatalogPanel = memo(function CatalogPanel({
   onImportBackup,
   onDelete,
   onClose,
+  unrestorable = [],
+  onDownloadOriginal,
 }: CatalogPanelProps) {
   const [query, setQuery] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
@@ -148,11 +155,19 @@ export const CatalogPanel = memo(function CatalogPanel({
         className="flex-1 min-h-0 -mx-4"
         contentClassName="px-4 py-3 flex flex-col gap-4"
       >
+        {unrestorable.map((item) => (
+          <UnrestorableCard
+            key={item.id}
+            item={item}
+            onDownloadOriginal={(id) => onDownloadOriginal?.(id)}
+            onDelete={onDelete}
+          />
+        ))}
         {loading && projects.length === 0 ? (
           <WellPanel className="text-center py-8 px-4 text-sm font-semibold text-mute">
             Cargando transcripciones...
           </WellPanel>
-        ) : projects.length === 0 ? (
+        ) : projects.length === 0 && unrestorable.length > 0 ? null : projects.length === 0 ? (
           <WellPanel className="text-center py-8 px-4 flex flex-col items-center gap-1.5">
             <p className="m-0 text-sm font-extrabold text-ink">
               Aún no tienes transcripciones guardadas.
