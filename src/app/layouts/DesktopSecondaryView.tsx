@@ -36,7 +36,7 @@ export interface DesktopSecondaryViewProps {
   onReplaceLines: (nextLines: LyricLine[], recordHistory?: boolean) => void;
   onImportJson: (parsed: ParsedProjectJson) => Promise<void>;
   onChangeLoupeBounds: (bounds: LineBounds) => void;
-  onPlayLoupeBurst: () => void;
+  onPlayLoupeLine: () => void;
   onSetActiveTab: (tab: ActiveTab) => void;
 }
 
@@ -51,7 +51,7 @@ const DesktopLoupeBridge = memo(function DesktopLoupeBridge({
   isSaved,
   loupeReturnTab,
   onChangeLoupeBounds,
-  onPlayLoupeBurst,
+  onPlayLoupeLine,
   onSetActiveTab,
 }: {
   peaks: number[];
@@ -64,7 +64,7 @@ const DesktopLoupeBridge = memo(function DesktopLoupeBridge({
   isSaved: boolean;
   loupeReturnTab: 'sync' | 'word';
   onChangeLoupeBounds: (bounds: LineBounds) => void;
-  onPlayLoupeBurst: () => void;
+  onPlayLoupeLine: () => void;
   onSetActiveTab: (tab: ActiveTab) => void;
 }) {
   const effectiveTimeMs = usePlaybackTime(timeStore, fallbackTimeMs, 33);
@@ -78,7 +78,7 @@ const DesktopLoupeBridge = memo(function DesktopLoupeBridge({
       lines={lines}
       isSaved={isSaved}
       onChange={onChangeLoupeBounds}
-      onPlayBurst={onPlayLoupeBurst}
+      onPlayLine={onPlayLoupeLine}
       onApply={(bounds) => {
         onChangeLoupeBounds(bounds);
         onSetActiveTab(loupeReturnTab);
@@ -111,7 +111,7 @@ export const DesktopSecondaryView = memo(function DesktopSecondaryView({
   onReplaceLines,
   onImportJson,
   onChangeLoupeBounds,
-  onPlayLoupeBurst,
+  onPlayLoupeLine,
   onSetActiveTab,
 }: DesktopSecondaryViewProps) {
   if (centerView === 'catalog') {
@@ -221,7 +221,7 @@ export const DesktopSecondaryView = memo(function DesktopSecondaryView({
         isSaved={isSaved}
         loupeReturnTab={loupeReturnTab}
         onChangeLoupeBounds={onChangeLoupeBounds}
-        onPlayLoupeBurst={onPlayLoupeBurst}
+        onPlayLoupeLine={onPlayLoupeLine}
         onSetActiveTab={onSetActiveTab}
       />
     </div>

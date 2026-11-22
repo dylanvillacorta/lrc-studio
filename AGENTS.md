@@ -319,7 +319,7 @@ Este repositorio implementa **LRC Studio**, una aplicación web local-first (pre
 
 - [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md): contratos, estrategia de almacenamiento, autoguardado, catálogo y entrada táctil/teclado.
 - [docs/DISENO.md](docs/DISENO.md) y [docs/wireframe/](docs/wireframe/): sistema visual «Estudio táctil», tokens, componentes UI y pantallas.
-- [docs/base/lyricsync_studio_pro_2_00.tsx](docs/base/lyricsync_studio_pro_2_00.tsx): referencia de lógica de sincronización a conservar (modo línea, palabra por palabra con Pre-Roll y Francotirador, ráfaga de línea aislada, lupa de onda con bordes arrastrables, inspector 10 y 50 ms, karaoke 60 FPS, exportación JSON, ELRC y LRC).
+- [docs/base/lyricsync_studio_pro_2_00.tsx](docs/base/lyricsync_studio_pro_2_00.tsx): referencia de lógica de sincronización a conservar (modo línea, palabra por palabra con Pre-Roll, lupa de onda con bordes arrastrables, inspector 10 y 50 ms, karaoke 60 FPS, exportación JSON, ELRC y LRC).
 - [docs/RELEASE.md](docs/RELEASE.md): versionado, cache busting, Docker, GHCR y SEO.
 - [docs/BACKLOG.md](docs/BACKLOG.md): backlog planificado del sprint, dependencias y paralelismo.
 

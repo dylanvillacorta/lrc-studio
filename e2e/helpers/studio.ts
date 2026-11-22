@@ -84,7 +84,7 @@ export async function waitForSaved(page: Page): Promise<void> {
 
 export async function selectSyncMode(
   page: Page,
-  modeLabel: 'Línea' | 'Palabra' | 'Ráfaga' | 'Karaoke',
+  modeLabel: 'Línea' | 'Palabra' | 'Karaoke',
 ): Promise<void> {
   await page
     .getByRole('group', { name: 'Modo de sincronización' })

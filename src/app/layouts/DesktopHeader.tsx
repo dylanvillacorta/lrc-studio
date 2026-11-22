@@ -10,13 +10,12 @@ import {
   type SegmentedOption,
 } from '@/ui';
 
-export type DesktopSyncMode = 'line' | 'word' | 'burst' | 'karaoke';
+export type DesktopSyncMode = 'line' | 'word' | 'karaoke';
 export type DesktopCenterView = 'editor' | 'lyrics' | 'export' | 'catalog' | 'loupe';
 
 const DESKTOP_MODE_OPTIONS: readonly SegmentedOption<DesktopSyncMode>[] = [
   { value: 'line', label: 'Línea' },
   { value: 'word', label: 'Palabra' },
-  { value: 'burst', label: 'Ráfaga' },
   { value: 'karaoke', label: 'Karaoke' },
 ];
 

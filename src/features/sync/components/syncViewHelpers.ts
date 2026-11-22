@@ -6,7 +6,7 @@ import type { AudioFileInput } from '@/lib/audioImport';
 import { createSynthesizedDemoWav } from '@/lib/demoWav';
 import type { LyricLine, PreRollTrafficLight } from '@/types';
 
-export type SyncSegmentedMode = 'line' | 'word' | 'burst' | 'karaoke';
+export type SyncSegmentedMode = 'line' | 'word' | 'karaoke';
 
 export const SYNC_MODE_OPTIONS: readonly {
   value: SyncSegmentedMode;
@@ -14,7 +14,6 @@ export const SYNC_MODE_OPTIONS: readonly {
 }[] = [
   { value: 'line', label: 'Línea' },
   { value: 'word', label: 'Palabra' },
-  { value: 'burst', label: 'Ráfaga' },
   { value: 'karaoke', label: 'Karaoke' },
 ];
 

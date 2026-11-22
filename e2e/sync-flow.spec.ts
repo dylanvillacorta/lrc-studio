@@ -8,7 +8,7 @@ import {
 } from './helpers/studio';
 
 test.describe('Flujo de sincronización completo', () => {
-  test('carga demo, marca líneas con pointerdown/tap, deshace, marca palabras y abre Ráfaga y Karaoke sin errores', async ({
+  test('carga demo, marca líneas con pointerdown/tap, deshace, marca palabras y abre Karaoke sin errores', async ({
     page,
   }, testInfo) => {
     const assertNoErrors = trackErrors(page);
@@ -64,10 +64,19 @@ test.describe('Flujo de sincronización completo', () => {
     // La siguiente palabra de "Subimos el volumen..." es "el"
     await expect(page.getByText('el', { exact: true }).first()).toBeVisible();
 
-    // Abrir Ráfaga y detenerla
-    await selectSyncMode(page, 'Ráfaga');
-    await expect(page.getByText(/Ráfaga en bucle/i)).toBeVisible();
-    await page.getByRole('button', { name: 'Detener ráfaga' }).click();
+    // Sin Francotirador, Mantener ni píldoras de navegación de palabra
+    await expect(page.getByText('Francotirador')).toHaveCount(0);
+    await expect(page.getByText('Mantener', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('palabra anterior')).toHaveCount(0);
+
+    // El selector de modo tiene exactamente 3 opciones: Línea, Palabra y Karaoke
+    const modeButtons = page
+      .getByRole('group', { name: 'Modo de sincronización' })
+      .first()
+      .getByRole('button');
+    await expect(modeButtons).toHaveCount(3);
+    await expect(modeButtons).toHaveText(['Línea', 'Palabra', 'Karaoke']);
+    await expect(page.getByText('Ráfaga')).toHaveCount(0);
 
     // Abrir Karaoke
     await selectSyncMode(page, 'Karaoke');

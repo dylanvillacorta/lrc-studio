@@ -10,8 +10,6 @@ import type { LyricLine } from '@/types';
 import {
   Icon,
   IconButton,
-  Pill,
-  RaisedButton,
   Segmented,
   SyncButton,
   WellPanel,
@@ -55,7 +53,6 @@ export interface LineSyncScreenProps {
   playingLineIndex?: number;
   trackedListIndex?: number;
   syncMode: SyncSegmentedMode;
-  burstWindow?: { windowStartMs: number; windowEndMs: number } | null;
   onSelectMode: (mode: SyncSegmentedMode) => void;
   onSeek: (targetMs: number) => void;
   onSeekStart?: () => void;
@@ -67,12 +64,11 @@ export interface LineSyncScreenProps {
   onClearLineMark?: (index: number) => void;
   onStampLine: (nowMs: number) => void;
   onOpenLoupe: () => void;
-  onStopBurst: () => void;
   onUploadAudio: (file: File) => Promise<void>;
 }
 
 /**
- * Pantalla móvil de sincronización por línea y modo ráfaga de línea aislada.
+ * Pantalla móvil de sincronización por línea.
  */
 export const LineSyncScreen = memo(function LineSyncScreen({
   hasAudio,
@@ -89,7 +85,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   playingLineIndex = -1,
   trackedListIndex = activeLineIndex,
   syncMode,
-  burstWindow = null,
   onSelectMode,
   onSeek,
   onSeekStart,
@@ -101,7 +96,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   onClearLineMark,
   onStampLine,
   onOpenLoupe,
-  onStopBurst,
   onUploadAudio,
 }: LineSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
@@ -186,24 +180,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
         onOpenLoupe={onOpenLoupe}
         canOpenLoupe={Boolean(activeLine)}
       />
-
-      {syncMode === 'burst' && burstWindow ? (
-        <div className="flex items-center justify-between gap-2 px-1 flex-none">
-          <Pill variant="acc">
-            <span>
-              Ráfaga en bucle · {formatDisplayTime(burstWindow.windowStartMs)} –{' '}
-              {formatDisplayTime(burstWindow.windowEndMs)}
-            </span>
-          </Pill>
-          <RaisedButton
-            size="sm"
-            onClick={onStopBurst}
-            className="min-h-11 px-3 text-xs font-extrabold"
-          >
-            Detener ráfaga
-          </RaisedButton>
-        </div>
-      ) : null}
 
       <div className="flex items-center justify-between px-0.5 flex-none">
         <IconButton

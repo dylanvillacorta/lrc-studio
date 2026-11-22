@@ -27,7 +27,6 @@ const SAMPLE_PROJECT: ProjectFullData = {
   waveformPeaks: [0.2, 0.5, 0.8, 0.4, 0.6],
   settings: {
     preRollSeconds: 2.5,
-    sniperMode: true,
     autoAdvance: true,
     playbackRate: 1,
   },
@@ -101,16 +100,8 @@ function createSampleContext(
       clearMarksFromLine: () => {},
       setLineStartTime: () => {},
       undoLine: () => 0,
-      stampWordStart: () => ({
-        shouldPause: false,
-        shouldRewindPreRoll: false,
-        completedLine: false,
-      }),
-      stampWordEnd: () => ({
-        shouldPause: false,
-        shouldRewindPreRoll: false,
-        completedLine: false,
-      }),
+      stampWordStart: () => ({ completedAll: false }),
+      undoWordStamp: () => null,
       distributeWordsInLine: () => {},
       nudgeWord: () => {},
       nudgeLine: () => {},
@@ -158,7 +149,9 @@ describe('DesktopLayout y montaje de versión', () => {
     expect(html).toContain('https://dylanvillacorta.com');
     expect(html).toContain('Línea');
     expect(html).toContain('Palabra');
-    expect(html).toContain('Ráfaga');
+    expect(html).not.toContain('Ráfaga');
+    expect(html).not.toContain('Francotirador');
+    expect(html).not.toContain('Mantener');
     expect(html).toContain('Karaoke');
     expect(html).toContain('Guardado');
     expect(html).toContain('Exportar LRC / ELRC / JSON');

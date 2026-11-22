@@ -23,7 +23,7 @@ src/
     <tema>/
       components/
       hooks/
-      model/                      # Lógica pura sin React (temporización, Pre-Roll, Francotirador, progreso, exportadores LRC/ELRC/JSON); se prueba con Vitest
+      model/                      # Lógica pura sin React (temporización, Pre-Roll, foco automático de palabra, progreso, exportadores LRC/ELRC/JSON); se prueba con Vitest
       index.ts                    # API pública de la feature
   storage/
     IStorageAdapter.ts
@@ -189,20 +189,21 @@ Acciones disponibles:
 
 ## 7. Entrada táctil y atajos de teclado
 
-- **Móvil / táctil:** el botón gigante de sincronización usa `onPointerDown` (latencia cero) para marcar y `onPointerUp` para el modo mantener.
+- **Móvil / táctil:** el botón gigante de sincronización usa `onPointerDown` (latencia cero) para marcar; no hay modos que dependan de soltar el botón.
 - **Escritorio (teclado):**
   - `Espacio`: marcar línea o palabra.
   - `R`: repetir Pre-Roll (`-2.5 s`).
   - `P`: reproducir / pausar.
   - `Flecha izquierda / derecha`: ajustar `±50 ms`.
   - `[` / `]`: ajustar `±10 ms` *(supuesto: se asignan los corchetes para el ajuste fino de 10 ms)*.
+  - `Z`, `Ctrl+Z` o `Retroceso`: deshacer (en modo Palabra, la última palabra marcada).
 
 ## 8. Lógica de sincronización a conservar
 
 Tomada de [docs/base/lyricsync_studio_pro_2_00.tsx](base/lyricsync_studio_pro_2_00.tsx):
 - Modo **Línea**.
-- Modo **Palabra por palabra** con **Pre-Roll** y **Francotirador**.
-- **Ráfaga** de línea aislada.
+- Modo **Palabra por palabra** con **Pre-Roll** y foco automático: cada marca avanza sola a la próxima palabra sin marca (cruzando líneas) y el deshacer quita la última palabra marcada, deja el foco en ella y vuelve el audio a `inicio − Pre-Roll`.
+- El botón **Escuchar línea** de la lupa reproduce la línea con Pre-Roll y Post-Roll (el antiguo modo Ráfaga ya no existe; el selector tiene Línea, Palabra y Karaoke).
 - **Lupa de onda** con bordes arrastrables e inspector de `10 ms` y `50 ms`.
 - **Karaoke a 60 FPS**.
 - Exportación a **JSON**, **ELRC** y **LRC**.

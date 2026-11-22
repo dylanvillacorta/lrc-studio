@@ -17,13 +17,11 @@ export interface DesktopWordStageProps {
   timeStore?: PlaybackTimeStore | null;
   currentTimeMs?: number;
   preRollMs?: number;
-  sniperMode: boolean;
-  holdMode: boolean;
-  onToggleSniper: () => void;
-  onToggleHold: () => void;
+  /** `true` cuando ya no queda ninguna palabra sin marca en toda la canción. */
+  allWordsSynced?: boolean;
+  onSelectWord: (wordIndex: number) => void;
   onRepeatPreRoll: () => void;
   onStampWordStart: () => void;
-  onStampWordEnd: () => void;
 }
 
 const DesktopPreRollStatus = memo(function DesktopPreRollStatus({
@@ -53,7 +51,7 @@ const DesktopPreRollStatus = memo(function DesktopPreRollStatus({
 
 /**
  * Visor de palabra objetivo en escritorio con semáforo Pre-Roll,
- * modos Francotirador/Mantener, botón Repetir Pre-Roll y MARCAR PALABRA.
+ * foco automático, botón Repetir Pre-Roll y MARCAR PALABRA.
  */
 export const DesktopWordStage = memo(function DesktopWordStage({
   activeLine,
@@ -61,13 +59,10 @@ export const DesktopWordStage = memo(function DesktopWordStage({
   timeStore = null,
   currentTimeMs = 0,
   preRollMs = DEFAULT_PRE_ROLL_MS,
-  sniperMode,
-  holdMode,
-  onToggleSniper,
-  onToggleHold,
+  allWordsSynced = false,
+  onSelectWord,
   onRepeatPreRoll,
   onStampWordStart,
-  onStampWordEnd,
 }: DesktopWordStageProps) {
   const words = activeLine?.words ?? [];
   const targetWord = words[activeWordIndex];
@@ -75,27 +70,6 @@ export const DesktopWordStage = memo(function DesktopWordStage({
 
   return (
     <WellPanel className="p-6 flex flex-col items-center gap-3.5 text-center">
-      <div className="flex flex-wrap items-center justify-center gap-2 w-full">
-        <RaisedButton
-          size="sm"
-          variant={sniperMode ? 'acc' : 'default'}
-          aria-pressed={sniperMode}
-          onClick={onToggleSniper}
-          className="min-h-10 px-3.5 text-xs font-extrabold"
-        >
-          Francotirador
-        </RaisedButton>
-        <RaisedButton
-          size="sm"
-          variant={holdMode ? 'acc' : 'default'}
-          aria-pressed={holdMode}
-          onClick={onToggleHold}
-          className="min-h-10 px-3.5 text-xs font-extrabold"
-        >
-          Mantener
-        </RaisedButton>
-      </div>
-
       <div className="text-[18px] font-semibold text-mute leading-snug">
         {words.length > 0 ? (
           words.map((word, idx) => {
@@ -104,17 +78,21 @@ export const DesktopWordStage = memo(function DesktopWordStage({
             return (
               <span key={word.id}>
                 {idx > 0 ? ' ' : ''}
-                <span
-                  className={
+                <button
+                  type="button"
+                  onClick={() => onSelectWord(idx)}
+                  aria-current={isTarget ? 'true' : undefined}
+                  aria-label={`Elegir palabra «${word.text}»`}
+                  className={`cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc rounded-[6px] ${
                     isTarget
                       ? 'text-ink font-extrabold underline decoration-acc decoration-2 underline-offset-[6px]'
                       : isDone
                         ? 'text-ok font-extrabold'
                         : 'text-mute'
-                  }
+                  }`}
                 >
                   {word.text}
-                </span>
+                </button>
               </span>
             );
           })
@@ -138,6 +116,12 @@ export const DesktopWordStage = memo(function DesktopWordStage({
         preRollMs={preRollMs}
       />
 
+      {allWordsSynced ? (
+        <p role="status" className="m-0 text-xs font-bold text-mute">
+          Todas las palabras están marcadas. Deshaz (Z) para re-marcar la última.
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-center gap-3 mt-1">
         <RaisedButton
           onClick={onRepeatPreRoll}
@@ -150,9 +134,8 @@ export const DesktopWordStage = memo(function DesktopWordStage({
 
         <SyncButton
           title="MARCAR PALABRA"
-          disabled={!targetWord}
+          disabled={!targetWord || allWordsSynced}
           onPointerDown={onStampWordStart}
-          onPointerUp={onStampWordEnd}
           onContextMenu={(e) => e.preventDefault()}
           className="min-h-14 h-14 px-8 rounded-[20px] min-w-[240px]"
           style={{
