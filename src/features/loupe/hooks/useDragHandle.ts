@@ -4,6 +4,8 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 export interface UseDragHandleOptions {
   /** Convierte `clientX` de pantalla a milisegundos dentro de la ventana. */
   clientXToMs: (clientX: number) => number;
+  /** Posición actual del borde en ms: permite conservar el offset de agarre al tomarlo. */
+  edgeMs?: number;
   /** Se ejecuta en cada movimiento mientras el borde está capturado. */
   onDrag: (targetMs: number) => void;
   /** Se ejecuta al iniciar el arrastre. */
@@ -33,6 +35,7 @@ export interface UseDragHandleReturn {
  */
 export function useDragHandle({
   clientXToMs,
+  edgeMs,
   onDrag,
   onDragStart,
   onDragEnd,
@@ -41,6 +44,7 @@ export function useDragHandle({
 }: UseDragHandleOptions): UseDragHandleReturn {
   const [isDragging, setIsDragging] = useState(false);
   const activePointerIdRef = useRef<number | null>(null);
+  const grabOffsetMsRef = useRef(0);
 
   const releaseCapture = useCallback(
     (target: HTMLElement, pointerId: number) => {
@@ -71,11 +75,14 @@ export function useDragHandle({
       activePointerIdRef.current = event.pointerId;
       setIsDragging(true);
 
-      const initialMs = clientXToMs(event.clientX);
+      // El borde sigue al dedo desde donde se agarró: se conserva la distancia dedo-borde.
+      const pointerMs = clientXToMs(event.clientX);
+      grabOffsetMsRef.current = edgeMs === undefined ? 0 : pointerMs - edgeMs;
+      const initialMs = pointerMs - grabOffsetMsRef.current;
       onDragStart?.(initialMs);
       onDrag(initialMs);
     },
-    [clientXToMs, disabled, onDrag, onDragStart],
+    [clientXToMs, disabled, edgeMs, onDrag, onDragStart],
   );
 
   const onPointerMove = useCallback(
@@ -83,7 +90,7 @@ export function useDragHandle({
       if (activePointerIdRef.current !== event.pointerId) {
         return;
       }
-      const nextMs = clientXToMs(event.clientX);
+      const nextMs = clientXToMs(event.clientX) - grabOffsetMsRef.current;
       onDrag(nextMs);
     },
     [clientXToMs, onDrag],
@@ -94,7 +101,7 @@ export function useDragHandle({
       if (activePointerIdRef.current !== event.pointerId) {
         return;
       }
-      const finalMs = clientXToMs(event.clientX);
+      const finalMs = clientXToMs(event.clientX) - grabOffsetMsRef.current;
       releaseCapture(event.currentTarget, event.pointerId);
       onDragEnd?.(finalMs);
     },
