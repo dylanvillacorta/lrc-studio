@@ -29,6 +29,7 @@ import {
   SYNC_SEGMENTED_CLASS,
   type SyncSegmentedMode,
 } from './syncViewHelpers';
+import { TransportBar } from './TransportBar';
 import { WaveformStrip } from './WaveformStrip';
 
 export interface WordStampFeedback {
@@ -45,6 +46,7 @@ export interface WordSyncScreenProps {
   latencyMs?: number;
   durationMs: number;
   isPlaying: boolean;
+  playbackRate: number;
   lines: readonly LyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
@@ -55,6 +57,10 @@ export interface WordSyncScreenProps {
   onSeekStart?: () => void;
   onSeekEnd?: () => void;
   onPlay: () => Promise<void> | void;
+  /** Salta al milisegundo y suena siempre (idempotente). */
+  onPlayFrom: (targetMs: number) => void;
+  onTogglePlay: () => void;
+  onChangePlaybackRate: (rate: number) => void;
   onStampWordStart: (nowMs: number) => WordStampFeedback;
   /** Elige a mano la palabra de la línea activa que se va a (re)marcar. */
   onSelectWord: (wordIndex: number) => void;
@@ -115,6 +121,7 @@ export const WordSyncScreen = memo(function WordSyncScreen({
   latencyMs = 0,
   durationMs,
   isPlaying,
+  playbackRate,
   lines,
   activeLineIndex,
   activeWordIndex,
@@ -125,6 +132,9 @@ export const WordSyncScreen = memo(function WordSyncScreen({
   onSeekStart,
   onSeekEnd,
   onPlay,
+  onPlayFrom,
+  onTogglePlay,
+  onChangePlaybackRate,
   onStampWordStart,
   onSelectWord,
   onUndoWord,
@@ -161,8 +171,7 @@ export const WordSyncScreen = memo(function WordSyncScreen({
 
   const handleRepeatPreRoll = () => {
     const startMs = computePreRollStartMs(targetStartMs, preRollMs);
-    onSeek(startMs);
-    void onPlay();
+    onPlayFrom(startMs);
     setLiveNotice(`Repitiendo Pre-Roll desde ${formatTime(startMs)}`);
   };
 
@@ -222,6 +231,17 @@ export const WordSyncScreen = memo(function WordSyncScreen({
         onSeekEnd={onSeekEnd}
         onOpenLoupe={onOpenLoupe}
         canOpenLoupe={Boolean(activeLine)}
+      />
+
+      <TransportBar
+        compact
+        isPlaying={isPlaying}
+        playbackRate={playbackRate}
+        durationMs={durationMs}
+        readNowMs={readNowMs}
+        onSeek={onSeek}
+        onTogglePlay={onTogglePlay}
+        onChangePlaybackRate={onChangePlaybackRate}
       />
 
       <WellPanel className="flex-1 min-h-0 p-2.5 flex flex-col justify-between gap-1.5 overflow-y-auto overscroll-contain [@media(max-height:720px)]:p-2 [@media(max-height:720px)]:gap-1">

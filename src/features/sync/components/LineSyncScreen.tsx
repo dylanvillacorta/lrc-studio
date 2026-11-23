@@ -17,11 +17,11 @@ import {
 import { LineRowActionBar } from './LineRowActions';
 import { NoAudioCard } from './NoAudioCard';
 import {
-  getNextPlaybackRate,
   SYNC_MODE_OPTIONS,
   SYNC_SEGMENTED_CLASS,
   type SyncSegmentedMode,
 } from './syncViewHelpers';
+import { TransportBar } from './TransportBar';
 import { WaveformStrip } from './WaveformStrip';
 
 export type { SyncSegmentedMode };
@@ -181,42 +181,15 @@ export const LineSyncScreen = memo(function LineSyncScreen({
         canOpenLoupe={Boolean(activeLine)}
       />
 
-      <div className="flex items-center justify-between px-0.5 flex-none">
-        <IconButton
-          aria-label={`Velocidad ${playbackRate}x`}
-          onClick={() => onChangePlaybackRate(getNextPlaybackRate(playbackRate))}
-          className="font-mono text-xs font-extrabold min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
-        >
-          <span>{`${playbackRate}×`}</span>
-        </IconButton>
-
-        <IconButton
-          round
-          aria-label="Retroceder 5 segundos"
-          onClick={() => onSeek(Math.max(0, readNowMs() - 5000))}
-          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
-        >
-          <Icon name="rewind" size={18} />
-        </IconButton>
-
-        <IconButton
-          round
-          aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
-          onClick={onTogglePlay}
-          className="text-acc min-h-12 min-w-12 [@media(max-height:720px)]:min-h-11 [@media(max-height:720px)]:min-w-11"
-        >
-          <Icon name={isPlaying ? 'pause' : 'play'} size={22} />
-        </IconButton>
-
-        <IconButton
-          round
-          aria-label="Adelantar 5 segundos"
-          onClick={() => onSeek(Math.min(durationMs, readNowMs() + 5000))}
-          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
-        >
-          <Icon name="forward" size={18} />
-        </IconButton>
-      </div>
+      <TransportBar
+        isPlaying={isPlaying}
+        playbackRate={playbackRate}
+        durationMs={durationMs}
+        readNowMs={readNowMs}
+        onSeek={onSeek}
+        onTogglePlay={onTogglePlay}
+        onChangePlaybackRate={onChangePlaybackRate}
+      />
 
       <WellPanel
         ref={listRef}

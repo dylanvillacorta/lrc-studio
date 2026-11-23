@@ -195,6 +195,10 @@ describe('WordSyncScreen', () => {
         onSelectMode={vi.fn()}
         onSeek={vi.fn()}
         onPlay={vi.fn()}
+        playbackRate={1}
+        onPlayFrom={vi.fn()}
+        onTogglePlay={vi.fn()}
+        onChangePlaybackRate={vi.fn()}
         onStampWordStart={vi.fn(() => ({ completedAll: false }))}
         onSelectWord={vi.fn()}
         onUndoWord={vi.fn(() => null)}
@@ -205,6 +209,9 @@ describe('WordSyncScreen', () => {
     );
 
     expect(html).toContain('PALABRA OBJETIVO');
+    expect(html).toContain('aria-label="Pausar"');
+    expect(html).toContain('aria-label="Velocidad 1x"');
+    expect(html).toContain('aria-label="Retroceder 5 segundos"');
     expect(html).toContain('text-[72px]');
     expect(html).toContain('luna');
     expect(html).toContain('Repetir Pre-Roll −2.5 s');
@@ -240,6 +247,10 @@ describe('WordSyncScreen', () => {
         onSelectMode={vi.fn()}
         onSeek={vi.fn()}
         onPlay={vi.fn()}
+        playbackRate={1}
+        onPlayFrom={vi.fn()}
+        onTogglePlay={vi.fn()}
+        onChangePlaybackRate={vi.fn()}
         onStampWordStart={vi.fn(() => ({ completedAll: false }))}
         onSelectWord={vi.fn()}
         onUndoWord={vi.fn(() => null)}
@@ -270,6 +281,10 @@ describe('WordSyncScreen', () => {
         onSelectMode={vi.fn()}
         onSeek={vi.fn()}
         onPlay={vi.fn()}
+        playbackRate={1}
+        onPlayFrom={vi.fn()}
+        onTogglePlay={vi.fn()}
+        onChangePlaybackRate={vi.fn()}
         onStampWordStart={vi.fn(() => ({ completedAll: true }))}
         onSelectWord={vi.fn()}
         onUndoWord={vi.fn(() => null)}
@@ -279,6 +294,7 @@ describe('WordSyncScreen', () => {
       />,
     );
     expect(done).toContain('Todas las palabras están marcadas');
+    expect(done).toContain('aria-label="Reproducir"');
   });
 });
 

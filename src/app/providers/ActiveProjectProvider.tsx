@@ -91,7 +91,8 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     projectId: project?.id ?? null,
     reloadAudioSource,
     initialDurationMs: project?.durationMs ?? 0,
-    initialPlaybackRate: project?.settings.playbackRate ?? 1,
+    // La velocidad siempre arranca en 1.0x (no se restaura la guardada).
+    initialPlaybackRate: 1,
   });
 
   const handleLinesChange = useCallback((nextLines: LyricLine[]) => {
@@ -202,7 +203,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       setActiveLineIndex(lineIndex);
       setActiveWordIndex(wordIndex);
       resetHistory();
-      setPlaybackRate(nextProject.settings.playbackRate);
+      setPlaybackRate(1);
       seekTo(currentTimeMs, seekOrigin);
     },
     [
