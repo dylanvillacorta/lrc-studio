@@ -3,6 +3,8 @@ import {
   AUDIO_DECODE_FAILED_MESSAGE,
   AUDIO_READ_FAILED_MESSAGE,
   extractPeaksAndDuration,
+  PLAYBACK_PREPARE_FAILED_MESSAGE,
+  decodePlaybackBlob,
   importAudioFile,
   type AudioDecoderContext,
 } from './audioImport';
@@ -155,5 +157,86 @@ describe('audioImport', () => {
       importAudioFile(file, { createAudioContext: () => fakeContext }),
     ).rejects.toThrow(AUDIO_DECODE_FAILED_MESSAGE);
     expect(closeSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('audioImport: WAV de reproducción para formatos no WAV', () => {
+  const decoded = {
+    duration: 2 / 44_100,
+    numberOfChannels: 2,
+    getChannelData: (c: number) =>
+      c === 0 ? new Float32Array([0.5, -0.5]) : new Float32Array([0.25, -0.25]),
+  };
+  const ctx = (): AudioDecoderContext => ({ decodeAudioData: async () => decoded });
+
+  it('importAudioFile de MP3 devuelve un WAV PCM 16 bits y conserva el blob original', async () => {
+    const file = new File([new Uint8Array([1, 2, 3])], 'a.mp3', { type: 'audio/mpeg' });
+    const imported = await importAudioFile(file, { createAudioContext: ctx });
+    expect(imported.blob.type).toBe('audio/mpeg');
+    expect(imported.playbackBlob?.type).toBe('audio/wav');
+    expect(imported.playbackBlob?.size).toBe(44 + 2 * 2 * 2);
+    expect(imported.playbackWarning).toBeNull();
+    const head = new Uint8Array(await imported.playbackBlob!.arrayBuffer());
+    expect(String.fromCharCode(...head.slice(0, 4))).toBe('RIFF');
+  });
+
+  it('importAudioFile de FLAC también genera el WAV y conserva el original', async () => {
+    const file = new File([new Uint8Array([1])], 'a.flac', { type: 'audio/flac' });
+    const imported = await importAudioFile(file, { createAudioContext: ctx });
+    expect(imported.blob.type).toBe('audio/flac');
+    expect(imported.playbackBlob?.type).toBe('audio/wav');
+    expect(imported.playbackWarning).toBeNull();
+  });
+
+  it('importAudioFile de WAV PCM no genera WAV de reproducción', async () => {
+    const file = new File([new Uint8Array([1])], 'a.wav', { type: 'audio/wav' });
+    const imported = await importAudioFile(file, { createAudioContext: ctx });
+    expect(imported.playbackBlob).toBeNull();
+    expect(imported.playbackWarning).toBeNull();
+  });
+
+  it('el WAV de reproducción es PCM de 16 bits a 44,1 kHz', async () => {
+    const file = new File([new Uint8Array([1])], 'hires.flac', { type: 'audio/flac' });
+    const imported = await importAudioFile(file, { createAudioContext: ctx });
+    const view = new DataView(await imported.playbackBlob!.arrayBuffer());
+    expect(view.getUint32(24, true)).toBe(44_100);
+    expect(view.getUint16(34, true)).toBe(16);
+  });
+
+  it('si la codificación falla devuelve null y un aviso, sin romper la importación', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const empty: AudioDecoderContext = {
+      decodeAudioData: async () => ({ ...decoded, duration: 0 }),
+    };
+    const file = new File([new Uint8Array([1])], 'a.mp3', { type: 'audio/mpeg' });
+    const imported = await importAudioFile(file, { createAudioContext: () => empty });
+    expect(imported.playbackBlob).toBeNull();
+    expect(imported.playbackWarning).toBe(PLAYBACK_PREPARE_FAILED_MESSAGE);
+    warn.mockRestore();
+  });
+
+  it('decodePlaybackBlob decodifica MP3 y omite WAV', async () => {
+    const mp3 = new Blob([new Uint8Array([1, 2])], { type: 'audio/mpeg' });
+    const result = await decodePlaybackBlob(mp3, 'a.mp3', { createAudioContext: ctx });
+    expect(result.blob?.type).toBe('audio/wav');
+    const wav = new Blob([new Uint8Array([1, 2])], { type: 'audio/wav' });
+    expect(await decodePlaybackBlob(wav, 'a.wav', { createAudioContext: ctx })).toEqual({
+      blob: null,
+      warning: null,
+    });
+  });
+
+  it('decodePlaybackBlob avisa cuando la decodificación falla', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const failing: AudioDecoderContext = {
+      decodeAudioData: async () => {
+        throw new Error('boom');
+      },
+    };
+    const result = await decodePlaybackBlob(new ArrayBuffer(4), 'a.mp3', {
+      createAudioContext: () => failing,
+    });
+    expect(result).toEqual({ blob: null, warning: PLAYBACK_PREPARE_FAILED_MESSAGE });
+    warn.mockRestore();
   });
 });

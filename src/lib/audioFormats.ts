@@ -117,3 +117,21 @@ export function inferAudioMime(fileName: string, declaredType?: string): string 
 export function isSupportedAudioFile(file: { name?: string; type?: string }): boolean {
   return inferAudioMime(file.name ?? '', file.type) !== 'application/octet-stream';
 }
+
+const PCM_WAV_MIMES: ReadonlySet<string> = new Set([
+  'audio/wav',
+  'audio/x-wav',
+  'audio/wave',
+  'audio/vnd.wave',
+]);
+
+/**
+ * Indica si el audio debe reproducirse desde un WAV PCM 16 bits decodificado en memoria.
+ * Es verdadero para todo formato que no sea WAV PCM (FLAC, MP3, AAC, M4A, OGG, OPUS, WEBM...):
+ * el seek de un `<audio>` sobre FLAC sin seektable, MP3 VBR o AAC se estima por bytes o por
+ * tramas y se desfasa decenas o cientos de ms. El WAV PCM tiene seek exacto al muestreo, así
+ * que se reproduce del original.
+ */
+export function needsPcmPlaybackProxy(fileName: string, declaredType?: string): boolean {
+  return !PCM_WAV_MIMES.has(inferAudioMime(fileName, declaredType));
+}

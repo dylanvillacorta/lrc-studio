@@ -41,10 +41,16 @@ export {
   type VisibilityDocumentLike,
 } from '@/features/session/hooks/useAutosave';
 export {
+  clearPlaybackCache,
   createAudioObjectUrl,
+  createPlaybackObjectUrl,
+  getCachedPlaybackBlob,
+  rememberPlaybackBlob,
   restoreSessionFromAdapter,
   revokeAudioObjectUrl,
   useSessionRestore,
+  type PlaybackUrlOptions,
+  type PlaybackUrlResult,
   type RestoreAdapterResult,
   type SessionRestoreStatus,
   type UseSessionRestoreReturn,

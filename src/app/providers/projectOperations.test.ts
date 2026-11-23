@@ -9,6 +9,7 @@ import {
   buildSessionState,
   createAutosaveScheduler,
 } from '@/features/session';
+import type { ImportedAudioResult } from '@/lib/audioImport';
 import { WebIndexedDBAdapter, type IStorageAdapter } from '@/storage';
 import type { ProjectFullData } from '@/types';
 
@@ -187,7 +188,10 @@ describe('projectOperations & projectMutations', () => {
       adapter,
       getActiveProject: () => null,
       flushAutosave: async () => {},
-      createObjectUrl: (_bin, fileName) => `blob:${fileName}:${++urlSeq}`,
+      createPlaybackUrl: async (_bin, fileName) => ({
+        url: `blob:${fileName}:${++urlSeq}`,
+        warning: null,
+      }),
       revokeObjectUrl: (url) => {
         revokedUrls.push(url);
       },
@@ -215,12 +219,7 @@ describe('projectOperations & projectMutations', () => {
     const projectB = makeProject('proj-b');
     let activeProject: ProjectFullData | null = projectA;
 
-    let resolveDecode!: (value: {
-      blob: Blob;
-      fileName: string;
-      peaks: number[];
-      duration: number;
-    }) => void;
+    let resolveDecode!: (value: ImportedAudioResult) => void;
 
     const saveAudioBinary = vi.fn(async () => {});
     const adapter = {
@@ -256,11 +255,133 @@ describe('projectOperations & projectMutations', () => {
       fileName: 'lento.mp3',
       peaks: [0.4],
       duration: 10,
+      playbackBlob: null,
+      playbackWarning: null,
     });
     await pendingAttach;
 
     expect(saveAudioBinary).not.toHaveBeenCalled();
     expect(attachedSpy).not.toHaveBeenCalled();
     expect(activeProject?.id).toBe('proj-b');
+  });
+
+  it('openProject: si otra apertura gana mientras se prepara el WAV, revoca la URL obsoleta', async () => {
+    const adapter = {
+      getProject: vi.fn(async (id: string) => makeProject(id)),
+      getAudioBinary: vi.fn(async (id: string) => ({
+        blob: new Blob([new Uint8Array([1, 2])]),
+        fileName: `${id}.mp3`,
+        peaks: [0.5],
+        duration: 5,
+      })),
+    } as unknown as IStorageAdapter;
+
+    const releases: Array<() => void> = [];
+    const applied: string[] = [];
+    const revoked: Array<string | null> = [];
+    const preparing: boolean[] = [];
+    const ops = createProjectOperations({
+      adapter,
+      getActiveProject: () => null,
+      flushAutosave: async () => {},
+      createPlaybackUrl: (_bin, _name, { projectId }) =>
+        new Promise((resolve) => {
+          releases.push(() => resolve({ url: `blob:${projectId}`, warning: null }));
+        }),
+      onPreparingChange: (value) => preparing.push(value),
+      revokeObjectUrl: (url) => revoked.push(url),
+      applyLoadedProject: (nextProject, nextUrl) => {
+        applied.push(`${nextProject.id}:${nextUrl}`);
+      },
+      onAudioAttached: () => {},
+    });
+
+    const first = ops.openProject('a');
+    await vi.waitFor(() => expect(releases).toHaveLength(1));
+    const second = ops.openProject('b');
+    await vi.waitFor(() => expect(releases).toHaveLength(2));
+    releases[1]!();
+    await second;
+    releases[0]!();
+    await first;
+
+    expect(applied).toEqual(['b:blob:b']);
+    expect(revoked).toEqual(['blob:a']);
+    expect(preparing).toEqual([true, true, false, false]);
+  });
+
+  it('attachAudio guarda el blob original, reproduce el WAV preparado y lo deja en caché', async () => {
+    const projectA = makeProject('proj-a');
+    const saveAudioBinary = vi.fn(async () => {});
+    const adapter = {
+      saveAudioBinary,
+    } as unknown as IStorageAdapter;
+    const original = new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/mpeg' });
+    const wav = new Blob([new Uint8Array([9, 9])], { type: 'audio/wav' });
+    const createObjectUrl = vi.fn(() => 'blob:wav');
+    const rememberPlayback = vi.fn();
+    const attached = vi.fn();
+    const warning = vi.fn();
+
+    const ops = createProjectOperations({
+      adapter,
+      getActiveProject: () => projectA,
+      flushAutosave: async () => {},
+      importAudio: async () => ({
+        blob: original,
+        fileName: 'a.mp3',
+        peaks: [0.1],
+        duration: 3,
+        playbackBlob: wav,
+        playbackWarning: null,
+      }),
+      createObjectUrl,
+      rememberPlayback,
+      onPlaybackWarning: warning,
+      applyLoadedProject: () => {},
+      onAudioAttached: attached,
+    });
+
+    await ops.attachAudio({ name: 'a.mp3', arrayBuffer: async () => new ArrayBuffer(1) });
+
+    expect(saveAudioBinary).toHaveBeenCalledWith('proj-a', original, 'a.mp3', [0.1], 3);
+    expect(createObjectUrl).toHaveBeenCalledWith(wav, 'audio.wav');
+    expect(rememberPlayback).toHaveBeenCalledWith('proj-a', wav);
+    expect(attached).toHaveBeenCalledWith('proj-a', 'blob:wav', 'a.mp3', [0.1], 3);
+    expect(warning).not.toHaveBeenCalledWith(expect.stringContaining('No se pudo'));
+  });
+
+  it('attachAudio con fallo de preparación reproduce el original y avisa sin bloquear', async () => {
+    const projectA = makeProject('proj-a');
+    const adapter = { saveAudioBinary: vi.fn(async () => {}) } as unknown as IStorageAdapter;
+    const original = new Blob([new Uint8Array([1])], { type: 'audio/mpeg' });
+    const createObjectUrl = vi.fn(() => 'blob:orig');
+    const warning = vi.fn();
+    const attached = vi.fn();
+
+    const ops = createProjectOperations({
+      adapter,
+      getActiveProject: () => projectA,
+      flushAutosave: async () => {},
+      importAudio: async () => ({
+        blob: original,
+        fileName: 'a.mp3',
+        peaks: [],
+        duration: 1,
+        playbackBlob: null,
+        playbackWarning: 'aviso de prueba',
+      }),
+      createObjectUrl,
+      rememberPlayback: vi.fn(),
+      onPlaybackWarning: warning,
+      applyLoadedProject: () => {},
+      onAudioAttached: attached,
+    });
+
+    await ops.attachAudio({ name: 'a.mp3', arrayBuffer: async () => new ArrayBuffer(1) });
+
+    expect(createObjectUrl).toHaveBeenCalledWith(original, 'a.mp3');
+    expect(warning).toHaveBeenLastCalledWith('aviso de prueba');
+    expect(attached).toHaveBeenCalled();
   });
 });
