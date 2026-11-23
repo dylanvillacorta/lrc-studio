@@ -4,7 +4,6 @@ import {
   isMobileProject,
   openCatalog,
   openExport,
-  openLoupe,
   openLyrics,
   selectSyncMode,
 } from './helpers/studio';
@@ -44,7 +43,7 @@ test.describe('Sensación nativa: sin zoom y sin selección', () => {
     expect(selected.trim().length).toBeGreaterThan(0);
   });
 
-  test('Ctrl+rueda y Ctrl+(+/-/0) quedan con defaultPrevented; la rueda normal no', async ({
+  test('Ctrl+rueda y Ctrl+(+/-) quedan con defaultPrevented; Ctrl+0 y la rueda normal no', async ({
     page,
   }) => {
     await page.goto('/');
@@ -72,7 +71,7 @@ test.describe('Sensación nativa: sin zoom y sin selección', () => {
       plainWheel: false,
       ctrlPlus: true,
       ctrlMinus: true,
-      ctrlZero: true,
+      ctrlZero: false,
       plainMinus: false,
       ctrlZ: false,
     });
@@ -109,9 +108,6 @@ test.describe('Estabilidad de la página', () => {
     await selectSyncMode(page, 'Karaoke');
     await noOverflow('Karaoke');
     await selectSyncMode(page, 'Línea');
-    await openLoupe(page);
-    await noOverflow('lupa');
-    await page.getByRole('button', { name: /Volver|Cerrar/i }).first().click();
     await openLyrics(page, isMobile);
     await noOverflow('Letra');
     await openExport(page, isMobile);

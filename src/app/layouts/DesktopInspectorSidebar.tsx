@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { InspectorPanel, type LineBounds } from '@/features/loupe';
+import { InspectorPanel, type LineBounds } from '@/features/sync';
 import { Keycap, WellPanel } from '@/ui';
 
 export interface DesktopInspectorSidebarProps {
@@ -7,23 +7,19 @@ export interface DesktopInspectorSidebarProps {
   startMs: number | null;
   endMs: number | null;
   durationMs: number;
-  canOpenLoupe: boolean;
   onChangeBounds: (bounds: LineBounds) => void;
-  onOpenLoupe: () => void;
 }
 
 /**
  * Columna derecha de escritorio con el Inspector de ±10 y ±50 ms
- * (reutilizando `loupe`) y la leyenda de atajos de teclado con `Keycap`.
+ * y la leyenda de atajos de teclado con `Keycap`.
  */
 export const DesktopInspectorSidebar = memo(function DesktopInspectorSidebar({
   targetLabel,
   startMs,
   endMs,
   durationMs,
-  canOpenLoupe,
   onChangeBounds,
-  onOpenLoupe,
 }: DesktopInspectorSidebarProps) {
   const safeStart = startMs ?? 0;
   const safeEnd = endMs ?? Math.max(safeStart, safeStart + 500);
@@ -37,21 +33,9 @@ export const DesktopInspectorSidebar = memo(function DesktopInspectorSidebar({
         aria-label="Inspector de tiempos"
         className="relieve rounded-[26px] p-[18px] flex flex-col gap-3"
       >
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="m-0 text-[15px] font-extrabold text-ink">
-            Inspector
-          </h2>
-          {canOpenLoupe ? (
-            <button
-              type="button"
-              onClick={onOpenLoupe}
-              aria-label="Abrir lupa de onda"
-              className="min-h-9 px-2.5 rounded-[12px] text-xs font-extrabold text-acc hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acc"
-            >
-              Lupa
-            </button>
-          ) : null}
-        </div>
+        <h2 className="m-0 text-[15px] font-extrabold text-ink">
+          Inspector
+        </h2>
 
         {targetLabel ? (
           <p className="m-0 text-xs font-bold text-mute truncate">

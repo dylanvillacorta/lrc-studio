@@ -13,7 +13,8 @@ export interface TargetLike {
 const EDITABLE_SELECTOR =
   'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
 
-const ZOOM_KEYS = new Set(['+', '-', '=', '_', '0', 'Add', 'Subtract']);
+// Ctrl+0 queda libre a propósito: restablece el zoom del navegador al 100 %.
+const ZOOM_KEYS = new Set(['+', '-', '=', '_', 'Add', 'Subtract']);
 
 /** Campo donde la usuaria escribe o copia texto: la selección debe funcionar. */
 export function isEditableTarget(target: TargetLike | null | undefined): boolean {
@@ -29,7 +30,7 @@ export function shouldPreventWheel(e: { ctrlKey?: boolean; metaKey?: boolean }):
   return e.ctrlKey === true || e.metaKey === true;
 }
 
-/** Ctrl/Cmd + (+, -, =, 0) hace zoom del navegador; el resto de teclas no se toca. */
+/** Ctrl/Cmd + (+, -, =) hace zoom del navegador; el resto de teclas no se toca. */
 export function shouldPreventZoomKey(e: {
   key: string;
   ctrlKey?: boolean;

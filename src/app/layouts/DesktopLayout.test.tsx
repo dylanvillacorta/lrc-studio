@@ -123,6 +123,7 @@ function createSampleContext(
       pause: () => {},
       togglePlay: () => {},
       seekTo: () => {},
+      playFrom: () => {},
       setSeeking: () => {},
       setPlaybackRate: () => {},
     },
@@ -170,7 +171,8 @@ describe('DesktopLayout y montaje de versión', () => {
     expect(html).toContain('aria-label="Modo de sincronización"');
     expect(html).toContain('aria-label="Inspector de tiempos"');
     expect(html).toContain('aria-label="Atajos de teclado"');
-    expect(html).toContain('aria-label="Abrir lupa de onda"');
+    expect(html).not.toContain('Abrir lupa de onda');
+    expect(html).not.toContain('Lupa');
     expect(html).toContain('aria-label="Información de la aplicación"');
     expect(html).not.toContain('<footer');
   });

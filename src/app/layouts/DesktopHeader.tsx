@@ -11,7 +11,7 @@ import {
 } from '@/ui';
 
 export type DesktopSyncMode = 'line' | 'word' | 'karaoke';
-export type DesktopCenterView = 'editor' | 'lyrics' | 'export' | 'catalog' | 'loupe';
+export type DesktopCenterView = 'editor' | 'lyrics' | 'export' | 'catalog';
 
 const DESKTOP_MODE_OPTIONS: readonly SegmentedOption<DesktopSyncMode>[] = [
   { value: 'line', label: 'Línea' },

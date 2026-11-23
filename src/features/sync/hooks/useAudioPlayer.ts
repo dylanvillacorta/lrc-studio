@@ -22,6 +22,7 @@ import {
   flagForPageShow,
   flagForStalled,
   shouldRepairAudio,
+  shouldTriggerFrozen,
   type AudioHealth,
   type AudioHealthFlag,
 } from '@/features/sync/hooks/audioHealth';
@@ -66,6 +67,11 @@ export interface UseAudioPlayerReturn {
   pause: () => void;
   togglePlay: () => void;
   seekTo: (targetMs: number, origin?: SeekOrigin) => void;
+  /**
+   * Salta SIEMPRE al milisegundo indicado y garantiza que suene: nunca pausa y es
+   * idempotente aunque se llame muchas veces seguidas.
+   */
+  playFrom: (targetMs: number) => void;
   setSeeking: (seeking: boolean) => void;
   setPlaybackRate: (rate: number) => void;
   /** Estado de la auto-reparación del audio. */
@@ -110,6 +116,7 @@ export function useAudioPlayer(
   const reloadRef = useRef(reloadAudioSource);
   const probeRef = useRef(0);
   const isPlayingRef = useRef(false);
+  const seekGenerationRef = useRef(0);
   const handleFrozenRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     projectIdRef.current = projectId;
@@ -243,6 +250,7 @@ export function useAudioPlayer(
             : Number.MAX_SAFE_INTEGER;
       const clampedPending = Math.max(0, Math.min(maxDur, pendingSeekMsRef.current));
       pendingSeekMsRef.current = null;
+      seekGenerationRef.current += 1;
       audio.currentTime = clampedPending / 1000;
       timeStore.setTimeMs(clampedPending);
     };
@@ -263,6 +271,10 @@ export function useAudioPlayer(
       timeStore.setTimeMs(audio.currentTime * 1000);
     };
 
+    const handleSeeking = () => {
+      seekGenerationRef.current += 1;
+    };
+
     const handleError = () => {
       errorSeenRef.current = true;
     };
@@ -271,7 +283,10 @@ export function useAudioPlayer(
       flagRef.current = 'emptied';
     };
     const handleStalled = () => {
-      const flag = flagForStalled(audio.readyState);
+      const flag = flagForStalled(audio.readyState, {
+        seeking: audio.seeking,
+        isBlob: (audio.currentSrc || audio.src || '').startsWith('blob:'),
+      });
       if (flag && !flagRef.current) flagRef.current = flag;
       syncPlayingWithReality();
     };
@@ -315,6 +330,7 @@ export function useAudioPlayer(
     audio.addEventListener('loadstart', handleLoadStart);
     audio.addEventListener('waiting', syncPlayingWithReality);
     audio.addEventListener('suspend', syncPlayingWithReality);
+    audio.addEventListener('seeking', handleSeeking);
     audio.addEventListener('seeked', handleSyncFromAudio);
     audio.addEventListener('timeupdate', handleSyncFromAudio);
     audio.addEventListener('playing', handleLoadedMetadata);
@@ -332,6 +348,7 @@ export function useAudioPlayer(
       audio.removeEventListener('loadstart', handleLoadStart);
       audio.removeEventListener('waiting', syncPlayingWithReality);
       audio.removeEventListener('suspend', syncPlayingWithReality);
+      audio.removeEventListener('seeking', handleSeeking);
       audio.removeEventListener('seeked', handleSyncFromAudio);
       audio.removeEventListener('timeupdate', handleSyncFromAudio);
       audio.removeEventListener('playing', handleLoadedMetadata);
@@ -457,7 +474,8 @@ export function useAudioPlayer(
     if (!isPlaying || externalRef) {
       return;
     }
-    let prev: { t: number; at: number } | null = null;
+    let prev: { t: number; at: number; gen: number } | null = null;
+    let frozenCount = 0;
     const sample = () => {
       const audio = getAudioElement();
       if (!audio) return;
@@ -470,9 +488,17 @@ export function useAudioPlayer(
         repairPromiseRef.current !== null
       ) {
         prev = null;
+        frozenCount = 0;
         return;
       }
-      const current = { t: audio.currentTime, at: performance.now() };
+      const gen = seekGenerationRef.current;
+      const current = { t: audio.currentTime, at: performance.now(), gen };
+      if (prev && prev.gen !== gen) {
+        // Hubo un seek entre muestras: el avance no es comparable.
+        prev = null;
+        frozenCount = 0;
+        return;
+      }
       if (prev) {
         const verdict = evaluatePlaybackProgress({
           prevTimeSec: prev.t,
@@ -481,9 +507,15 @@ export function useAudioPlayer(
           playbackRate: audio.playbackRate,
         });
         if (verdict === 'frozen') {
-          prev = null;
-          handleFrozenRef.current();
-          return;
+          frozenCount += 1;
+          if (shouldTriggerFrozen(frozenCount)) {
+            prev = null;
+            frozenCount = 0;
+            handleFrozenRef.current();
+            return;
+          }
+        } else {
+          frozenCount = 0;
         }
       }
       prev = current;
@@ -596,6 +628,7 @@ export function useAudioPlayer(
       );
       pendingSeekMsRef.current = null;
       if (needsCurrentTimeCorrection(target, audio.currentTime)) {
+        seekGenerationRef.current += 1;
         audio.currentTime = target / 1000;
       }
       timeStore.setTimeMs(target);
@@ -610,10 +643,19 @@ export function useAudioPlayer(
       if (audio.networkState === 0 || audio.networkState === 3) {
         audio.load();
       }
-    }    try {
+    }
+    try {
       await audio.play();
       setIsPlaying(true);
-    } catch {
+    } catch (error) {
+      // Un `play()` abortado por otro `play()` o seek no es fallo si ya suena.
+      if (
+        error instanceof DOMException &&
+        error.name === 'AbortError' &&
+        !audio.paused
+      ) {
+        return;
+      }
       setIsPlaying(false);
     }
   }, [canRepair, evaluateHealth, getAudioElement, repairAudio, timeStore]);
@@ -650,6 +692,7 @@ export function useAudioPlayer(
       const audio = getAudioElement();
       if (audio && audio.readyState >= 1) {
         pendingSeekMsRef.current = null;
+        seekGenerationRef.current += 1;
         audio.currentTime = clampedMs / 1000;
       } else {
         pendingSeekMsRef.current = nextPendingSeekMs(
@@ -672,6 +715,48 @@ export function useAudioPlayer(
       }
     },
     [canRepair, evaluateHealth, getAudioElement, repairAudio, timeStore],
+  );
+
+  const playFrom = useCallback(
+    (targetMs: number) => {
+      const audio = getAudioElement();
+      if (!audio) return;
+      userSeekedRef.current = true;
+      const effectiveDur =
+        durationRef.current > 0 ? durationRef.current : Number.MAX_SAFE_INTEGER;
+      const clampedMs = Math.max(0, Math.min(effectiveDur, Number(targetMs) || 0));
+      audio.playbackRate = playbackRateRef.current;
+      if (audio.readyState >= 1) {
+        // Siempre se asigna `currentTime` (sin tolerancia): el salto es exacto.
+        pendingSeekMsRef.current = null;
+        seekGenerationRef.current += 1;
+        audio.currentTime = clampedMs / 1000;
+        timeStore.setTimeMs(clampedMs);
+        if (audio.paused) {
+          audio.play().then(
+            () => setIsPlaying(true),
+            (error: unknown) => {
+              if (
+                error instanceof DOMException &&
+                error.name === 'AbortError' &&
+                !audio.paused
+              ) {
+                return;
+              }
+              setIsPlaying(false);
+            },
+          );
+        } else {
+          setIsPlaying(true);
+        }
+        return;
+      }
+      // Sin metadatos: seek pendiente y `play()` como siempre.
+      pendingSeekMsRef.current = clampedMs;
+      timeStore.setTimeMs(clampedMs);
+      void play();
+    },
+    [getAudioElement, play, timeStore],
   );
 
   const getCurrentTimeMs = useCallback((): number => {
@@ -731,6 +816,7 @@ export function useAudioPlayer(
       pause,
       togglePlay,
       seekTo,
+      playFrom,
       setSeeking,
       setPlaybackRate,
       repairStatus,
@@ -748,6 +834,7 @@ export function useAudioPlayer(
       repairStatus,
       retryRepair,
       seekTo,
+      playFrom,
       setPlaybackRate,
       setSeeking,
       timeStore,

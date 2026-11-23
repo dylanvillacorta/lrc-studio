@@ -19,7 +19,7 @@ src/
     App.tsx
     layouts/                      # Layouts de móvil y escritorio
     providers/                    # Providers de storage y sesión (solo componen, sin lógica de negocio)
-  features/                       # sync, lyrics, catalog, loupe, export, session
+  features/                       # sync, lyrics, catalog, export, session
     <tema>/
       components/
       hooks/
@@ -48,7 +48,9 @@ src/
 ## 3. Contratos y tipos (`src/types/`)
 
 ```typescript
-export type ActiveTab = 'sync' | 'word' | 'lyrics' | 'loupe' | 'export' | 'catalog';
+export type ActiveTab = 'sync' | 'word' | 'lyrics' | 'export' | 'catalog';
+// Una sesión guardada con el valor legado 'loupe' (la Lupa, eliminada) se restaura como 'sync':
+// `sessionPlanner` y `WebIndexedDBAdapter` lo normalizan. No cambia la forma de los datos: sin migrador.
 
 export interface WordTiming {
   id: string;
@@ -216,7 +218,7 @@ Acciones disponibles:
 - **Sensación nativa (sin selección ni zoom):**
   - Sin selección de texto en toda la app (`user-select: none`, `-webkit-user-select`, `-webkit-touch-callout: none`), salvo `input`, `textarea`, `[contenteditable]` y elementos con la utilidad `selectable`, donde la usuaria escribe o copia texto.
   - Sin zoom de página: meta viewport con `maximum-scale=1, user-scalable=no`; `touch-action: manipulation` global (los componentes con arrastre propio mantienen `touch-action: none`); campos a 16 px en móvil para evitar el zoom automático de iOS.
-  - `src/lib/nativeFeel.ts` (montado una vez en `App`, con limpieza) previene `gesture*` y el pinch de varios dedos (iOS Safari), Ctrl/Cmd + rueda, Ctrl/Cmd + `+`, `-`, `=`, `0` y la selección por doble clic fuera de campos editables. No intercepta teclas sin Ctrl/Cmd, por lo que no choca con los atajos de sincronización.
+  - `src/lib/nativeFeel.ts` (montado una vez en `App`, con limpieza) previene `gesture*` y el pinch de varios dedos (iOS Safari), Ctrl/Cmd + rueda, Ctrl/Cmd + `+`, `-`, `=` y la selección por doble clic fuera de campos editables. Ctrl/Cmd + `0` no se previene a propósito: restablece el zoom del navegador al 100 %. No intercepta teclas sin Ctrl/Cmd, por lo que no choca con los atajos de sincronización.
 - **Página fija (T35):** la página nunca se deforma ni se mueve mientras se toca sin parar.
   - `overscroll-behavior: none` en `html`/`body` (sin rebote ni pull-to-refresh) y `overscroll-behavior: contain` en todo contenedor con scroll interno, para no encadenar el scroll a la página.
   - Sin scroll horizontal de la página en 390x844 ni 1280x800 (cubierto por E2E); se corrige el elemento que desborda, el `overflow-x-hidden` global es solo red de seguridad.
@@ -239,7 +241,9 @@ Acciones disponibles:
 Tomada de [docs/base/lyricsync_studio_pro_2_00.tsx](base/lyricsync_studio_pro_2_00.tsx):
 - Modo **Línea**.
 - Modo **Palabra por palabra** con **Pre-Roll** y foco automático: cada marca avanza sola a la próxima palabra sin marca (cruzando líneas) y el deshacer quita la última palabra marcada, deja el foco en ella y vuelve el audio a `inicio − Pre-Roll`.
-- El botón **Escuchar línea** de la lupa reproduce la línea con Pre-Roll y Post-Roll (el antiguo modo Ráfaga ya no existe; el selector tiene Línea, Palabra y Karaoke).
-- **Lupa de onda** con bordes arrastrables e inspector de `10 ms` y `50 ms`.
+- El selector tiene Línea, Palabra y Karaoke (el antiguo modo Ráfaga y la Lupa de onda ya no existen).
+- **Inspector** de escritorio de `10 ms` y `50 ms` (`src/features/sync/`), más los atajos `←`/`→` y `[`/`]`.
+- **Reproducir desde aquí** (y repetir Pre-Roll y deshacer palabra) usan `playFrom`: salta siempre al milisegundo de la marca y suena al instante, es idempotente y nunca pausa aunque se toque muchas veces seguidas. El vigilante de progreso ignora los seeks (generación de seek) y exige dos veredictos de congelado consecutivos antes de reparar.
+- **Transporte móvil** (`TransportBar`): velocidad, −5 s, reproducir/pausa y +5 s en Línea y en Palabra. La velocidad siempre arranca en `1.0x` al abrir o restaurar un proyecto y cambiarla no guarda el proyecto; se resalta cuando no es `1x`.
 - **Karaoke a 60 FPS**.
 - Exportación a **JSON**, **ELRC** y **LRC**.

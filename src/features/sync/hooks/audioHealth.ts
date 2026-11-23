@@ -93,8 +93,22 @@ export function flagForPageShow(persisted: boolean): AudioHealthFlag | null {
  * `stalled` es normal durante una carga inicial: solo marca si el elemento aún
  * no tiene datos suficientes para reproducir.
  */
-export function flagForStalled(readyState: number): AudioHealthFlag | null {
+export function flagForStalled(
+  readyState: number,
+  context: { seeking?: boolean; isBlob?: boolean } = {},
+): AudioHealthFlag | null {
+  // Durante un seek o con un blob local el elemento puede emitir `stalled` sin que
+  // haya nada roto: no se marca.
+  if (context.seeking || context.isBlob) return null;
   return readyState < 2 ? 'stalled' : null;
+}
+
+/** Veredictos `frozen` consecutivos necesarios antes de pausar y reparar. */
+export const FROZEN_VERDICTS_REQUIRED = 2;
+
+/** Un solo veredicto `frozen` aislado no basta: se exigen dos seguidos. */
+export function shouldTriggerFrozen(consecutiveFrozen: number): boolean {
+  return consecutiveFrozen >= FROZEN_VERDICTS_REQUIRED;
 }
 
 export type PlaybackProgressVerdict = 'advancing' | 'frozen' | 'inconclusive';

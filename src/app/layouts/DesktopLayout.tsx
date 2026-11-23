@@ -13,19 +13,18 @@ import { DesktopWordStage } from '@/app/layouts/DesktopWordStage';
 import { useActiveProject, useStorage } from '@/app/providers';
 import { useCatalog } from '@/features/catalog';
 import { type ParsedProjectJson } from '@/features/export';
-import { type LineBounds } from '@/features/loupe';
 import {
   computeCompensatedStampMs,
   computePreRollStartMs,
   DEFAULT_PRE_ROLL_MS,
   firstUnsyncedWordIndex,
   findNextUnsyncedWord,
-  getActiveLineWindow,
   hasWordStampToUndo,
   readCurrentTimeMs,
   resolveWordEntryFocus,
   shiftTimings,
   SyncSettingsDialog,
+  type LineBounds,
 } from '@/features/sync';
 import { KaraokePreview } from '@/features/sync/components/KaraokePreview';
 import { NoAudioCard } from '@/features/sync/components/NoAudioCard';
@@ -87,7 +86,6 @@ export function DesktopLayout() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [karaokeActive, setKaraokeActive] = useState(false);
-  const [loupeReturnTab, setLoupeReturnTab] = useState<'sync' | 'word'>('sync');
   const [liveNotice, setLiveNotice] = useState('');
   const playerRef = useRef(player);
 
@@ -117,8 +115,7 @@ export function DesktopLayout() {
   const centerView: DesktopCenterView =
     activeTab === 'lyrics' ||
     activeTab === 'export' ||
-    activeTab === 'catalog' ||
-    activeTab === 'loupe'
+    activeTab === 'catalog'
       ? activeTab
       : 'editor';
 
@@ -178,8 +175,7 @@ export function DesktopLayout() {
     fallbackCurrentTimeMs,
     setActiveLineIndex: sync.setActiveLineIndex,
     setActiveWordIndex: sync.setActiveWordIndex,
-    seekTo: player.seekTo,
-    play: player.play,
+    playFrom: player.playFrom,
     // En modo Palabra el foco solo lo mueven las marcas y la selección manual.
     followPlayback: syncMode !== 'word',
     resolveWordIndexForLine,
@@ -221,8 +217,7 @@ export function DesktopLayout() {
       syncMode === 'word'
         ? resolveWordTargetStartMs(activeLine, sync.activeWordIndex)
         : (activeLine?.startMs ?? getCurrentTimeMs());
-    player.seekTo(computePreRollStartMs(targetStartMs, preRollMs));
-    void player.play();
+    player.playFrom(computePreRollStartMs(targetStartMs, preRollMs));
     setLiveNotice('Repitiendo Pre-Roll');
   }, [activeLine, getCurrentTimeMs, player, preRollMs, sync.activeWordIndex, syncMode]);
 
@@ -259,8 +254,7 @@ export function DesktopLayout() {
       setLiveNotice('No hay marcas de palabra para deshacer');
       return;
     }
-    player.seekTo(result.rewindTargetMs);
-    void player.play();
+    player.playFrom(result.rewindTargetMs);
     setLiveNotice(`Marca de «${result.wordText}» deshecha`);
   }, [player, preRollMs, sync]);
 
@@ -345,13 +339,6 @@ export function DesktopLayout() {
     [activeLine, inspectorIsWord, sync, targetWord],
   );
 
-  const handleOpenLoupe = useCallback(() => {
-    if (!activeLine) return;
-    setKaraokeActive(false);
-    setLoupeReturnTab(activeTab === 'word' ? 'word' : 'sync');
-    setActiveTab('loupe');
-  }, [activeLine, activeTab, setActiveTab]);
-
   const handleImportJson = useCallback(
     async (parsed: ParsedProjectJson) => {
       const title = parsed.metadata.title ?? 'Sin título';
@@ -393,15 +380,8 @@ export function DesktopLayout() {
     setActiveTab('catalog');
   }, [setActiveTab]);
 
-  const handleChangePlaybackRate = useCallback(
-    (rate: number) => {
-      player.setPlaybackRate(rate);
-      if (project) {
-        updateProjectMetadata({ settings: { ...project.settings, playbackRate: rate } });
-      }
-    },
-    [player, project, updateProjectMetadata],
-  );
+  // La velocidad es efímera: siempre arranca en 1.0x y no guarda el proyecto.
+  const handleChangePlaybackRate = player.setPlaybackRate;
 
   const handleSeekStart = useCallback(() => {
     player.setSeeking(true);
@@ -410,12 +390,6 @@ export function DesktopLayout() {
   const handleSeekEnd = useCallback(() => {
     player.setSeeking(false);
   }, [player]);
-
-  const handlePlayLoupeLine = useCallback(() => {
-    const win = getActiveLineWindow(sync.lines, sync.activeLineIndex, { preRollMs, durationMs });
-    player.seekTo(win.windowStartMs);
-    void player.play();
-  }, [durationMs, player, preRollMs, sync.activeLineIndex, sync.lines]);
 
   const handleDeleteCatalogProject = useCallback(
     async (id: string) => {
@@ -465,21 +439,12 @@ export function DesktopLayout() {
               project={project}
               catalog={catalog}
               lines={sync.lines}
-              activeLineIndex={sync.activeLineIndex}
-              waveformPeaks={waveformPeaks}
-              durationMs={durationMs}
-              timeStore={player.timeStore}
-              currentTimeMs={fallbackCurrentTimeMs}
-              isSaved={saveStatus === 'saved' || saveStatus === 'idle'}
-              loupeReturnTab={loupeReturnTab}
               onOpenProject={openProject}
               onCreateProject={createProject}
               onDeleteProject={handleDeleteCatalogProject}
               onUpdateMetadata={updateProjectMetadata}
               onReplaceLines={sync.replaceLines}
               onImportJson={handleImportJson}
-              onChangeLoupeBounds={handleInspectorBoundsChange}
-              onPlayLoupeLine={handlePlayLoupeLine}
               onSetActiveTab={setActiveTab}
             />
           ) : !audioUrl ? (
@@ -496,14 +461,12 @@ export function DesktopLayout() {
                 playbackRate={player.playbackRate}
                 lines={sync.lines}
                 canUndo={syncMode === 'word' ? canUndoWord : sync.canUndo}
-                canOpenLoupe={Boolean(activeLine)}
                 onSeek={player.seekTo}
                 onSeekStart={handleSeekStart}
                 onSeekEnd={handleSeekEnd}
                 onTogglePlay={player.togglePlay}
                 onChangePlaybackRate={handleChangePlaybackRate}
                 onUndo={handleUndo}
-                onOpenLoupe={handleOpenLoupe}
               />
               {syncMode === 'karaoke' ? (
                 <div className="h-[415px] min-[1100px]:h-[max(320px,calc(100dvh-385px))] flex flex-col min-h-0">
@@ -569,9 +532,7 @@ export function DesktopLayout() {
           startMs={inspectorStartMs}
           endMs={inspectorEndMs}
           durationMs={durationMs}
-          canOpenLoupe={Boolean(activeLine)}
           onChangeBounds={handleInspectorBoundsChange}
-          onOpenLoupe={handleOpenLoupe}
         />
       </div>
       <SyncSettingsDialog

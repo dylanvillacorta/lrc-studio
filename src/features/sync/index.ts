@@ -35,7 +35,6 @@ export {
   type WordSyncResult,
 } from '@/features/sync/model/wordSync';
 export {
-  DEFAULT_POST_ROLL_MS,
   DEFAULT_PRE_ROLL_MS,
   DEFAULT_WORD_SWEEP_MS,
   computeKaraokeState,
@@ -44,10 +43,8 @@ export {
   computeWordProgressPct,
   findActiveLineIndex,
   findActiveWordIndex,
-  getActiveLineWindow,
   getPreRollTrafficLight,
   resolvePlaybackTracking,
-  type ActiveLineWindowOptions,
   type KaraokeLineState,
   type KaraokePlaybackState,
   type PlaybackTrackingInput,
@@ -107,3 +104,18 @@ export {
   SyncSettingsDialog,
   type SyncSettingsDialogProps,
 } from '@/features/sync/components/SyncSettingsDialog';
+export {
+  INSPECTOR_STEPS_MS,
+  MIN_LINE_DURATION_MS,
+  applyInspectorDelta,
+  clampMs,
+  computeDraggedEdge,
+  normalizeLineBounds,
+  snapMs,
+  type DragEdgeParams,
+  type LineBounds,
+} from '@/features/sync/model/inspectorBounds';
+export {
+  InspectorPanel,
+  type InspectorPanelProps,
+} from '@/features/sync/components/InspectorPanel';

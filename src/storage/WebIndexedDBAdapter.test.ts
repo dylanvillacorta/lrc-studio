@@ -199,12 +199,35 @@ describe('WebIndexedDBAdapter', () => {
 
     const newSession: SessionState = {
       ...session,
-      activeTab: 'loupe',
+      activeTab: 'export',
       currentTime: 30.5,
       updatedAt: 1_700_000_200_000,
     };
     await adapterWithoutLs.saveSessionState(newSession);
     expect(await adapterWithoutLs.getSessionState()).toEqual(newSession);
+  });
+
+  it('una sesión legada con activeTab loupe se restaura como sync (localStorage e IndexedDB)', async () => {
+    const dbName = nextDbName();
+    const legacy = {
+      projectId: 'proj-1',
+      activeTab: 'loupe',
+      currentTime: 10,
+      activeLineIndex: 1,
+      activeWordIndex: 0,
+      updatedAt: 1_700_000_000_000,
+    };
+    const memoryStorage = makeMemoryStorage();
+    memoryStorage.setItem('lyricsync:session', JSON.stringify(legacy));
+    const withLs = new WebIndexedDBAdapter({ dbName, storage: memoryStorage });
+    await withLs.init();
+    expect(await withLs.getSessionState()).toEqual({ ...legacy, activeTab: 'sync' });
+
+    // Registro crudo en IndexedDB (sin localStorage).
+    const rawDb = new WebIndexedDBAdapter({ dbName: nextDbName(), storage: null });
+    await rawDb.init();
+    await rawDb.saveSessionState(legacy as unknown as SessionState);
+    expect(await rawDb.getSessionState()).toEqual({ ...legacy, activeTab: 'sync' });
   });
 
   it('exporta e importa respaldo completo en una base nueva de forma idempotente', async () => {
