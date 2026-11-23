@@ -4,7 +4,6 @@ import {
   BACKUP_SCHEMA_VERSION,
   STORED_PROJECT_SCHEMA_VERSION,
   type UnrestorableProject,
-  type ActiveTab,
   type AudioBinary,
   type CatalogBackup,
   type ProjectFullData,
@@ -37,7 +36,8 @@ function normalizeLatencyMs(value: unknown): number {
   return Math.max(0, Math.min(MAX_LATENCY_MS, Math.round(value)));
 }
 
-const VALID_TABS: ReadonlySet<string> = new Set<ActiveTab>([
+// `'loupe'` (la Lupa, eliminada) se acepta solo como valor legado y se normaliza a `'sync'`.
+const VALID_TABS: ReadonlySet<string> = new Set<string>([
   'sync',
   'word',
   'lyrics',
@@ -113,6 +113,10 @@ function isValidSessionState(value: unknown): value is SessionState {
     typeof value.activeWordIndex === 'number' &&
     typeof value.updatedAt === 'number'
   );
+}
+
+function normalizeSessionState(state: SessionState): SessionState {
+  return (state.activeTab as string) === 'loupe' ? { ...state, activeTab: 'sync' } : state;
 }
 
 function validateBackupProject(item: unknown, index: number): ProjectFullData {
@@ -488,7 +492,7 @@ export class WebIndexedDBAdapter implements IStorageAdapter {
         if (raw) {
           const parsed: unknown = JSON.parse(raw);
           if (isValidSessionState(parsed)) {
-            return parsed;
+            return normalizeSessionState(parsed);
           }
         }
       } catch {
@@ -502,7 +506,7 @@ export class WebIndexedDBAdapter implements IStorageAdapter {
       tx.objectStore(STORE_META).get(META_SESSION_KEY) as IDBRequest<SessionState | undefined>,
     );
     await transactionDone(tx);
-    return stored ?? null;
+    return stored ? normalizeSessionState(stored) : null;
   }
 
   async saveSessionState(state: SessionState): Promise<void> {

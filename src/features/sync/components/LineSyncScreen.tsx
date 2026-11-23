@@ -17,11 +17,11 @@ import {
 import { LineRowActionBar } from './LineRowActions';
 import { NoAudioCard } from './NoAudioCard';
 import {
-  getNextPlaybackRate,
   SYNC_MODE_OPTIONS,
   SYNC_SEGMENTED_CLASS,
   type SyncSegmentedMode,
 } from './syncViewHelpers';
+import { TransportBar } from './TransportBar';
 import { WaveformStrip } from './WaveformStrip';
 
 export type { SyncSegmentedMode };
@@ -63,7 +63,6 @@ export interface LineSyncScreenProps {
   onPlayFromLine?: (index: number) => void;
   onClearLineMark?: (index: number) => void;
   onStampLine: (nowMs: number) => void;
-  onOpenLoupe: () => void;
   onUploadAudio: (file: File) => Promise<void>;
 }
 
@@ -95,7 +94,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   onPlayFromLine,
   onClearLineMark,
   onStampLine,
-  onOpenLoupe,
   onUploadAudio,
 }: LineSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
@@ -125,7 +123,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
     );
   }
 
-  const activeLine = lines[activeLineIndex];
   const hasLines = lines.length > 0;
   const lineNumber = Math.min(lines.length, activeLineIndex + 1);
   const lastMarkedLineIndex = findLastMarkedLineIndex(lines);
@@ -177,51 +174,22 @@ export const LineSyncScreen = memo(function LineSyncScreen({
         onSeek={onSeek}
         onSeekStart={onSeekStart}
         onSeekEnd={onSeekEnd}
-        onOpenLoupe={onOpenLoupe}
-        canOpenLoupe={Boolean(activeLine)}
       />
 
-      <div className="flex items-center justify-between px-0.5 flex-none">
-        <IconButton
-          aria-label={`Velocidad ${playbackRate}x`}
-          onClick={() => onChangePlaybackRate(getNextPlaybackRate(playbackRate))}
-          className="font-mono text-xs font-extrabold min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
-        >
-          <span>{`${playbackRate}×`}</span>
-        </IconButton>
-
-        <IconButton
-          round
-          aria-label="Retroceder 5 segundos"
-          onClick={() => onSeek(Math.max(0, readNowMs() - 5000))}
-          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
-        >
-          <Icon name="rewind" size={18} />
-        </IconButton>
-
-        <IconButton
-          round
-          aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
-          onClick={onTogglePlay}
-          className="text-acc min-h-12 min-w-12 [@media(max-height:720px)]:min-h-11 [@media(max-height:720px)]:min-w-11"
-        >
-          <Icon name={isPlaying ? 'pause' : 'play'} size={22} />
-        </IconButton>
-
-        <IconButton
-          round
-          aria-label="Adelantar 5 segundos"
-          onClick={() => onSeek(Math.min(durationMs, readNowMs() + 5000))}
-          className="min-h-11 min-w-11 [@media(max-height:720px)]:min-h-10 [@media(max-height:720px)]:min-w-10"
-        >
-          <Icon name="forward" size={18} />
-        </IconButton>
-      </div>
+      <TransportBar
+        isPlaying={isPlaying}
+        playbackRate={playbackRate}
+        durationMs={durationMs}
+        readNowMs={readNowMs}
+        onSeek={onSeek}
+        onTogglePlay={onTogglePlay}
+        onChangePlaybackRate={onChangePlaybackRate}
+      />
 
       <WellPanel
         ref={listRef}
         data-testid="sync-line-list"
-        className="flex-1 min-h-0 p-1.5 overflow-y-auto flex flex-col gap-1"
+        className="flex-1 min-h-0 p-1.5 overflow-y-auto overscroll-contain flex flex-col gap-1"
       >
         {hasLines ? (
           lines.map((line, index) => {

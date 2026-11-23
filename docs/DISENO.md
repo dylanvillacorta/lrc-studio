@@ -79,6 +79,6 @@ boxShadow: {
 - **Sincronizar línea** ([Main.dc.html](wireframe/Main.dc.html)): onda superior, lista de líneas con línea actual en relieve y botón gigante.
 - **Palabra con Pre-Roll** ([Palabra.dc.html](wireframe/Palabra.dc.html)): semáforo (`Lamps`), palabra objetivo a `72 px`, botón repetir Pre-Roll (`-2.5 s`) y botón gigante.
 - **Catálogo** ([Catalogo.dc.html](wireframe/Catalogo.dc.html)): tarjetas de «Mis Transcripciones» con barras de progreso de líneas y palabras.
-- **Lupa e Inspector** ([Lupa.dc.html](wireframe/Lupa.dc.html)): onda ampliada con bordes arrastrables e inspector `±10 ms` y `±50 ms`.
+- **Inspector** (columna derecha de [Escritorio.dc.html](wireframe/Escritorio.dc.html)): ajuste de inicio y fin con `±10 ms` y `±50 ms`.
 - **Escritorio** ([Escritorio.dc.html](wireframe/Escritorio.dc.html)): diseño multipanel (`1280x800`) con atajos `Keycap`.
 - **Letra y Exportar:** pendientes de diseño detallado; deben seguir exactamente este mismo sistema de tokens, elevaciones y objetivos táctiles de `48 px`.

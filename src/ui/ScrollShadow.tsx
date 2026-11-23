@@ -123,7 +123,7 @@ export function ScrollShadow({
       <ScrollTag
         ref={scrollRef as never}
         aria-label={ariaLabel}
-        className={`flex-1 min-h-0 ${disabled ? 'overflow-hidden' : 'overflow-y-auto'} ${contentClassName}`.trim()}
+        className={`flex-1 min-h-0 ${disabled ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${contentClassName}`.trim()}
       >
         {children}
       </ScrollTag>

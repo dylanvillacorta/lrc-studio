@@ -2,8 +2,15 @@ import {
   UNSUPPORTED_AUDIO_FORMAT_MESSAGE,
   inferAudioMime,
   isSupportedAudioFile,
+  needsPcmPlaybackProxy,
 } from '@/lib/audioFormats';
 import { computePeaks } from '@/lib/waveform';
+import {
+  PLAYBACK_SAMPLE_RATE,
+  choosePcmLayout,
+  encodeWavPcm16,
+  type EncodeWavOptions,
+} from '@/lib/wavEncoder';
 
 /**
  * Cantidad estándar de barras de forma de onda extraídas al importar audio.
@@ -17,6 +24,8 @@ export interface DecodedAudioLike {
   /** Duración total del audio decodificado en segundos (equivale a `AudioBuffer.duration`). */
   duration: number;
   numberOfChannels?: number;
+  /** Tasa de muestreo del buffer en Hz (por defecto 44100 al codificar). */
+  sampleRate?: number;
   getChannelData(channel: number): Float32Array;
 }
 
@@ -43,6 +52,8 @@ export interface AudioFileInput {
 export interface ImportAudioOptions {
   bins?: number;
   createAudioContext?: () => AudioDecoderContext;
+  /** Opciones del codificador WAV (cesión del hilo); útil en pruebas. */
+  encodeOptions?: EncodeWavOptions;
 }
 
 /**
@@ -55,6 +66,14 @@ export interface ImportedAudioResult {
   peaks: number[];
   /** Duración total del audio importado en segundos. */
   duration: number;
+  /**
+   * WAV PCM 16 bits para reproducir con seek exacto (todo formato que no sea WAV PCM); `null` si el formato
+   * se reproduce del original o si falló la preparación (ver `playbackWarning`).
+   * Nunca se persiste: el blob original sigue siendo el que se guarda y exporta.
+   */
+  playbackBlob: Blob | null;
+  /** Aviso no bloqueante si no se pudo preparar el WAV de reproducción. */
+  playbackWarning: string | null;
 }
 
 /**
@@ -86,9 +105,25 @@ export function extractPeaksAndDuration(
 
 function resolveDefaultAudioContext(): AudioDecoderContext {
   const globalObj = globalThis as unknown as {
-    AudioContext?: new () => AudioDecoderContext;
+    OfflineAudioContext?: new (
+      channels: number,
+      length: number,
+      sampleRate: number,
+    ) => AudioDecoderContext;
+    webkitOfflineAudioContext?: new (
+      channels: number,
+      length: number,
+      sampleRate: number,
+    ) => AudioDecoderContext;
+    AudioContext?: new (options?: { sampleRate: number }) => AudioDecoderContext;
     webkitAudioContext?: new () => AudioDecoderContext;
   };
+  // Un contexto offline a 44,1 kHz fija la tasa de decodificación (el navegador remuestrea)
+  // y no depende de la política de autoplay.
+  const OfflineCtor = globalObj.OfflineAudioContext ?? globalObj.webkitOfflineAudioContext;
+  if (OfflineCtor) {
+    return new OfflineCtor(1, 1, PLAYBACK_SAMPLE_RATE);
+  }
   const Ctor = globalObj.AudioContext ?? globalObj.webkitAudioContext;
   if (!Ctor) {
     throw new Error('AudioContext no está disponible en este entorno.');
@@ -102,6 +137,83 @@ export const AUDIO_READ_FAILED_MESSAGE =
 export const AUDIO_DECODE_FAILED_MESSAGE =
   'El navegador no pudo decodificar este formato de audio. Si el archivo está dañado o no es compatible, prueba convertirlo a WAV o MP3.';
 
+export const PLAYBACK_PREPARE_FAILED_MESSAGE =
+  'No se pudo preparar el audio para saltos exactos. Se reproduce el original y los saltos pueden desfasarse unos cientos de milisegundos.';
+
+/**
+ * Codifica un audio decodificado como WAV PCM 16 bits (44,1 kHz; mono si el estéreo
+ * superaría el límite de memoria) por bloques, sin congelar la UI.
+ */
+export async function buildPlaybackWavBlob(
+  decoded: DecodedAudioLike,
+  encodeOptions?: EncodeWavOptions,
+): Promise<Blob> {
+  const channelCount = decoded.numberOfChannels ?? 1;
+  if (channelCount < 1 || !Number.isFinite(decoded.duration) || decoded.duration <= 0) {
+    throw new Error('El audio decodificado está vacío.');
+  }
+  const sampleRate = decoded.sampleRate ?? PLAYBACK_SAMPLE_RATE;
+  const layout = choosePcmLayout(decoded.duration, channelCount, sampleRate);
+  const needed = layout.channels === 1 ? channelCount : Math.min(2, channelCount);
+  const channels: Float32Array[] = [];
+  for (let c = 0; c < needed; c++) {
+    channels.push(decoded.getChannelData(c));
+  }
+  const buffer = await encodeWavPcm16(channels, sampleRate, layout.channels, encodeOptions);
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+async function tryBuildPlaybackBlob(
+  decoded: DecodedAudioLike,
+  encodeOptions?: EncodeWavOptions,
+): Promise<{ blob: Blob | null; warning: string | null }> {
+  try {
+    return { blob: await buildPlaybackWavBlob(decoded, encodeOptions), warning: null };
+  } catch (err) {
+    console.warn('[audio] No se pudo preparar el WAV de reproducción.', err);
+    return { blob: null, warning: PLAYBACK_PREPARE_FAILED_MESSAGE };
+  }
+}
+
+export interface PlaybackBlobResult {
+  /** WAV de reproducción, o `null` si no aplica o falló. */
+  blob: Blob | null;
+  warning: string | null;
+}
+
+/**
+ * Para abrir o restaurar: decodifica cualquier formato no WAV y devuelve el WAV PCM de reproducción.
+ * WAV PCM devuelve `null` sin aviso. Si la decodificación falla devuelve `null`
+ * con un aviso (se usa el original).
+ */
+export async function decodePlaybackBlob(
+  binary: Blob | ArrayBuffer,
+  fileName: string,
+  options: ImportAudioOptions = {},
+): Promise<PlaybackBlobResult> {
+  const declared = typeof Blob !== 'undefined' && binary instanceof Blob ? binary.type : undefined;
+  if (!needsPcmPlaybackProxy(fileName, declared)) {
+    return { blob: null, warning: null };
+  }
+  const { createAudioContext = resolveDefaultAudioContext, encodeOptions } = options;
+  let context: AudioDecoderContext | null = null;
+  try {
+    const bytes = binary instanceof ArrayBuffer ? binary.slice(0) : await binary.arrayBuffer();
+    context = createAudioContext();
+    const decoded = await context.decodeAudioData(bytes);
+    return await tryBuildPlaybackBlob(decoded, encodeOptions);
+  } catch (err) {
+    console.warn('[audio] No se pudo decodificar el audio para reproducción.', err);
+    return { blob: null, warning: PLAYBACK_PREPARE_FAILED_MESSAGE };
+  } finally {
+    try {
+      await context?.close?.();
+    } catch {
+      // Ignorar errores al cerrar el contexto de audio.
+    }
+  }
+}
+
 /**
  * Decodifica un archivo de audio usando `AudioContext.decodeAudioData`,
  * calcula los picos de onda con `computePeaks` y devuelve el blob y sus metadatos.
@@ -114,8 +226,11 @@ export async function importAudioFile(
     throw new Error(UNSUPPORTED_AUDIO_FORMAT_MESSAGE);
   }
 
-  const { bins = DEFAULT_WAVEFORM_BINS, createAudioContext = resolveDefaultAudioContext } =
-    options;
+  const {
+    bins = DEFAULT_WAVEFORM_BINS,
+    createAudioContext = resolveDefaultAudioContext,
+    encodeOptions,
+  } = options;
 
   const fileName = file.name && file.name.length > 0 ? file.name : 'audio';
   const resolvedMime = inferAudioMime(fileName, file.type);
@@ -139,12 +254,17 @@ export async function importAudioFile(
       throw new Error(AUDIO_DECODE_FAILED_MESSAGE, { cause: err });
     }
     const { peaks, duration } = extractPeaksAndDuration(decoded, bins);
+    const playback = needsPcmPlaybackProxy(fileName, resolvedMime)
+      ? await tryBuildPlaybackBlob(decoded, encodeOptions)
+      : { blob: null, warning: null };
 
     return {
       blob,
       fileName,
       peaks,
       duration,
+      playbackBlob: playback.blob,
+      playbackWarning: playback.warning,
     };
   } finally {
     try {

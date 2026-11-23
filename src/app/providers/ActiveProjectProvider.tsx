@@ -24,7 +24,11 @@ import { useRestoreHydration } from '@/app/providers/useRestoreHydration';
 import {
   buildSessionState,
   useAutosave,
+  clearPlaybackCache,
+  createPlaybackObjectUrl,
+  getCachedPlaybackBlob,
   createAudioObjectUrl,
+  revokeAudioObjectUrl,
   useDeviceLatency,
   useSessionRestore,
   type AutosaveSnapshot,
@@ -52,6 +56,21 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
   const [hasManualOverride, setHasManualOverride] = useState(false);
   const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [preparingCount, setPreparingCount] = useState(0);
+  const [manualPlaybackWarning, setManualPlaybackWarning] = useState<string | null>(null);
+
+  const [dismissedWarning, setDismissedWarning] = useState<string | null>(null);
+
+  const handlePlaybackWarning = useCallback((message: string | null) => {
+    setManualPlaybackWarning(message);
+    if (message === null) {
+      setDismissedWarning(null);
+    }
+  }, []);
+
+  const handlePreparingChange = useCallback((preparing: boolean) => {
+    setPreparingCount((count) => Math.max(0, count + (preparing ? 1 : -1)));
+  }, []);
 
   const { audioUrl: manualAudioUrl, replaceAudioUrl: replaceManualAudioUrl } =
     useObjectUrlState();
@@ -72,11 +91,26 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     if (!current) {
       return null;
     }
-    const stored = await adapter.getAudioBinary(current.id);
-    if (!stored || projectRef.current?.id !== current.id) {
-      return null;
+    // Con el WAV de reproducción en caché no se relee ni se decodifica de nuevo.
+    const cached = getCachedPlaybackBlob(current.id);
+    let url: string | null;
+    if (cached) {
+      url = createAudioObjectUrl(cached, 'audio.wav');
+    } else {
+      const stored = await adapter.getAudioBinary(current.id);
+      if (!stored || projectRef.current?.id !== current.id) {
+        return null;
+      }
+      url = (
+        await createPlaybackObjectUrl(stored.blob, stored.fileName, {
+          projectId: current.id,
+        })
+      ).url;
+      if (projectRef.current?.id !== current.id) {
+        revokeAudioObjectUrl(url);
+        return null;
+      }
     }
-    const url = createAudioObjectUrl(stored.blob, stored.fileName);
     if (!url) {
       return null;
     }
@@ -91,7 +125,8 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     projectId: project?.id ?? null,
     reloadAudioSource,
     initialDurationMs: project?.durationMs ?? 0,
-    initialPlaybackRate: project?.settings.playbackRate ?? 1,
+    // La velocidad siempre arranca en 1.0x (no se restaura la guardada).
+    initialPlaybackRate: 1,
   });
 
   const handleLinesChange = useCallback((nextLines: LyricLine[]) => {
@@ -202,7 +237,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
       setActiveLineIndex(lineIndex);
       setActiveWordIndex(wordIndex);
       resetHistory();
-      setPlaybackRate(nextProject.settings.playbackRate);
+      setPlaybackRate(1);
       seekTo(currentTimeMs, seekOrigin);
     },
     [
@@ -314,6 +349,8 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     project,
     flushAutosave,
     pausePlayback: pause,
+    onPlaybackWarning: handlePlaybackWarning,
+    onPreparingChange: handlePreparingChange,
     applyLoadedProject,
     onAudioAttached,
   });
@@ -335,6 +372,8 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
   const clearActiveProject = useCallback(async () => {
     cancelAutosave();
     markProjectBaseline(null);
+    clearPlaybackCache();
+    handlePlaybackWarning(null);
     pause();
     clearRestoreAudioUrl();
     setHasManualOverride(true);
@@ -365,6 +404,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     adapter,
     cancelAutosave,
     clearRestoreAudioUrl,
+    handlePlaybackWarning,
     markProjectBaseline,
     markSessionBaseline,
     pause,
@@ -426,11 +466,15 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
   );
 
   const repairStatus = player.repairStatus ?? 'idle';
+  const preparingAudio = restore.preparingAudio || preparingCount > 0;
+  const rawPlaybackWarning = manualPlaybackWarning ?? restore.playbackWarning;
+  const playbackWarning = rawPlaybackWarning !== dismissedWarning ? rawPlaybackWarning : null;
+  const showPreparing = preparingAudio || repairStatus === 'repairing';
   const retryRepair = player.retryRepair;
 
   // El botón de reproducir (fuera de este módulo) refleja la preparación con aria-busy.
   useEffect(() => {
-    if (repairStatus !== 'repairing' || typeof document === 'undefined') {
+    if (!showPreparing || typeof document === 'undefined') {
       return;
     }
     const buttons = Array.from(
@@ -442,7 +486,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
     return () => {
       buttons.forEach((button) => button.removeAttribute('aria-busy'));
     };
-  }, [repairStatus]);
+  }, [showPreparing]);
 
   return (
     <ActiveProjectContext.Provider value={value}>
@@ -451,7 +495,7 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
         className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex flex-col items-center gap-2 px-4"
         data-testid="audio-repair-status"
       >
-        {repairStatus === 'repairing' ? (
+        {showPreparing ? (
           <div
             role="status"
             aria-live="polite"
@@ -459,6 +503,23 @@ export function ActiveProjectProvider({ children }: ActiveProjectProviderProps) 
             className="rounded-full bg-black/80 px-4 py-2 text-sm text-white"
           >
             Preparando audio…
+          </div>
+        ) : null}
+        {playbackWarning ? (
+          <div
+            role="status"
+            aria-live="polite"
+            data-testid="playback-warning"
+            className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-black/85 px-4 py-2 text-sm text-white"
+          >
+            <span>{playbackWarning}</span>
+            <button
+              type="button"
+              className="min-h-11 rounded-full bg-white px-4 font-semibold text-black"
+              onClick={() => setDismissedWarning(rawPlaybackWarning)}
+            >
+              Entendido
+            </button>
           </div>
         ) : null}
         {repairStatus === 'failed' ? (

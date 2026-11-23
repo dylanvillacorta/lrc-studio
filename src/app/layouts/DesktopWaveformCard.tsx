@@ -20,14 +20,12 @@ export interface DesktopWaveformCardProps {
   playbackRate: number;
   lines: readonly LyricLine[];
   canUndo: boolean;
-  canOpenLoupe: boolean;
   onSeek: (targetMs: number) => void;
   onSeekStart?: () => void;
   onSeekEnd?: () => void;
   onTogglePlay: () => void;
   onChangePlaybackRate: (rate: number) => void;
   onUndo: () => void;
-  onOpenLoupe: () => void;
 }
 
 const PlaybackTimeLabel = memo(function PlaybackTimeLabel({
@@ -58,14 +56,12 @@ export const DesktopWaveformCard = memo(function DesktopWaveformCard({
   playbackRate,
   lines,
   canUndo,
-  canOpenLoupe,
   onSeek,
   onSeekStart,
   onSeekEnd,
   onTogglePlay,
   onChangePlaybackRate,
   onUndo,
-  onOpenLoupe,
 }: DesktopWaveformCardProps) {
   const readNowMs = () =>
     readCurrentTimeMs({ getCurrentTimeMs, timeStore, currentTimeMs });
@@ -81,8 +77,6 @@ export const DesktopWaveformCard = memo(function DesktopWaveformCard({
         onSeek={onSeek}
         onSeekStart={onSeekStart}
         onSeekEnd={onSeekEnd}
-        onOpenLoupe={onOpenLoupe}
-        canOpenLoupe={canOpenLoupe}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -92,7 +86,7 @@ export const DesktopWaveformCard = memo(function DesktopWaveformCard({
           <IconButton
             aria-label={`Velocidad ${playbackRate}x`}
             onClick={() => onChangePlaybackRate(getNextPlaybackRate(playbackRate))}
-            className="font-mono text-xs font-extrabold"
+            className={`font-mono text-xs font-extrabold ${playbackRate !== 1 ? 'text-acc' : ''}`}
           >
             <span>{`${playbackRate}×`}</span>
           </IconButton>

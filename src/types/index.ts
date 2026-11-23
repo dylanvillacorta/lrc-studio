@@ -1,7 +1,7 @@
 /**
  * Pestañas principales de la aplicación LRC Studio.
  */
-export type ActiveTab = 'sync' | 'word' | 'lyrics' | 'loupe' | 'export' | 'catalog';
+export type ActiveTab = 'sync' | 'word' | 'lyrics' | 'export' | 'catalog';
 
 /**
  * Marca temporal individual de una palabra dentro de una línea.
@@ -159,16 +159,6 @@ export interface SongMetadata {
  * Estado del semáforo de cuenta regresiva del Pre-Roll.
  */
 export type PreRollTrafficLight = 'red' | 'amber' | 'green';
-
-/**
- * Ventana temporal de reproducción de «Escuchar línea» en la lupa, con Pre-Roll y Post-Roll (en milisegundos).
- */
-export interface ActiveLineWindow {
-  lineStartMs: number;
-  lineEndMs: number;
-  windowStartMs: number;
-  windowEndMs: number;
-}
 
 /**
  * Métricas de progreso de sincronización de líneas y palabras.

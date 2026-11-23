@@ -29,6 +29,7 @@ import {
   SYNC_SEGMENTED_CLASS,
   type SyncSegmentedMode,
 } from './syncViewHelpers';
+import { TransportBar } from './TransportBar';
 import { WaveformStrip } from './WaveformStrip';
 
 export interface WordStampFeedback {
@@ -45,6 +46,7 @@ export interface WordSyncScreenProps {
   latencyMs?: number;
   durationMs: number;
   isPlaying: boolean;
+  playbackRate: number;
   lines: readonly LyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
@@ -55,13 +57,16 @@ export interface WordSyncScreenProps {
   onSeekStart?: () => void;
   onSeekEnd?: () => void;
   onPlay: () => Promise<void> | void;
+  /** Salta al milisegundo y suena siempre (idempotente). */
+  onPlayFrom: (targetMs: number) => void;
+  onTogglePlay: () => void;
+  onChangePlaybackRate: (rate: number) => void;
   onStampWordStart: (nowMs: number) => WordStampFeedback;
   /** Elige a mano la palabra de la línea activa que se va a (re)marcar. */
   onSelectWord: (wordIndex: number) => void;
   /** Deshace la última palabra sincronizada; `null` si no había nada que deshacer. */
   onUndoWord: () => { wordText: string } | null;
   canUndoWord: boolean;
-  onOpenLoupe: () => void;
   onUploadAudio: (file: File) => Promise<void>;
 }
 
@@ -115,6 +120,7 @@ export const WordSyncScreen = memo(function WordSyncScreen({
   latencyMs = 0,
   durationMs,
   isPlaying,
+  playbackRate,
   lines,
   activeLineIndex,
   activeWordIndex,
@@ -125,11 +131,13 @@ export const WordSyncScreen = memo(function WordSyncScreen({
   onSeekStart,
   onSeekEnd,
   onPlay,
+  onPlayFrom,
+  onTogglePlay,
+  onChangePlaybackRate,
   onStampWordStart,
   onSelectWord,
   onUndoWord,
   canUndoWord,
-  onOpenLoupe,
   onUploadAudio,
 }: WordSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
@@ -161,8 +169,7 @@ export const WordSyncScreen = memo(function WordSyncScreen({
 
   const handleRepeatPreRoll = () => {
     const startMs = computePreRollStartMs(targetStartMs, preRollMs);
-    onSeek(startMs);
-    void onPlay();
+    onPlayFrom(startMs);
     setLiveNotice(`Repitiendo Pre-Roll desde ${formatTime(startMs)}`);
   };
 
@@ -220,14 +227,23 @@ export const WordSyncScreen = memo(function WordSyncScreen({
         onSeek={onSeek}
         onSeekStart={onSeekStart}
         onSeekEnd={onSeekEnd}
-        onOpenLoupe={onOpenLoupe}
-        canOpenLoupe={Boolean(activeLine)}
       />
 
-      <WellPanel className="flex-1 min-h-0 p-2.5 flex flex-col justify-between gap-1.5 overflow-y-auto [@media(max-height:720px)]:p-2 [@media(max-height:720px)]:gap-1">
+      <TransportBar
+        compact
+        isPlaying={isPlaying}
+        playbackRate={playbackRate}
+        durationMs={durationMs}
+        readNowMs={readNowMs}
+        onSeek={onSeek}
+        onTogglePlay={onTogglePlay}
+        onChangePlaybackRate={onChangePlaybackRate}
+      />
+
+      <WellPanel className="flex-1 min-h-0 p-2.5 flex flex-col justify-between gap-1.5 overflow-y-auto overscroll-contain [@media(max-height:720px)]:p-2 [@media(max-height:720px)]:gap-1">
         <div
           aria-label="Palabras de la línea"
-          className="flex items-center gap-1 overflow-x-auto text-[14px] [@media(max-height:720px)]:text-[13px] leading-snug font-semibold text-mute shrink-0"
+          className="flex items-center gap-1 overflow-x-auto overscroll-contain text-[14px] [@media(max-height:720px)]:text-[13px] leading-snug font-semibold text-mute shrink-0"
         >
           {words.length > 0 ? (
             words.map((word, idx) => {

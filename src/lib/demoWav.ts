@@ -4,6 +4,8 @@
  * `createSynthesizedDemoWav` (línea 63).
  */
 
+import { writeWavHeader } from '@/lib/wavEncoder';
+
 export interface SynthesizedDemoWav {
   url: string | null;
   blob: Blob;
@@ -26,12 +28,6 @@ const MELODY_NOTES: readonly number[] = [
   329.63, 392.0, 440.0, 392.0, 349.23, 329.63, 293.66, 261.63,
 ];
 
-function writeAsciiString(view: DataView, offset: number, text: string): void {
-  for (let i = 0; i < text.length; i++) {
-    view.setUint8(offset + i, text.charCodeAt(i));
-  }
-}
-
 /**
  * Genera un archivo WAV PCM mono de 16 bits en memoria con progresión de acordes y pulso rítmico.
  * Devuelve la duración en milisegundos (`durationMs`), los 240 picos normalizados,
@@ -43,19 +39,12 @@ export function createSynthesizedDemoWav(durationSeconds = 28): SynthesizedDemoW
   const buffer = new ArrayBuffer(44 + numSamples * 2);
   const view = new DataView(buffer);
 
-  writeAsciiString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + numSamples * 2, true);
-  writeAsciiString(view, 8, 'WAVE');
-  writeAsciiString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, DEMO_SAMPLE_RATE, true);
-  view.setUint32(28, DEMO_SAMPLE_RATE * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeAsciiString(view, 36, 'data');
-  view.setUint32(40, numSamples * 2, true);
+  writeWavHeader(view, {
+    sampleRate: DEMO_SAMPLE_RATE,
+    channels: 1,
+    bitsPerSample: 16,
+    dataBytes: numSamples * 2,
+  });
 
   const peaks: number[] = [];
   const samplesPerBin = Math.max(1, Math.floor(numSamples / DEMO_PEAK_BINS));

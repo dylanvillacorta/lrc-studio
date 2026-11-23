@@ -146,10 +146,3 @@ export async function openSyncEditor(page: Page, isMobile: boolean): Promise<voi
     }
   }
 }
-
-export async function openLoupe(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Abrir ajuste fino en lupa' }).click();
-  await expect(
-    page.getByRole('region', { name: /Ajuste fino de la línea/i }),
-  ).toBeVisible();
-}

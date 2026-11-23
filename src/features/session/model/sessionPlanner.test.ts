@@ -103,7 +103,7 @@ describe('sessionPlanner', () => {
 
     const session: SessionState = {
       projectId: 'proj-1',
-      activeTab: 'loupe',
+      activeTab: 'loupe' as unknown as SessionState['activeTab'],
       currentTime: 99_999,
       activeLineIndex: 99,
       activeWordIndex: 99,
@@ -112,7 +112,8 @@ describe('sessionPlanner', () => {
 
     const plan = planRestore(session, project, audio);
     expect(plan).not.toBeNull();
-    expect(plan?.activeTab).toBe('loupe');
+    // Sesión guardada con la Lupa (eliminada): se restaura como Sincronizar.
+    expect(plan?.activeTab).toBe('sync');
     expect(plan?.activeLineIndex).toBe(1);
     expect(plan?.activeWordIndex).toBe(0);
     expect(plan?.currentTime).toBe(8500);

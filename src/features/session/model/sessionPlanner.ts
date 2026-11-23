@@ -9,7 +9,6 @@ const VALID_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>([
   'sync',
   'word',
   'lyrics',
-  'loupe',
   'export',
   'catalog',
 ]);
@@ -106,9 +105,16 @@ function sanitizeNonNegativeMs(value: number | undefined): number {
   return Math.max(0, Math.round(value));
 }
 
-function sanitizeActiveTab(tab: ActiveTab | undefined): ActiveTab {
-  if (tab && VALID_TABS.has(tab)) {
-    return tab;
+/**
+ * Pestañas válidas. `'loupe'` (la Lupa, eliminada) puede venir de sesiones guardadas
+ * antes de quitarla: se restaura explícitamente como `'sync'` (no es un dato desconocido).
+ */
+function sanitizeActiveTab(tab: string | undefined): ActiveTab {
+  if (tab === 'loupe') {
+    return 'sync';
+  }
+  if (tab && VALID_TABS.has(tab as ActiveTab)) {
+    return tab as ActiveTab;
   }
   return 'sync';
 }

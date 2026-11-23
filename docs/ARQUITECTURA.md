@@ -19,7 +19,7 @@ src/
     App.tsx
     layouts/                      # Layouts de móvil y escritorio
     providers/                    # Providers de storage y sesión (solo componen, sin lógica de negocio)
-  features/                       # sync, lyrics, catalog, loupe, export, session
+  features/                       # sync, lyrics, catalog, export, session
     <tema>/
       components/
       hooks/
@@ -48,7 +48,9 @@ src/
 ## 3. Contratos y tipos (`src/types/`)
 
 ```typescript
-export type ActiveTab = 'sync' | 'word' | 'lyrics' | 'loupe' | 'export' | 'catalog';
+export type ActiveTab = 'sync' | 'word' | 'lyrics' | 'export' | 'catalog';
+// Una sesión guardada con el valor legado 'loupe' (la Lupa, eliminada) se restaura como 'sync':
+// `sessionPlanner` y `WebIndexedDBAdapter` lo normalizan. No cambia la forma de los datos: sin migrador.
 
 export interface WordTiming {
   id: string;
@@ -195,6 +197,7 @@ Las tres cadenas usan la utilidad pura `runMigrations` (`src/lib/schemaMigration
 - **Guardado inmediato (flush):** en eventos `visibilitychange` (al ocultarse la pestaña), `pagehide` y `beforeunload`.
 - **Actualización de versión:** antes de recargar por una nueva versión disponible, se debe ejecutar `flush()` del autoguardado.
 - **Restauración al abrir:** recupera `SessionState`, carga la canción activa (`getProject` + `getAudioBinary`), reconstruye el `ObjectURL` desde el binario, restaura `waveformPeaks` y posiciona exactamente en `currentTimeMs`, `activeLineIndex` y `activeWordIndex`.
+- **Audio de reproducción (salto exacto, siempre PCM en memoria):** el seek de un `<audio>` sobre formatos comprimidos se estima por bytes o por tramas y se desfasa decenas o cientos de ms (FLAC sin seektable, MP3 VBR, AAC y, en general, cualquier códec sin índice de seek fiable). Por eso todo formato que no sea WAV PCM (FLAC, MP3, AAC, M4A, OGG, OPUS, WEBM y cualquier otro decodificable; `needsPcmPlaybackProxy`, `src/lib/audioFormats.ts`) se reproduce desde un WAV PCM 16 bits generado en memoria y asignado al mismo `<audio>` (`src/lib/wavEncoder.ts`, `decodePlaybackBlob` e `importAudioFile` en `src/lib/audioImport.ts`). Solo WAV PCM (`audio/wav`, `audio/x-wav`, `audio/wave`) se reproduce del original, porque su seek es exacto al muestreo. Se decodifica con un `OfflineAudioContext` a 44,1 kHz fijos y 16 bits: un FLAC de alta resolución (96 kHz, 24 bits) se remuestrea y su memoria queda acotada, suficiente para sincronizar. Si el PCM estéreo superaría 64 MB (≈ 6 min) se mezcla a mono; la conversión Float32 a Int16 es por bloques cediendo el hilo (≈ 8 ms) y mientras tanto se muestra «Preparando audio…» y Reproducir queda con `aria-busy`. El WAV es solo de reproducción: **nunca se persiste ni se exporta**; `AudioBinaryRecord`, el respaldo y la exportación siguen usando el blob original (sin cambio de esquema). Se crea al importar, al abrir desde el catálogo y al restaurar la sesión (`createPlaybackObjectUrl`, `src/features/session`); un solo WAV queda en caché en memoria por proyecto activo y la reparación de audio lo reutiliza sin decodificar de nuevo. Si la decodificación falla se reproduce el original y se muestra un aviso no bloqueante (nunca un fallo silencioso). Riesgo conocido: el decodificador puede recortar el retardo del codificador (p. ej. ~25 ms en MP3) de forma distinta al elemento `<audio>`; las marcas se toman sobre el WAV, de modo que marcar y reproducir son coherentes.
 
 ## 6. Catálogo «Mis Transcripciones»
 
@@ -216,7 +219,14 @@ Acciones disponibles:
 - **Sensación nativa (sin selección ni zoom):**
   - Sin selección de texto en toda la app (`user-select: none`, `-webkit-user-select`, `-webkit-touch-callout: none`), salvo `input`, `textarea`, `[contenteditable]` y elementos con la utilidad `selectable`, donde la usuaria escribe o copia texto.
   - Sin zoom de página: meta viewport con `maximum-scale=1, user-scalable=no`; `touch-action: manipulation` global (los componentes con arrastre propio mantienen `touch-action: none`); campos a 16 px en móvil para evitar el zoom automático de iOS.
-  - `src/lib/nativeFeel.ts` (montado una vez en `App`, con limpieza) previene `gesture*` y el pinch de varios dedos (iOS Safari), Ctrl/Cmd + rueda, Ctrl/Cmd + `+`, `-`, `=`, `0` y la selección por doble clic fuera de campos editables. No intercepta teclas sin Ctrl/Cmd, por lo que no choca con los atajos de sincronización.
+  - `src/lib/nativeFeel.ts` (montado una vez en `App`, con limpieza) previene `gesture*` y el pinch de varios dedos (iOS Safari), Ctrl/Cmd + rueda, Ctrl/Cmd + `+`, `-`, `=` y la selección por doble clic fuera de campos editables. Ctrl/Cmd + `0` no se previene a propósito: restablece el zoom del navegador al 100 %. No intercepta teclas sin Ctrl/Cmd, por lo que no choca con los atajos de sincronización.
+- **Página fija (T35):** la página nunca se deforma ni se mueve mientras se toca sin parar.
+  - `overscroll-behavior: none` en `html`/`body` (sin rebote ni pull-to-refresh) y `overscroll-behavior: contain` en todo contenedor con scroll interno, para no encadenar el scroll a la página.
+  - Sin scroll horizontal de la página en 390x844 ni 1280x800 (cubierto por E2E); se corrige el elemento que desborda, el `overflow-x-hidden` global es solo red de seguridad.
+  - Altura estable en móvil con `dvh` (no `vh`); `viewport-fit=cover` y `env(safe-area-inset-*)` en el layout móvil. Al salir de un campo editable, `nativeFeel` restablece el scroll de la página si el teclado virtual la dejó desplazada.
+  - `contextmenu` prevenido fuera de campos editables (`shouldPreventContextMenu`), `-webkit-touch-callout: none`, sin arrastre nativo de imágenes ni enlaces (`shouldPreventDragStart`, salvo zonas con `data-allow-drag`; el drop de archivos no se afecta) y sin resaltado al tocar (`-webkit-tap-highlight-color: transparent`), conservando `:focus-visible` para teclado.
+  - Sin saltos de layout: cifras con `font-variant-numeric: tabular-nums` (`.font-mono`), botones que cambian de icono (Reproducir/Pausar) con tamaño fijo, y avisos en vivo fuera del flujo.
+  - El centrado de la línea activa usa `scrollTop` del contenedor (`useCenteredListScroll`), nunca `scrollIntoView`, y salta sin animación con `prefers-reduced-motion`.
 
 - **Móvil / táctil:** el botón gigante de sincronización usa `onPointerDown` (latencia cero) para marcar; no hay modos que dependan de soltar el botón.
 - **Escritorio (teclado):**
@@ -232,7 +242,9 @@ Acciones disponibles:
 Tomada de [docs/base/lyricsync_studio_pro_2_00.tsx](base/lyricsync_studio_pro_2_00.tsx):
 - Modo **Línea**.
 - Modo **Palabra por palabra** con **Pre-Roll** y foco automático: cada marca avanza sola a la próxima palabra sin marca (cruzando líneas) y el deshacer quita la última palabra marcada, deja el foco en ella y vuelve el audio a `inicio − Pre-Roll`.
-- El botón **Escuchar línea** de la lupa reproduce la línea con Pre-Roll y Post-Roll (el antiguo modo Ráfaga ya no existe; el selector tiene Línea, Palabra y Karaoke).
-- **Lupa de onda** con bordes arrastrables e inspector de `10 ms` y `50 ms`.
+- El selector tiene Línea, Palabra y Karaoke (el antiguo modo Ráfaga y la Lupa de onda ya no existen).
+- **Inspector** de escritorio de `10 ms` y `50 ms` (`src/features/sync/`), más los atajos `←`/`→` y `[`/`]`.
+- **Reproducir desde aquí** (y repetir Pre-Roll y deshacer palabra) usan `playFrom`: salta siempre al milisegundo de la marca y suena al instante, es idempotente y nunca pausa aunque se toque muchas veces seguidas. El vigilante de progreso ignora los seeks (generación de seek) y exige dos veredictos de congelado consecutivos antes de reparar.
+- **Transporte móvil** (`TransportBar`): velocidad, −5 s, reproducir/pausa y +5 s en Línea y en Palabra. La velocidad siempre arranca en `1.0x` al abrir o restaurar un proyecto y cambiarla no guarda el proyecto; se resalta cuando no es `1x`.
 - **Karaoke a 60 FPS**.
 - Exportación a **JSON**, **ELRC** y **LRC**.

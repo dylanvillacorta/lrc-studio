@@ -13,7 +13,8 @@ export interface TargetLike {
 const EDITABLE_SELECTOR =
   'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
 
-const ZOOM_KEYS = new Set(['+', '-', '=', '_', '0', 'Add', 'Subtract']);
+// Ctrl+0 queda libre a propósito: restablece el zoom del navegador al 100 %.
+const ZOOM_KEYS = new Set(['+', '-', '=', '_', 'Add', 'Subtract']);
 
 /** Campo donde la usuaria escribe o copia texto: la selección debe funcionar. */
 export function isEditableTarget(target: TargetLike | null | undefined): boolean {
@@ -29,7 +30,7 @@ export function shouldPreventWheel(e: { ctrlKey?: boolean; metaKey?: boolean }):
   return e.ctrlKey === true || e.metaKey === true;
 }
 
-/** Ctrl/Cmd + (+, -, =, 0) hace zoom del navegador; el resto de teclas no se toca. */
+/** Ctrl/Cmd + (+, -, =) hace zoom del navegador; el resto de teclas no se toca. */
 export function shouldPreventZoomKey(e: {
   key: string;
   ctrlKey?: boolean;
@@ -48,6 +49,23 @@ export function shouldPreventTouchMove(e: { touches?: { length: number } }): boo
 /** El doble clic fuera de campos editables no debe seleccionar texto. */
 export function shouldPreventDoubleClick(target: TargetLike | null | undefined): boolean {
   return !isEditableTarget(target);
+}
+
+/** El menú contextual (pulsación larga o clic derecho) solo se permite en campos editables. */
+export function shouldPreventContextMenu(target: TargetLike | null | undefined): boolean {
+  return !isEditableTarget(target);
+}
+
+/** Arrastre nativo de imágenes y enlaces; las zonas propias usan `data-allow-drag`. */
+export function shouldPreventDragStart(target: TargetLike | null | undefined): boolean {
+  if (!target || typeof target.closest !== 'function') return false;
+  if (target.closest('[data-allow-drag]')) return false;
+  return Boolean(target.closest('img, a'));
+}
+
+/** Tras cerrar el teclado virtual, la página no debe quedar desplazada. */
+export function shouldResetPageScroll(scroll: { x: number; y: number }): boolean {
+  return scroll.x !== 0 || scroll.y !== 0;
 }
 
 /** Monta los listeners una sola vez; devuelve la función de limpieza. */
@@ -70,14 +88,39 @@ export function installNativeFeel(doc: Document = document): () => void {
     win.getSelection()?.removeAllRanges();
   };
 
+  const onContextMenu = (e: MouseEvent) => {
+    if (shouldPreventContextMenu(e.target as TargetLike | null)) e.preventDefault();
+  };
+  const onDragStart = (e: DragEvent) => {
+    if (shouldPreventDragStart(e.target as TargetLike | null)) e.preventDefault();
+  };
+  let resetTimer: number | undefined;
+  const onFocusOut = (e: FocusEvent) => {
+    if (!isEditableTarget(e.target as TargetLike | null)) return;
+    win.clearTimeout(resetTimer);
+    // Espera a que el teclado virtual termine de cerrarse.
+    resetTimer = win.setTimeout(() => {
+      const active = doc.activeElement as TargetLike | null;
+      if (isEditableTarget(active)) return;
+      if (shouldResetPageScroll({ x: win.scrollX, y: win.scrollY })) win.scrollTo(0, 0);
+    }, 250);
+  };
+
   const gestures = ['gesturestart', 'gesturechange', 'gestureend'] as const;
   doc.addEventListener('wheel', onWheel, { passive: false });
   doc.addEventListener('keydown', onKeyDown);
   doc.addEventListener('touchmove', onTouchMove, { passive: false });
   doc.addEventListener('dblclick', onDoubleClick);
+  doc.addEventListener('contextmenu', onContextMenu);
+  doc.addEventListener('dragstart', onDragStart);
+  doc.addEventListener('focusout', onFocusOut);
   gestures.forEach((g) => doc.addEventListener(g, stop, { passive: false }));
 
   return () => {
+    win.clearTimeout(resetTimer);
+    doc.removeEventListener('contextmenu', onContextMenu);
+    doc.removeEventListener('dragstart', onDragStart);
+    doc.removeEventListener('focusout', onFocusOut);
     doc.removeEventListener('wheel', onWheel);
     doc.removeEventListener('keydown', onKeyDown);
     doc.removeEventListener('touchmove', onTouchMove);
