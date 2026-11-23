@@ -123,6 +123,7 @@ function createSampleContext(
       pause: () => {},
       togglePlay: () => {},
       seekTo: () => {},
+      playFrom: () => {},
       setSeeking: () => {},
       setPlaybackRate: () => {},
     },

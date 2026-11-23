@@ -21,8 +21,8 @@ export interface UsePlaybackLineTrackingOptions {
   fallbackCurrentTimeMs?: number;
   setActiveLineIndex: (index: number) => void;
   setActiveWordIndex: (index: number) => void;
-  seekTo: (targetMs: number) => void;
-  play?: () => Promise<void> | void;
+  /** Salta al milisegundo y suena siempre (idempotente, nunca pausa). */
+  playFrom: (targetMs: number) => void;
   /** `false` en modo Palabra: la reproducción no cambia la línea activa. Por defecto `true`. */
   followPlayback?: boolean;
   /** Palabra en foco al elegir una línea (por defecto 0; en Palabra, la primera sin marca). */
@@ -49,8 +49,7 @@ export function usePlaybackLineTracking({
   fallbackCurrentTimeMs = 0,
   setActiveLineIndex,
   setActiveWordIndex,
-  seekTo,
-  play,
+  playFrom,
   followPlayback = true,
   resolveWordIndexForLine,
 }: UsePlaybackLineTrackingOptions): UsePlaybackLineTrackingReturn {
@@ -141,17 +140,16 @@ export function usePlaybackLineTracking({
       if (!selected || selected.startMs === null) {
         return;
       }
+      // El audio salta primero: el resto son actualizaciones de estado.
+      playFrom(selected.startMs);
       setManualOverrideAtPlayingIndex(null);
       setActiveLineIndex(index);
       setActiveWordIndex(resolveWordIndexForLine?.(index) ?? 0);
-      seekTo(selected.startMs);
-      void play?.();
     },
     [
       lines,
-      play,
+      playFrom,
       resolveWordIndexForLine,
-      seekTo,
       setActiveLineIndex,
       setActiveWordIndex,
     ],

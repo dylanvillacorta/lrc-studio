@@ -4,6 +4,7 @@ import {
   flagForPageShow,
   flagForStalled,
   shouldRepairAudio,
+  shouldTriggerFrozen,
   type AudioHealthInput,
 } from '@/features/sync/hooks/audioHealth';
 
@@ -73,5 +74,18 @@ describe('shouldRepairAudio y marcas de eventos (T26)', () => {
     expect(flagForStalled(0)).toBe('stalled');
     expect(flagForStalled(1)).toBe('stalled');
     expect(flagForStalled(3)).toBeNull();
+  });
+
+  it('stalled durante un seek o con un blob local no marca', () => {
+    expect(flagForStalled(0, { seeking: true })).toBeNull();
+    expect(flagForStalled(0, { isBlob: true })).toBeNull();
+    expect(flagForStalled(0, { seeking: false, isBlob: false })).toBe('stalled');
+  });
+
+  it('frozen exige dos veredictos consecutivos', () => {
+    expect(shouldTriggerFrozen(0)).toBe(false);
+    expect(shouldTriggerFrozen(1)).toBe(false);
+    expect(shouldTriggerFrozen(2)).toBe(true);
+    expect(shouldTriggerFrozen(3)).toBe(true);
   });
 });

@@ -178,8 +178,7 @@ export function DesktopLayout() {
     fallbackCurrentTimeMs,
     setActiveLineIndex: sync.setActiveLineIndex,
     setActiveWordIndex: sync.setActiveWordIndex,
-    seekTo: player.seekTo,
-    play: player.play,
+    playFrom: player.playFrom,
     // En modo Palabra el foco solo lo mueven las marcas y la selección manual.
     followPlayback: syncMode !== 'word',
     resolveWordIndexForLine,
@@ -221,8 +220,7 @@ export function DesktopLayout() {
       syncMode === 'word'
         ? resolveWordTargetStartMs(activeLine, sync.activeWordIndex)
         : (activeLine?.startMs ?? getCurrentTimeMs());
-    player.seekTo(computePreRollStartMs(targetStartMs, preRollMs));
-    void player.play();
+    player.playFrom(computePreRollStartMs(targetStartMs, preRollMs));
     setLiveNotice('Repitiendo Pre-Roll');
   }, [activeLine, getCurrentTimeMs, player, preRollMs, sync.activeWordIndex, syncMode]);
 
@@ -259,8 +257,7 @@ export function DesktopLayout() {
       setLiveNotice('No hay marcas de palabra para deshacer');
       return;
     }
-    player.seekTo(result.rewindTargetMs);
-    void player.play();
+    player.playFrom(result.rewindTargetMs);
     setLiveNotice(`Marca de «${result.wordText}» deshecha`);
   }, [player, preRollMs, sync]);
 
@@ -393,15 +390,8 @@ export function DesktopLayout() {
     setActiveTab('catalog');
   }, [setActiveTab]);
 
-  const handleChangePlaybackRate = useCallback(
-    (rate: number) => {
-      player.setPlaybackRate(rate);
-      if (project) {
-        updateProjectMetadata({ settings: { ...project.settings, playbackRate: rate } });
-      }
-    },
-    [player, project, updateProjectMetadata],
-  );
+  // La velocidad es efímera: siempre arranca en 1.0x y no guarda el proyecto.
+  const handleChangePlaybackRate = player.setPlaybackRate;
 
   const handleSeekStart = useCallback(() => {
     player.setSeeking(true);

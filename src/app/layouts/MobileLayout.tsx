@@ -164,7 +164,7 @@ export function MobileLayout() {
     }
   }, [activeTab, flushPendingSave, refreshCatalog]);
 
-  const { seekTo, play, togglePlay } = player;
+  const { seekTo, playFrom, togglePlay } = player;
   const {
     lines: syncLines,
     activeLineIndex: syncActiveLineIndex,
@@ -193,8 +193,7 @@ export function MobileLayout() {
     fallbackCurrentTimeMs,
     setActiveLineIndex: setSyncActiveLineIndex,
     setActiveWordIndex: setSyncActiveWordIndex,
-    seekTo,
-    play,
+    playFrom,
     // En modo Palabra el foco solo lo mueven las marcas y la selección manual.
     followPlayback: activeTab !== 'word',
     resolveWordIndexForLine,
@@ -304,17 +303,8 @@ export function MobileLayout() {
     void flushPendingSave();
   }, [flushPendingSave]);
 
-  const handleChangePlaybackRate = useCallback(
-    (rate: number) => {
-      player.setPlaybackRate(rate);
-      if (project) {
-        updateProjectMetadata({
-          settings: { ...project.settings, playbackRate: rate },
-        });
-      }
-    },
-    [player, project, updateProjectMetadata],
-  );
+  // La velocidad es efímera: siempre arranca en 1.0x y no guarda el proyecto.
+  const handleChangePlaybackRate = player.setPlaybackRate;
 
   const handleStampLine = useCallback(
     (nowMs: number) => {
@@ -359,8 +349,7 @@ export function MobileLayout() {
     if (!result) {
       return null;
     }
-    player.seekTo(result.rewindTargetMs);
-    void player.play();
+    player.playFrom(result.rewindTargetMs);
     return { wordText: result.wordText };
   }, [player, preRollMs, sync]);
 
@@ -560,6 +549,7 @@ export function MobileLayout() {
               latencyMs={latencyMs}
               durationMs={durationMs}
               isPlaying={player.isPlaying}
+              playbackRate={player.playbackRate}
               lines={sync.lines}
               activeLineIndex={sync.activeLineIndex}
               activeWordIndex={sync.activeWordIndex}
@@ -570,6 +560,9 @@ export function MobileLayout() {
               onSeekStart={handleSeekStart}
               onSeekEnd={handleSeekEnd}
               onPlay={player.play}
+              onPlayFrom={player.playFrom}
+              onTogglePlay={player.togglePlay}
+              onChangePlaybackRate={handleChangePlaybackRate}
               onStampWordStart={handleStampWord}
               onSelectWord={handleSelectWord}
               onUndoWord={handleWordUndo}

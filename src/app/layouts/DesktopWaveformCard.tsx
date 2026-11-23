@@ -92,7 +92,7 @@ export const DesktopWaveformCard = memo(function DesktopWaveformCard({
           <IconButton
             aria-label={`Velocidad ${playbackRate}x`}
             onClick={() => onChangePlaybackRate(getNextPlaybackRate(playbackRate))}
-            className="font-mono text-xs font-extrabold"
+            className={`font-mono text-xs font-extrabold ${playbackRate !== 1 ? 'text-acc' : ''}`}
           >
             <span>{`${playbackRate}×`}</span>
           </IconButton>
