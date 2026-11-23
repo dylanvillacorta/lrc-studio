@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { buildAudioBlob } from '@/features/session/hooks/useSessionRestore';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  buildAudioBlob,
+  clearPlaybackCache,
+  createPlaybackObjectUrl,
+  getCachedPlaybackBlob,
+} from '@/features/session/hooks/useSessionRestore';
 
 describe('buildAudioBlob (mime del audio restaurado, T26)', () => {
   const bytes = new Uint8Array([1, 2, 3]);
@@ -24,5 +29,50 @@ describe('buildAudioBlob (mime del audio restaurado, T26)', () => {
   it('Blob con type correcto se reutiliza sin copiarlo', () => {
     const blob = new Blob([bytes], { type: 'audio/wav' });
     expect(buildAudioBlob(blob, 'a.wav')).toBe(blob);
+  });
+});
+
+describe('createPlaybackObjectUrl (proxy WAV de reproducción)', () => {
+  afterEach(() => {
+    clearPlaybackCache();
+    vi.unstubAllGlobals();
+  });
+
+  function stubUrl() {
+    const created: Blob[] = [];
+    vi.stubGlobal('URL', {
+      createObjectURL: (blob: Blob) => {
+        created.push(blob);
+        return `blob:test-${created.length}`;
+      },
+      revokeObjectURL: () => {},
+    });
+    return created;
+  }
+
+  it('usa el WAV decodificado, lo cachea y la reparación lo reutiliza sin decodificar', async () => {
+    const created = stubUrl();
+    const wav = new Blob([new Uint8Array([9])], { type: 'audio/wav' });
+    const decode = vi.fn(async () => ({ blob: wav, warning: null }));
+    const original = new Blob([new Uint8Array([1])], { type: 'audio/mpeg' });
+
+    const first = await createPlaybackObjectUrl(original, 'a.mp3', { projectId: 'p1', decode });
+    expect(first.url).toBe('blob:test-1');
+    expect(created[0]).toBe(wav);
+    expect(getCachedPlaybackBlob('p1')).toBe(wav);
+
+    const repaired = await createPlaybackObjectUrl(original, 'a.mp3', { projectId: 'p1', decode });
+    expect(repaired.url).toBe('blob:test-2');
+    expect(decode).toHaveBeenCalledTimes(1);
+  });
+
+  it('si no hay WAV usa el original y propaga el aviso', async () => {
+    const created = stubUrl();
+    const original = new Blob([new Uint8Array([1])], { type: 'audio/mpeg' });
+    const decode = vi.fn(async () => ({ blob: null, warning: 'aviso' }));
+    const result = await createPlaybackObjectUrl(original, 'a.mp3', { projectId: 'p2', decode });
+    expect(result.warning).toBe('aviso');
+    expect(created[0]).toBe(original);
+    expect(getCachedPlaybackBlob('p2')).toBeNull();
   });
 });

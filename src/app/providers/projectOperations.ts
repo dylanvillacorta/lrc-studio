@@ -1,8 +1,11 @@
 import { createEmptyProject } from '@/features/catalog';
 import {
   createAudioObjectUrl,
+  createPlaybackObjectUrl,
+  rememberPlaybackBlob,
   resolveAudioDurationSec,
   revokeAudioObjectUrl,
+  type PlaybackUrlResult,
 } from '@/features/session';
 import {
   importAudioFile,
@@ -21,6 +24,18 @@ export interface ProjectOperationsDeps {
   isMounted?: () => boolean;
   importAudio?: (file: AudioFileInput) => Promise<ImportedAudioResult>;
   createObjectUrl?: (binary: Blob | ArrayBuffer, fileName?: string) => string | null;
+  /** Crea la URL de reproducción al abrir un proyecto (MP3/AAC suenan desde un WAV PCM). */
+  createPlaybackUrl?: (
+    binary: Blob | ArrayBuffer,
+    fileName: string | undefined,
+    options: { projectId: string },
+  ) => Promise<PlaybackUrlResult>;
+  /** Registra (o limpia con `null`) el WAV de reproducción del proyecto para reutilizarlo al reparar. */
+  rememberPlayback?: (projectId: string, blob: Blob | null) => void;
+  /** Aviso no bloqueante de reproducción (o `null` para limpiarlo). */
+  onPlaybackWarning?: (message: string | null) => void;
+  /** Se invoca con `true`/`false` (emparejados) mientras se decodifica el audio. */
+  onPreparingChange?: (preparing: boolean) => void;
   revokeObjectUrl?: (url: string | null) => void;
   applyLoadedProject: (
     nextProject: ProjectFullData,
@@ -60,6 +75,10 @@ export function createProjectOperations(
     isMounted = () => true,
     importAudio = importAudioFile,
     createObjectUrl = createAudioObjectUrl,
+    createPlaybackUrl = createPlaybackObjectUrl,
+    rememberPlayback = rememberPlaybackBlob,
+    onPlaybackWarning,
+    onPreparingChange,
     revokeObjectUrl = revokeAudioObjectUrl,
     applyLoadedProject,
     onAudioAttached,
@@ -92,13 +111,30 @@ export function createProjectOperations(
       throw new Error('No se encontró el proyecto solicitado.');
     }
 
-    const nextUrl = loadedAudio
-      ? createObjectUrl(loadedAudio.blob, loadedAudio.fileName)
-      : null;
+    onPlaybackWarning?.(null);
+    let nextUrl: string | null = null;
+    let warning: string | null = null;
+    if (loadedAudio) {
+      onPreparingChange?.(true);
+      try {
+        const playback = await createPlaybackUrl(
+          loadedAudio.blob,
+          loadedAudio.fileName,
+          { projectId },
+        );
+        nextUrl = playback.url;
+        warning = playback.warning;
+      } finally {
+        onPreparingChange?.(false);
+      }
+    }
 
     if (isStale(opId)) {
       revokeObjectUrl(nextUrl);
       return;
+    }
+    if (warning) {
+      onPlaybackWarning?.(warning);
     }
 
     const peaks =
@@ -148,7 +184,14 @@ export function createProjectOperations(
       activeAttachId !== attachId ||
       getActiveProject()?.id !== targetProjectId;
 
-    const imported = await importAudio(file);
+    onPlaybackWarning?.(null);
+    onPreparingChange?.(true);
+    let imported: ImportedAudioResult;
+    try {
+      imported = await importAudio(file);
+    } finally {
+      onPreparingChange?.(false);
+    }
     if (isAttachStale()) {
       return;
     }
@@ -164,10 +207,18 @@ export function createProjectOperations(
       return;
     }
 
-    const nextUrl = createObjectUrl(imported.blob, imported.fileName);
+    // Se guarda el original (arriba); se reproduce el WAV preparado si existe.
+    const playbackBlob = imported.playbackBlob ?? null;
+    const nextUrl = playbackBlob
+      ? createObjectUrl(playbackBlob, 'audio.wav')
+      : createObjectUrl(imported.blob, imported.fileName);
     if (isAttachStale()) {
       revokeObjectUrl(nextUrl);
       return;
+    }
+    rememberPlayback(targetProjectId, playbackBlob);
+    if (imported.playbackWarning) {
+      onPlaybackWarning?.(imported.playbackWarning);
     }
 
     onAudioAttached(

@@ -13,6 +13,8 @@ export interface UseProjectLoaderParams {
   project: ProjectFullData | null;
   flushAutosave: () => Promise<void>;
   pausePlayback?: () => void;
+  onPlaybackWarning?: (message: string | null) => void;
+  onPreparingChange?: (preparing: boolean) => void;
   applyLoadedProject: (
     nextProject: ProjectFullData,
     nextUrl: string | null,
@@ -38,9 +40,13 @@ export function useProjectLoader({
   project,
   flushAutosave,
   pausePlayback,
+  onPlaybackWarning,
+  onPreparingChange,
   applyLoadedProject,
   onAudioAttached,
 }: UseProjectLoaderParams) {
+  const warningRef = useRef(onPlaybackWarning);
+  const preparingRef = useRef(onPreparingChange);
   const projectRef = useRef<ProjectFullData | null>(project);
   const flushRef = useRef(flushAutosave);
   const pauseRef = useRef(pausePlayback);
@@ -61,6 +67,11 @@ export function useProjectLoader({
   useEffect(() => {
     pauseRef.current = pausePlayback;
   }, [pausePlayback]);
+
+  useEffect(() => {
+    warningRef.current = onPlaybackWarning;
+    preparingRef.current = onPreparingChange;
+  }, [onPlaybackWarning, onPreparingChange]);
 
   useEffect(() => {
     applyRef.current = applyLoadedProject;
@@ -86,6 +97,8 @@ export function useProjectLoader({
         flushAutosave: () => flushRef.current(),
         pausePlayback: () => pauseRef.current?.(),
         isMounted: () => mountedRef.current,
+        onPlaybackWarning: (message) => warningRef.current?.(message),
+        onPreparingChange: (preparing) => preparingRef.current?.(preparing),
         applyLoadedProject: (nextProject, nextUrl, peaks, durationSec) => {
           projectRef.current = nextProject;
           applyRef.current(nextProject, nextUrl, peaks, durationSec);

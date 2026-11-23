@@ -6,6 +6,7 @@ import {
   getAudioInputAccept,
   inferAudioMime,
   isSupportedAudioFile,
+  needsPcmPlaybackProxy,
 } from './audioFormats';
 
 afterEach(() => {
@@ -146,5 +147,20 @@ describe('audioFormats', () => {
       expect(isSupportedAudioFile({ name: 'notas.flac.txt', type: '' })).toBe(false);
       expect(isSupportedAudioFile({ name: 'sinextension', type: '' })).toBe(false);
     });
+  });
+});
+
+describe('needsPcmPlaybackProxy', () => {
+  it('es verdadero solo para MP3 y AAC ADTS', () => {
+    expect(needsPcmPlaybackProxy('a.mp3')).toBe(true);
+    expect(needsPcmPlaybackProxy('a.MP3', 'audio/mpeg')).toBe(true);
+    expect(needsPcmPlaybackProxy('a.aac')).toBe(true);
+    expect(needsPcmPlaybackProxy('a.bin', 'audio/aac')).toBe(true);
+  });
+
+  it('es falso para formatos con índice de seek fiable', () => {
+    for (const name of ['a.wav', 'a.flac', 'a.m4a', 'a.ogg', 'a.opus', 'a.webm']) {
+      expect(needsPcmPlaybackProxy(name)).toBe(false);
+    }
   });
 });

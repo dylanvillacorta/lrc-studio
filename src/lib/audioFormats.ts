@@ -117,3 +117,21 @@ export function inferAudioMime(fileName: string, declaredType?: string): string 
 export function isSupportedAudioFile(file: { name?: string; type?: string }): boolean {
   return inferAudioMime(file.name ?? '', file.type) !== 'application/octet-stream';
 }
+
+const PCM_PROXY_MIMES: ReadonlySet<string> = new Set([
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/x-mpeg',
+  'audio/aac',
+  'audio/x-aac',
+  'audio/aacp',
+]);
+
+/**
+ * Indica si el audio carece de un índice de seek fiable en el navegador (MP3 y AAC ADTS):
+ * el seek se estima por bytes y se desfasa cientos de ms, así que se reproduce desde un
+ * WAV PCM decodificado. WAV, FLAC, M4A, OGG, OPUS y WEBM se reproducen del original.
+ */
+export function needsPcmPlaybackProxy(fileName: string, declaredType?: string): boolean {
+  return PCM_PROXY_MIMES.has(inferAudioMime(fileName, declaredType));
+}
