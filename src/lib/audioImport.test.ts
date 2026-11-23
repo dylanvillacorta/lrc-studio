@@ -160,7 +160,7 @@ describe('audioImport', () => {
   });
 });
 
-describe('audioImport: WAV de reproducción para MP3/AAC', () => {
+describe('audioImport: WAV de reproducción para formatos no WAV', () => {
   const decoded = {
     duration: 2 / 44_100,
     numberOfChannels: 2,
@@ -180,11 +180,27 @@ describe('audioImport: WAV de reproducción para MP3/AAC', () => {
     expect(String.fromCharCode(...head.slice(0, 4))).toBe('RIFF');
   });
 
-  it('importAudioFile de formatos con seek fiable no genera WAV', async () => {
+  it('importAudioFile de FLAC también genera el WAV y conserva el original', async () => {
     const file = new File([new Uint8Array([1])], 'a.flac', { type: 'audio/flac' });
+    const imported = await importAudioFile(file, { createAudioContext: ctx });
+    expect(imported.blob.type).toBe('audio/flac');
+    expect(imported.playbackBlob?.type).toBe('audio/wav');
+    expect(imported.playbackWarning).toBeNull();
+  });
+
+  it('importAudioFile de WAV PCM no genera WAV de reproducción', async () => {
+    const file = new File([new Uint8Array([1])], 'a.wav', { type: 'audio/wav' });
     const imported = await importAudioFile(file, { createAudioContext: ctx });
     expect(imported.playbackBlob).toBeNull();
     expect(imported.playbackWarning).toBeNull();
+  });
+
+  it('el WAV de reproducción es PCM de 16 bits a 44,1 kHz', async () => {
+    const file = new File([new Uint8Array([1])], 'hires.flac', { type: 'audio/flac' });
+    const imported = await importAudioFile(file, { createAudioContext: ctx });
+    const view = new DataView(await imported.playbackBlob!.arrayBuffer());
+    expect(view.getUint32(24, true)).toBe(44_100);
+    expect(view.getUint16(34, true)).toBe(16);
   });
 
   it('si la codificación falla devuelve null y un aviso, sin romper la importación', async () => {
@@ -199,7 +215,7 @@ describe('audioImport: WAV de reproducción para MP3/AAC', () => {
     warn.mockRestore();
   });
 
-  it('decodePlaybackBlob decodifica MP3 y omite otros formatos', async () => {
+  it('decodePlaybackBlob decodifica MP3 y omite WAV', async () => {
     const mp3 = new Blob([new Uint8Array([1, 2])], { type: 'audio/mpeg' });
     const result = await decodePlaybackBlob(mp3, 'a.mp3', { createAudioContext: ctx });
     expect(result.blob?.type).toBe('audio/wav');

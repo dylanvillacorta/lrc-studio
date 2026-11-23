@@ -32,7 +32,7 @@ describe('buildAudioBlob (mime del audio restaurado, T26)', () => {
   });
 });
 
-describe('createPlaybackObjectUrl (proxy WAV de reproducción)', () => {
+describe('createPlaybackObjectUrl (WAV PCM de reproducción)', () => {
   afterEach(() => {
     clearPlaybackCache();
     vi.unstubAllGlobals();

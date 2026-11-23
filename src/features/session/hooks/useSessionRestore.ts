@@ -96,8 +96,8 @@ export interface PlaybackUrlOptions {
 }
 
 /**
- * Crea el `ObjectURL` de reproducción: MP3/AAC suenan desde un WAV PCM decodificado
- * (seek exacto); el resto desde el original. Reutiliza la caché del proyecto si existe.
+ * Crea el `ObjectURL` de reproducción: todo formato no WAV suena desde un WAV PCM decodificado
+ * (seek exacto); el WAV PCM desde el original. Reutiliza la caché del proyecto si existe.
  * Si la decodificación falla usa el original y devuelve un aviso.
  */
 export async function createPlaybackObjectUrl(
@@ -177,7 +177,7 @@ export interface UseSessionRestoreReturn {
   /** Duración del audio restaurado en segundos (`0` si no hay audio). */
   duration: number;
   error: string | null;
-  /** `true` mientras se decodifica el audio (MP3/AAC) para reproducirlo con seek exacto. */
+  /** `true` mientras se decodifica el audio (formatos no WAV) para reproducirlo con seek exacto. */
   preparingAudio: boolean;
   /** Aviso no bloqueante si el audio restaurado se reproduce del original. */
   playbackWarning: string | null;

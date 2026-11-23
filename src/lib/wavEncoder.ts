@@ -1,6 +1,6 @@
 /**
  * Codificador WAV PCM de 16 bits en memoria, puro y sin dependencias.
- * Se usa para reproducir MP3/AAC desde un contenedor con seek exacto al muestreo.
+ * Se usa para reproducir formatos comprimidos (FLAC, MP3, AAC...) desde un contenedor con seek exacto al muestreo.
  */
 
 /** Tasa de muestreo fija del proxy de reproducción (acota la memoria y evita remuestreos del navegador). */

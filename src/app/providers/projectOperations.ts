@@ -24,7 +24,7 @@ export interface ProjectOperationsDeps {
   isMounted?: () => boolean;
   importAudio?: (file: AudioFileInput) => Promise<ImportedAudioResult>;
   createObjectUrl?: (binary: Blob | ArrayBuffer, fileName?: string) => string | null;
-  /** Crea la URL de reproducción al abrir un proyecto (MP3/AAC suenan desde un WAV PCM). */
+  /** Crea la URL de reproducción al abrir un proyecto (todo formato no WAV suena desde un WAV PCM). */
   createPlaybackUrl?: (
     binary: Blob | ArrayBuffer,
     fileName: string | undefined,

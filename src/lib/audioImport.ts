@@ -67,7 +67,7 @@ export interface ImportedAudioResult {
   /** Duración total del audio importado en segundos. */
   duration: number;
   /**
-   * WAV PCM 16 bits para reproducir con seek exacto (solo MP3/AAC); `null` si el formato
+   * WAV PCM 16 bits para reproducir con seek exacto (todo formato que no sea WAV PCM); `null` si el formato
    * se reproduce del original o si falló la preparación (ver `playbackWarning`).
    * Nunca se persiste: el blob original sigue siendo el que se guarda y exporta.
    */
@@ -182,8 +182,8 @@ export interface PlaybackBlobResult {
 }
 
 /**
- * Para abrir o restaurar: decodifica MP3/AAC y devuelve el WAV PCM de reproducción.
- * Otros formatos devuelven `null` sin aviso. Si la decodificación falla devuelve `null`
+ * Para abrir o restaurar: decodifica cualquier formato no WAV y devuelve el WAV PCM de reproducción.
+ * WAV PCM devuelve `null` sin aviso. Si la decodificación falla devuelve `null`
  * con un aviso (se usa el original).
  */
 export async function decodePlaybackBlob(

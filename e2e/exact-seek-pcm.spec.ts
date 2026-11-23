@@ -8,7 +8,8 @@ import {
   trackErrors,
   waitForSaved,
 } from './helpers/studio';
-import { readDownloadText } from './helpers/wav';
+import { createTinyFlacBytes } from './helpers/flac';
+import { makeFilePayload, readDownloadText } from './helpers/wav';
 
 declare global {
   interface Window {
@@ -20,6 +21,34 @@ declare global {
 // MP3 VBR mono de 8 s (tono de 440 Hz) generado con ffmpeg/libmp3lame -q:a 9. No es una dependencia.
 const MP3_FIXTURE = 'e2e/fixtures/seek-tone-vbr.mp3';
 const MP3_FIXTURE_BYTES = 32_658;
+const FLAC_BYTES = createTinyFlacBytes(8);
+
+interface FormatCase {
+  name: string;
+  fileName: string;
+  mime: string;
+  size: number;
+  /** Argumento de `setInputFiles`. */
+  file: Parameters<ReturnType<Page['locator']>['setInputFiles']>[0];
+}
+
+// FLAC es el caso principal; MP3 VBR cubre el seek por bytes.
+const FORMATS: FormatCase[] = [
+  {
+    name: 'FLAC',
+    fileName: 'tono-estudio.flac',
+    mime: 'audio/flac',
+    size: FLAC_BYTES.byteLength,
+    file: makeFilePayload('tono-estudio.flac', 'audio/flac', FLAC_BYTES),
+  },
+  {
+    name: 'MP3 VBR',
+    fileName: 'seek-tone-vbr.mp3',
+    mime: 'audio/mpeg',
+    size: MP3_FIXTURE_BYTES,
+    file: MP3_FIXTURE,
+  },
+];
 
 interface AudioSourceInfo {
   type: string;
@@ -57,8 +86,9 @@ async function storedLineStartMs(page: Page): Promise<number> {
   });
 }
 
-test.describe('Salto exacto con MP3 (proxy WAV PCM)', () => {
-  test('MP3 importado suena desde un WAV, salta a la marca (<=5 ms), sobrevive a recarga y se respalda sin cambios', async ({
+test.describe('Salto exacto con formatos comprimidos (WAV PCM en memoria)', () => {
+  for (const format of FORMATS) {
+  test(`${format.name} importado suena desde un WAV, salta a la marca (<=5 ms), sobrevive a recarga y se respalda sin cambios`, async ({
     page,
   }, testInfo) => {
     test.setTimeout(120_000);
@@ -67,14 +97,14 @@ test.describe('Salto exacto con MP3 (proxy WAV PCM)', () => {
 
     await page.goto('/');
     await openLyrics(page, isMobile);
-    await page.getByLabel('Título de la canción').fill('Tono MP3');
+    await page.getByLabel('Título de la canción').fill('Tono de prueba');
     await page.getByLabel('Artista').fill('Prueba');
     await page
       .getByLabel('Letra de la canción, una línea por verso')
       .fill('Primera línea del tono\nSegunda línea del tono');
     await page.getByRole('button', { name: 'Aplicar letra' }).click();
     await openSyncEditor(page, isMobile);
-    await page.locator('input[aria-label="Seleccionar archivo de audio"]').setInputFiles(MP3_FIXTURE);
+    await page.locator('input[aria-label="Seleccionar archivo de audio"]').setInputFiles(format.file);
 
     await expect(page.getByRole('button', { name: /MARCAR LÍNEA/i })).toBeVisible();
     const slider = page.getByRole('slider', { name: 'Posición en la forma de onda' });
@@ -143,7 +173,7 @@ test.describe('Salto exacto con MP3 (proxy WAV PCM)', () => {
         };
       });
     });
-    expect(stored).toEqual({ mime: 'audio/mpeg', size: MP3_FIXTURE_BYTES });
+    expect(stored).toEqual({ mime: format.mime, size: format.size });
 
     // El respaldo conserva el MP3 original.
     await openCatalog(page, isMobile);
@@ -153,9 +183,10 @@ test.describe('Salto exacto con MP3 (proxy WAV PCM)', () => {
     const backup = JSON.parse(await readDownloadText(await downloadPromise)) as {
       audios: { fileName: string; mimeType: string }[];
     };
-    expect(backup.audios[0]?.fileName).toBe('seek-tone-vbr.mp3');
-    expect(backup.audios[0]?.mimeType).toBe('audio/mpeg');
+    expect(backup.audios[0]?.fileName).toBe(format.fileName);
+    expect(backup.audios[0]?.mimeType).toBe(format.mime);
 
     assertNoErrors();
   });
+  }
 });

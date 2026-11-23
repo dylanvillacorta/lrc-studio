@@ -151,16 +151,18 @@ describe('audioFormats', () => {
 });
 
 describe('needsPcmPlaybackProxy', () => {
-  it('es verdadero solo para MP3 y AAC ADTS', () => {
-    expect(needsPcmPlaybackProxy('a.mp3')).toBe(true);
-    expect(needsPcmPlaybackProxy('a.MP3', 'audio/mpeg')).toBe(true);
-    expect(needsPcmPlaybackProxy('a.aac')).toBe(true);
+  it('es verdadero para todo formato comprimido o distinto de WAV PCM', () => {
+    for (const name of ['a.flac', 'a.mp3', 'a.aac', 'a.m4a', 'a.ogg', 'a.oga', 'a.opus', 'a.webm']) {
+      expect(needsPcmPlaybackProxy(name), name).toBe(true);
+    }
     expect(needsPcmPlaybackProxy('a.bin', 'audio/aac')).toBe(true);
+    expect(needsPcmPlaybackProxy('a.flac', 'application/octet-stream')).toBe(true);
+    expect(needsPcmPlaybackProxy('a.MP3', 'audio/mpeg')).toBe(true);
   });
 
-  it('es falso para formatos con índice de seek fiable', () => {
-    for (const name of ['a.wav', 'a.flac', 'a.m4a', 'a.ogg', 'a.opus', 'a.webm']) {
-      expect(needsPcmPlaybackProxy(name)).toBe(false);
-    }
+  it('es falso solo para WAV PCM', () => {
+    expect(needsPcmPlaybackProxy('a.wav')).toBe(false);
+    expect(needsPcmPlaybackProxy('a.bin', 'audio/x-wav')).toBe(false);
+    expect(needsPcmPlaybackProxy('a.bin', 'audio/wave')).toBe(false);
   });
 });
