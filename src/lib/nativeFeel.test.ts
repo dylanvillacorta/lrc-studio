@@ -17,16 +17,18 @@ describe('nativeFeel', () => {
     expect(shouldPreventWheel({})).toBe(false);
   });
 
-  it('previene Ctrl/Cmd + (+, -, =, 0) y no otras teclas', () => {
-    for (const key of ['+', '-', '=', '0']) {
+  it('previene Ctrl/Cmd + (+, -, =) y no otras teclas (Ctrl+0 queda libre)', () => {
+    for (const key of ['+', '-', '=']) {
       expect(shouldPreventZoomKey({ key, ctrlKey: true })).toBe(true);
       expect(shouldPreventZoomKey({ key, metaKey: true })).toBe(true);
     }
+    expect(shouldPreventZoomKey({ key: '0', ctrlKey: true })).toBe(false);
+    expect(shouldPreventZoomKey({ key: '0', metaKey: true })).toBe(false);
     expect(shouldPreventZoomKey({ key: '-' })).toBe(false);
     expect(shouldPreventZoomKey({ key: 'z', ctrlKey: true })).toBe(false);
     expect(shouldPreventZoomKey({ key: ' ' })).toBe(false);
     expect(shouldPreventZoomKey({ key: '[' })).toBe(false);
-    expect(shouldPreventZoomKey({ key: '0', ctrlKey: true, altKey: true })).toBe(false);
+    expect(shouldPreventZoomKey({ key: '-', ctrlKey: true, altKey: true })).toBe(false);
   });
 
   it('previene touchmove solo con más de un toque', () => {

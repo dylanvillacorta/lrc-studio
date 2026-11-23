@@ -216,7 +216,7 @@ Acciones disponibles:
 - **Sensación nativa (sin selección ni zoom):**
   - Sin selección de texto en toda la app (`user-select: none`, `-webkit-user-select`, `-webkit-touch-callout: none`), salvo `input`, `textarea`, `[contenteditable]` y elementos con la utilidad `selectable`, donde la usuaria escribe o copia texto.
   - Sin zoom de página: meta viewport con `maximum-scale=1, user-scalable=no`; `touch-action: manipulation` global (los componentes con arrastre propio mantienen `touch-action: none`); campos a 16 px en móvil para evitar el zoom automático de iOS.
-  - `src/lib/nativeFeel.ts` (montado una vez en `App`, con limpieza) previene `gesture*` y el pinch de varios dedos (iOS Safari), Ctrl/Cmd + rueda, Ctrl/Cmd + `+`, `-`, `=`, `0` y la selección por doble clic fuera de campos editables. No intercepta teclas sin Ctrl/Cmd, por lo que no choca con los atajos de sincronización.
+  - `src/lib/nativeFeel.ts` (montado una vez en `App`, con limpieza) previene `gesture*` y el pinch de varios dedos (iOS Safari), Ctrl/Cmd + rueda, Ctrl/Cmd + `+`, `-`, `=` y la selección por doble clic fuera de campos editables. Ctrl/Cmd + `0` no se previene a propósito: restablece el zoom del navegador al 100 %. No intercepta teclas sin Ctrl/Cmd, por lo que no choca con los atajos de sincronización.
 - **Página fija (T35):** la página nunca se deforma ni se mueve mientras se toca sin parar.
   - `overscroll-behavior: none` en `html`/`body` (sin rebote ni pull-to-refresh) y `overscroll-behavior: contain` en todo contenedor con scroll interno, para no encadenar el scroll a la página.
   - Sin scroll horizontal de la página en 390x844 ni 1280x800 (cubierto por E2E); se corrige el elemento que desborda, el `overflow-x-hidden` global es solo red de seguridad.
