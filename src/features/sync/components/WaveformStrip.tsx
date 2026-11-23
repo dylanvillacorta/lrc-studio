@@ -23,7 +23,7 @@ import {
 } from '@/features/sync/model/timelineScrub';
 import { formatTime } from '@/lib/time';
 import type { LyricLine } from '@/types';
-import { Icon, RaisedButton, WellPanel } from '@/ui';
+import { WellPanel } from '@/ui';
 import { downsampleWaveformBars } from './syncViewHelpers';
 
 export interface WaveformStripProps {
@@ -41,8 +41,6 @@ export interface WaveformStripProps {
   onSeek: (targetMs: number) => void;
   onSeekStart?: () => void;
   onSeekEnd?: () => void;
-  onOpenLoupe?: () => void;
-  canOpenLoupe?: boolean;
 }
 
 const VIEW_WIDTH = 304;
@@ -64,8 +62,6 @@ export const WaveformStrip = memo(function WaveformStrip({
   onSeek,
   onSeekStart,
   onSeekEnd,
-  onOpenLoupe,
-  canOpenLoupe = true,
 }: WaveformStripProps) {
   const effectiveTimeMs = usePlaybackTime(timeStore, currentTimeMs, 33);
   const [interaction, setInteraction] = useState<TimelineInteractionState>({
@@ -266,19 +262,6 @@ export const WaveformStrip = memo(function WaveformStrip({
     scheduleCollapse();
   };
 
-  const loupeButton = onOpenLoupe ? (
-    <RaisedButton
-      size="sm"
-      onClick={onOpenLoupe}
-      disabled={!canOpenLoupe}
-      aria-label="Abrir ajuste fino en lupa"
-      className="min-h-11 min-w-11 px-2.5 text-xs font-extrabold text-acc shrink-0"
-    >
-      <Icon name="search" size={16} />
-      <span className="hidden sm:inline">Lupa</span>
-    </RaisedButton>
-  ) : null;
-
   return (
     <div
       className={`relative z-20 flex-none ${
@@ -415,7 +398,6 @@ export const WaveformStrip = memo(function WaveformStrip({
         <span className="font-mono text-xs font-bold text-mute tabular-nums shrink-0">
           {formatTime(durationMs)}
         </span>
-        {loupeButton}
         </div>
       </WellPanel>
     </div>

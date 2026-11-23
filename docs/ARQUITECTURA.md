@@ -19,7 +19,7 @@ src/
     App.tsx
     layouts/                      # Layouts de móvil y escritorio
     providers/                    # Providers de storage y sesión (solo componen, sin lógica de negocio)
-  features/                       # sync, lyrics, catalog, loupe, export, session
+  features/                       # sync, lyrics, catalog, export, session
     <tema>/
       components/
       hooks/
@@ -48,7 +48,9 @@ src/
 ## 3. Contratos y tipos (`src/types/`)
 
 ```typescript
-export type ActiveTab = 'sync' | 'word' | 'lyrics' | 'loupe' | 'export' | 'catalog';
+export type ActiveTab = 'sync' | 'word' | 'lyrics' | 'export' | 'catalog';
+// Una sesión guardada con el valor legado 'loupe' (la Lupa, eliminada) se restaura como 'sync':
+// `sessionPlanner` y `WebIndexedDBAdapter` lo normalizan. No cambia la forma de los datos: sin migrador.
 
 export interface WordTiming {
   id: string;
@@ -239,7 +241,9 @@ Acciones disponibles:
 Tomada de [docs/base/lyricsync_studio_pro_2_00.tsx](base/lyricsync_studio_pro_2_00.tsx):
 - Modo **Línea**.
 - Modo **Palabra por palabra** con **Pre-Roll** y foco automático: cada marca avanza sola a la próxima palabra sin marca (cruzando líneas) y el deshacer quita la última palabra marcada, deja el foco en ella y vuelve el audio a `inicio − Pre-Roll`.
-- El botón **Escuchar línea** de la lupa reproduce la línea con Pre-Roll y Post-Roll (el antiguo modo Ráfaga ya no existe; el selector tiene Línea, Palabra y Karaoke).
-- **Lupa de onda** con bordes arrastrables e inspector de `10 ms` y `50 ms`.
+- El selector tiene Línea, Palabra y Karaoke (el antiguo modo Ráfaga y la Lupa de onda ya no existen).
+- **Inspector** de escritorio de `10 ms` y `50 ms` (`src/features/sync/`), más los atajos `←`/`→` y `[`/`]`.
+- **Reproducir desde aquí** (y repetir Pre-Roll y deshacer palabra) usan `playFrom`: salta siempre al milisegundo de la marca y suena al instante, es idempotente y nunca pausa aunque se toque muchas veces seguidas. El vigilante de progreso ignora los seeks (generación de seek) y exige dos veredictos de congelado consecutivos antes de reparar.
+- **Transporte móvil** (`TransportBar`): velocidad, −5 s, reproducir/pausa y +5 s en Línea y en Palabra. La velocidad siempre arranca en `1.0x` al abrir o restaurar un proyecto y cambiarla no guarda el proyecto; se resalta cuando no es `1x`.
 - **Karaoke a 60 FPS**.
 - Exportación a **JSON**, **ELRC** y **LRC**.

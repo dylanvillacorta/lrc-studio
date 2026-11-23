@@ -6,7 +6,6 @@ import {
   computeWordProgressPct,
   findActiveLineIndex,
   findActiveWordIndex,
-  getActiveLineWindow,
   getPreRollTrafficLight,
   resolvePlaybackTracking,
 } from '@/features/sync/model/playbackAnalysis';
@@ -53,17 +52,7 @@ describe('playbackAnalysis', () => {
     expect(findActiveLineIndex(sampleLines, 5200)).toBe(1);
   });
 
-  it('calcula getActiveLineWindow y limita Pre-Roll cerca de 0 s', () => {
-    const win = getActiveLineWindow(sampleLines, 0, {
-      preRollMs: 2500,
-      postRollMs: 800,
-      durationMs: 28_000,
-    });
-    expect(win.lineStartMs).toBe(1500);
-    expect(win.lineEndMs).toBe(3500);
-    expect(win.windowStartMs).toBe(0);
-    expect(win.windowEndMs).toBe(4300);
-
+  it('limita Pre-Roll cerca de 0 s', () => {
     expect(computePreRollStartMs(1200, 2500)).toBe(0);
     expect(computePreRollStartMs(5000, 2500)).toBe(2500);
     expect(computePreRollStartMs(null)).toBe(0);
@@ -113,11 +102,6 @@ describe('playbackAnalysis', () => {
     expect(findActiveWordIndex(edgeLines[0], 1200)).toBe(1);
     expect(findActiveWordIndex(edgeLines[1], 1200)).toBe(-1);
     expect(findActiveLineIndex([], 1000)).toBe(-1);
-
-    const winEarly = getActiveLineWindow(edgeLines, 0, { preRollMs: 2500 });
-    expect(winEarly.lineStartMs).toBe(1200);
-    expect(winEarly.lineEndMs).toBe(1700); // clamped >= lineStartMs + 500
-    expect(winEarly.windowStartMs).toBe(0);
 
     expect(computePreRollStartMs(0, 2500)).toBe(0);
     expect(computePreRollStartMs(2499, 2500)).toBe(0);

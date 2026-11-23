@@ -1,14 +1,13 @@
 /**
  * Análisis puro de reproducción, ventanas de Pre-Roll, semáforo y progreso.
  * Origen en el archivo base (`docs/base/lyricsync_studio_pro_2_00.tsx`):
- * `getActiveLineWindow` (línea 370), `triggerPreRollPlay` (línea 404),
+ * `triggerPreRollPlay` (línea 404),
  * `currentPlayingLineIndex` (línea 1237) y métricas de progreso (líneas 1414-1419).
  *
  * Todas las marcas temporales están en milisegundos.
  */
 
 import type {
-  ActiveLineWindow,
   LyricLine,
   PreRollTrafficLight,
   SyncProgress,
@@ -16,7 +15,6 @@ import type {
 } from '@/types';
 
 export const DEFAULT_PRE_ROLL_MS = 2500;
-export const DEFAULT_POST_ROLL_MS = 800;
 export const DEFAULT_WORD_SWEEP_MS = 350;
 export const LINE_END_TOLERANCE_MS = 600;
 
@@ -73,12 +71,6 @@ export interface KaraokePlaybackState {
   lines: KaraokeLineState[];
 }
 
-export interface ActiveLineWindowOptions {
-  preRollMs?: number;
-  postRollMs?: number;
-  durationMs?: number;
-}
-
 /**
  * Devuelve el índice de la línea activa para `currentTimeMs`, o `-1` si aún no comienza
  * ninguna o está fuera de ventana (+600 ms de tolerancia al final).
@@ -126,61 +118,6 @@ export function findActiveWordIndex(
     return candidate.index;
   }
   return -1;
-}
-
-/**
- * Calcula la ventana temporal de la línea activa con Pre-Roll y Post-Roll para «Escuchar línea» en la lupa.
- * Proviene de `getActiveLineWindow` en el archivo base (convertido a milisegundos).
- */
-export function getActiveLineWindow(
-  lines: readonly LyricLine[],
-  lineIndex: number,
-  options: ActiveLineWindowOptions = {},
-): ActiveLineWindow {
-  const preRollMs = options.preRollMs ?? DEFAULT_PRE_ROLL_MS;
-  const postRollMs = options.postRollMs ?? DEFAULT_POST_ROLL_MS;
-  const maxDurationMs = options.durationMs && options.durationMs > 0
-    ? options.durationMs
-    : 9_999_000;
-
-  const line = lines[lineIndex];
-  if (!line) {
-    return {
-      lineStartMs: 0,
-      lineEndMs: 4000,
-      windowStartMs: 0,
-      windowEndMs: Math.min(maxDurationMs, 5000),
-    };
-  }
-
-  const prevLine = lineIndex > 0 ? lines[lineIndex - 1] : undefined;
-  const fallbackStartMs =
-    prevLine && prevLine.endMs !== null ? prevLine.endMs + 300 : lineIndex * 3500;
-  const lineStartMs = line.startMs !== null ? line.startMs : fallbackStartMs;
-
-  const syncedWordEnds = line.words
-    .map((w) => w.endMs)
-    .filter((t): t is number => t !== null);
-  const nextLineStartMs = lines[lineIndex + 1]?.startMs ?? null;
-
-  const fallbackEndMs =
-    syncedWordEnds.length > 0
-      ? Math.max(...syncedWordEnds, lineStartMs + 1800)
-      : nextLineStartMs !== null && nextLineStartMs > lineStartMs
-        ? Math.max(lineStartMs, nextLineStartMs - 100)
-        : lineStartMs + 3600;
-
-  const lineEndMs =
-    line.endMs !== null ? Math.max(lineStartMs + 500, line.endMs) : fallbackEndMs;
-  const windowStartMs = Math.max(0, Math.round(lineStartMs - preRollMs));
-  const windowEndMs = Math.min(maxDurationMs, Math.round(lineEndMs + postRollMs));
-
-  return {
-    lineStartMs,
-    lineEndMs,
-    windowStartMs,
-    windowEndMs,
-  };
 }
 
 /**

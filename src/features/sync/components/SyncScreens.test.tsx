@@ -2,7 +2,7 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LyricLine } from '@/types';
 import { KaraokePreview } from './KaraokePreview';
-import { LineRowActionBar, LineTimeEditor } from './LineRowActions';
+import { LineRowActionBar } from './LineRowActions';
 import { findLastMarkedLineIndex, LineSyncScreen } from './LineSyncScreen';
 import { WaveformStrip } from './WaveformStrip';
 import { WordSyncScreen } from './WordSyncScreen';
@@ -56,7 +56,6 @@ describe('LineSyncScreen', () => {
         onSelectLine={vi.fn()}
         onClearLineMark={vi.fn()}
         onStampLine={vi.fn()}
-        onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -67,7 +66,8 @@ describe('LineSyncScreen', () => {
     expect(html).toContain('Adelantar 5 segundos');
     expect(html).toContain('aria-label="Deshacer última marca de línea"');
     expect(html).not.toContain('aria-label="Deshacer última marca"');
-    expect(html).toContain('Abrir ajuste fino en lupa');
+    expect(html).not.toContain('Abrir ajuste fino en lupa');
+    expect(html).not.toContain('Lupa');
     expect(html).not.toContain('esperando marca');
     expect(html).toContain('--:--.--');
     expect(html).toContain('aria-label="Sin marca de tiempo"');
@@ -102,7 +102,6 @@ describe('LineSyncScreen', () => {
         onSelectLine={vi.fn()}
         onClearLineMark={vi.fn()}
         onStampLine={vi.fn()}
-        onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -140,7 +139,6 @@ describe('LineSyncScreen', () => {
         onChangePlaybackRate={vi.fn()}
         onSelectLine={vi.fn()}
         onStampLine={vi.fn()}
-        onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -169,7 +167,6 @@ describe('LineSyncScreen', () => {
         onChangePlaybackRate={vi.fn()}
         onSelectLine={vi.fn()}
         onStampLine={vi.fn()}
-        onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -203,7 +200,6 @@ describe('WordSyncScreen', () => {
         onSelectWord={vi.fn()}
         onUndoWord={vi.fn(() => null)}
         canUndoWord
-        onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -255,7 +251,6 @@ describe('WordSyncScreen', () => {
         onSelectWord={vi.fn()}
         onUndoWord={vi.fn(() => null)}
         canUndoWord={false}
-        onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -289,7 +284,6 @@ describe('WordSyncScreen', () => {
         onSelectWord={vi.fn()}
         onUndoWord={vi.fn(() => null)}
         canUndoWord
-        onOpenLoupe={vi.fn()}
         onUploadAudio={vi.fn(async () => {})}
       />,
     );
@@ -382,7 +376,6 @@ describe('WaveformStrip', () => {
         lines={SAMPLE_LINES}
         compact
         onSeek={vi.fn()}
-        onOpenLoupe={vi.fn()}
       />,
     );
 
@@ -402,7 +395,6 @@ describe('WaveformStrip', () => {
         lines={SAMPLE_LINES}
         forceExpanded
         onSeek={vi.fn()}
-        onOpenLoupe={vi.fn()}
       />,
     );
 
@@ -413,7 +405,7 @@ describe('WaveformStrip', () => {
   });
 });
 
-describe('LineRowActionBar y LineTimeEditor', () => {
+describe('LineRowActionBar', () => {
   it('renderiza la barra de acciones solo con Reproducir desde aquí y Borrar marca cuando tiene marca', () => {
     const syncedHtml = renderToString(
       <LineRowActionBar
@@ -440,27 +432,5 @@ describe('LineRowActionBar y LineTimeEditor', () => {
     expect(unsyncedHtml).not.toContain('Borrar marca');
     expect(unsyncedHtml).not.toContain('Editar tiempo');
     expect(unsyncedHtml).not.toContain('Borrar marcas desde esta línea hacia abajo');
-  });
-
-  it('renderiza el editor de tiempo en línea con botones ±10/±50 ms, aviso de orden y Aceptar/Cancelar', () => {
-    const html = renderToString(
-      <LineTimeEditor
-        lineIndex={1}
-        initialStartMs={8_000}
-        prevLineStartMs={12_000}
-        durationMs={90_000}
-        onAccept={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-    expect(html).toContain('Línea 2');
-    expect(html).toContain('value="00:08.00"');
-    expect(html).toContain('aria-label="Restar 50 milisegundos"');
-    expect(html).toContain('aria-label="Restar 10 milisegundos"');
-    expect(html).toContain('aria-label="Sumar 10 milisegundos"');
-    expect(html).toContain('aria-label="Sumar 50 milisegundos"');
-    expect(html).toContain('aria-label="Aceptar tiempo"');
-    expect(html).toContain('aria-label="Cancelar edición"');
-    expect(html).toContain('Aviso: queda antes de la línea anterior (00:12.00).');
   });
 });

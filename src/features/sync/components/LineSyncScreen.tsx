@@ -63,7 +63,6 @@ export interface LineSyncScreenProps {
   onPlayFromLine?: (index: number) => void;
   onClearLineMark?: (index: number) => void;
   onStampLine: (nowMs: number) => void;
-  onOpenLoupe: () => void;
   onUploadAudio: (file: File) => Promise<void>;
 }
 
@@ -95,7 +94,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
   onPlayFromLine,
   onClearLineMark,
   onStampLine,
-  onOpenLoupe,
   onUploadAudio,
 }: LineSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
@@ -125,7 +123,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
     );
   }
 
-  const activeLine = lines[activeLineIndex];
   const hasLines = lines.length > 0;
   const lineNumber = Math.min(lines.length, activeLineIndex + 1);
   const lastMarkedLineIndex = findLastMarkedLineIndex(lines);
@@ -177,8 +174,6 @@ export const LineSyncScreen = memo(function LineSyncScreen({
         onSeek={onSeek}
         onSeekStart={onSeekStart}
         onSeekEnd={onSeekEnd}
-        onOpenLoupe={onOpenLoupe}
-        canOpenLoupe={Boolean(activeLine)}
       />
 
       <TransportBar

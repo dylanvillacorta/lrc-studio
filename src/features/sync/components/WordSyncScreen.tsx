@@ -67,7 +67,6 @@ export interface WordSyncScreenProps {
   /** Deshace la última palabra sincronizada; `null` si no había nada que deshacer. */
   onUndoWord: () => { wordText: string } | null;
   canUndoWord: boolean;
-  onOpenLoupe: () => void;
   onUploadAudio: (file: File) => Promise<void>;
 }
 
@@ -139,7 +138,6 @@ export const WordSyncScreen = memo(function WordSyncScreen({
   onSelectWord,
   onUndoWord,
   canUndoWord,
-  onOpenLoupe,
   onUploadAudio,
 }: WordSyncScreenProps) {
   const [liveNotice, setLiveNotice] = useState('');
@@ -229,8 +227,6 @@ export const WordSyncScreen = memo(function WordSyncScreen({
         onSeek={onSeek}
         onSeekStart={onSeekStart}
         onSeekEnd={onSeekEnd}
-        onOpenLoupe={onOpenLoupe}
-        canOpenLoupe={Boolean(activeLine)}
       />
 
       <TransportBar

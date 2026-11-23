@@ -2,7 +2,7 @@ import {
   INSPECTOR_STEPS_MS,
   applyInspectorDelta,
   type LineBounds,
-} from '@/features/loupe/model/loupeModel';
+} from '@/features/sync/model/inspectorBounds';
 import { formatTime } from '@/lib/time';
 import { WellPanel } from '@/ui';
 
